@@ -1,3 +1,4 @@
+// app/register.tsx
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -13,12 +14,15 @@ import { MapSvg } from '@/components/MapSvg';
 import { ArrowIcon } from '@/components/ArrowIcon';
 import { useRouter } from 'expo-router';
 
-export default function LoginScreen() {
+export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
 
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [accepted, setAccepted] = useState(false);
 
   // measurements
   const horizontalPadding = Math.round(width * 0.06);
@@ -29,12 +33,13 @@ export default function LoginScreen() {
   const btnRadius = Math.round(btnHeight * 0.22);
 
   const handleNext = () => {
-    if (!email || !password) {
-      console.log('Por favor complete los campos');
+    if (!name || !email || !password) {
+      console.log('Please fill required fields');
       return;
     }
-    // TODO: perform auth
-    router.push('/home');
+    // TODO: call register API
+    console.log('Register:', { name, email, phone });
+    // router.push('/welcome');
   };
 
   return (
@@ -45,12 +50,23 @@ export default function LoginScreen() {
             <MapSvg width={Math.round(width * 0.52)} height={Math.round(topIllustrationHeight * 0.9)} />
           </View>
         </View>
-        
+
         <View style={styles.form}>
-        <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
+          <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 18 }]}>Registrarse</Text>
+
           <View style={[styles.inputBox, { height: inputHeight }]}>
             <TextInput
-              placeholder="Ingrese su email"
+              placeholder="Nombre"
+              placeholderTextColor="rgba(0,0,0,0.5)"
+              value={name}
+              onChangeText={setName}
+              style={styles.textInput}
+            />
+          </View>
+
+          <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
+            <TextInput
+              placeholder="Email"
               placeholderTextColor="rgba(0,0,0,0.5)"
               value={email}
               onChangeText={setEmail}
@@ -60,7 +76,18 @@ export default function LoginScreen() {
             />
           </View>
 
-          <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
+          <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
+            <TextInput
+              placeholder="Phone number"
+              placeholderTextColor="rgba(0,0,0,0.5)"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              style={styles.textInput}
+            />
+          </View>
+
+          <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
             <TextInput
               placeholder="Contraseña"
               placeholderTextColor="rgba(0,0,0,0.5)"
@@ -71,31 +98,40 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            onPress={() => {
-              //router.push('/forgot');
-            }}
-            style={styles.forgotWrap}
-          >
-            <Text style={styles.forgotText}>¿Olvidó su contraseña?</Text>
-          </TouchableOpacity>
+          <View style={styles.termsRow}>
+            <TouchableOpacity
+              onPress={() => setAccepted(!accepted)}
+              style={styles.checkbox}
+              accessibilityRole="button"
+            >
+              {accepted && <View style={styles.checkboxTick} />}
+            </TouchableOpacity>
+
+            <Text style={styles.termsText}>
+              <Text>By checking the box you agree to our </Text>
+              <Text style={styles.link}>Terms</Text>
+              <Text> and </Text>
+              <Text style={styles.link}>Conditions</Text>
+              <Text>.</Text>
+            </Text>
+          </View>
 
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={handleNext}
             style={[
               styles.nextBtn,
-              { height: btnHeight, borderRadius: btnRadius, marginTop: 24 },
+              { height: btnHeight, borderRadius: btnRadius, marginTop: 20 },
             ]}
           >
             <Text style={styles.nextText}>Next</Text>
             <ArrowIcon color="#FFFFFF" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
 
-          <View style={styles.registerRow}>
-            <Text style={styles.already}>New Member? </Text>
-            <TouchableOpacity onPress={() => router.push('/register')}>
-              <Text style={styles.registerLink}>Register now</Text>
+          <View style={styles.loginRow}>
+            <Text style={styles.already}>Already a member? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.loginLink}>Log In</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -109,7 +145,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
 
   topArea: { alignItems: 'center' },
-title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
+
+  title: { color: '#252525', fontWeight: '800' },
 
   form: { paddingBottom: 60 },
 
@@ -122,8 +159,11 @@ title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
   },
   textInput: { fontSize: 14, color: '#252525', padding: 0 },
 
-  forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
-  forgotText: { color: '#FF3951', fontSize: 13 },
+  termsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, width: '100%' },
+  checkbox: { width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: '#CBCBCB', marginRight: 8 },
+  checkboxTick: { flex: 1, backgroundColor: '#FF3951', borderRadius: 2 },
+  termsText: { fontSize: 9, color: '#252525', flexWrap: 'wrap', flex: 1 },
+  link: { color: '#FF3951' },
 
   nextBtn: {
     width: '100%',
@@ -135,7 +175,7 @@ title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
   },
   nextText: { color: '#FCFCFC', fontSize: 20, fontWeight: '600' },
 
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
   already: { color: '#252525', fontSize: 13, fontWeight: '500' },
-  registerLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
+  loginLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
 });
