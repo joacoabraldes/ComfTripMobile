@@ -7,6 +7,7 @@ export default function AuthLayout() {
       <Stack.Screen name="start" options={{ headerShown: false }} />
       <Stack.Screen name="register" options={{ headerShown: false }} />
       <Stack.Screen name="login" options={{ headerShown: false }} />
+    <Stack.Screen name="interests" options={{ headerShown: false }} />
     </Stack>
   );
 }

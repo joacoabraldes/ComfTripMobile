@@ -39,7 +39,7 @@ export default function RegisterScreen() {
     }
     // TODO: call register API
     console.log('Register:', { name, email, phone });
-    router.replace('/home');
+    router.replace('/interests');
   };
 
   return (
