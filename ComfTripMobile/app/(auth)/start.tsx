@@ -4,14 +4,12 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   useWindowDimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { LogoSvg } from '@/components/LogoSvg';
-import { ArrowIcon } from '@/components/ArrowIcon';
-
-
+import { LogoSvg } from '@/components/icons/LogoSvg';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import PrimaryButton from '@/components/buttons/PrimaryButton';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
@@ -52,42 +50,30 @@ export default function StartScreen() {
         </View>
 
         <View style={[styles.actionsWrap, { marginBottom: bottomSpacing }]}>
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={[
-              styles.actionBtn,
-              { backgroundColor: '#FF3951', height: btnHeight, borderRadius: btnRadius },
-            ]}
+          <PrimaryButton
+            title="Iniciar Sesión"
             onPress={() => router.push('/login')}
-            accessibilityRole="button"
-            accessibilityLabel="Iniciar Sesion"
-          >
-            <View style={styles.btnRow}>
-              <Text style={[styles.actionText, { fontSize: labelFontSize }]}>Iniciar Sesión</Text>
-              <ArrowIcon color="#FFFFFF" style={{ marginLeft: 10 }} />
-            </View>
-          </TouchableOpacity>
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FFFFFF" style={{ marginLeft: 10 }} />}
+            style={{ backgroundColor: '#FF3951' }}
+            textStyle={{ fontSize: labelFontSize }}
+          />
 
-
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={[
-              styles.actionBtnOutline,
-              {
-                height: btnHeight,
-                borderRadius: btnRadius,
-                marginTop: Math.round(height * 0.012),
-              },
-            ]}
+          <PrimaryButton
+            title="Registrarse"
             onPress={() => router.push('/register')}
-            accessibilityRole="button"
-            accessibilityLabel="Registrarse"
-          >
-            <View style={styles.btnRow}>
-              <Text style={[styles.actionTextOutline, { fontSize: labelFontSize }]}>Registrarse</Text>
-              <ArrowIcon color="#FF3951" style={{ marginLeft: 10 }} />
-            </View>
-          </TouchableOpacity>
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FF3951" style={{ marginLeft: 10 }} />}
+            style={{
+              backgroundColor: 'transparent',
+              borderWidth: 1,
+              borderColor: '#FF3951',
+              marginTop: Math.round(height * 0.012),
+            }}
+            textStyle={{ color: '#FF3951', fontSize: labelFontSize }}
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -105,11 +91,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-
   topArea: {
     alignItems: 'center',
   },
-
 
   illustrationWrap: {
     alignItems: 'center',
@@ -119,18 +103,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-
   brand: {
     color: '#FF3951',
     fontWeight: '400',
     textAlign: 'center',
   },
 
-
   actionsWrap: {
     width: '100%',
   },
-
 
   actionBtn: {
     alignItems: 'center',
@@ -140,7 +121,6 @@ const styles = StyleSheet.create({
     color: '#FCFCFC',
     fontWeight: '600',
   },
-
 
   actionBtnOutline: {
     alignItems: 'center',

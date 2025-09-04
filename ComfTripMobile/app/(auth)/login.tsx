@@ -4,13 +4,13 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   TextInput,
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { MapSvg } from '@/components/MapSvg';
-import { ArrowIcon } from '@/components/ArrowIcon';
+import { MapSvg } from '@/components/icons/MapSvg';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useRouter } from 'expo-router';
 
 export default function LoginScreen() {
@@ -34,7 +34,8 @@ export default function LoginScreen() {
       return;
     }
     // TODO: perform auth
-    router.push('/home');
+    // use replace so user can't press back to return to login
+    router.replace('/home');
   };
 
   return (
@@ -45,9 +46,10 @@ export default function LoginScreen() {
             <MapSvg width={Math.round(width * 0.52)} height={Math.round(topIllustrationHeight * 0.9)} />
           </View>
         </View>
-        
+
         <View style={styles.form}>
-        <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
+          <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
+
           <View style={[styles.inputBox, { height: inputHeight }]}>
             <TextInput
               placeholder="Ingrese su email"
@@ -71,32 +73,24 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity
-            onPress={() => {
-              //router.push('/forgot');
-            }}
-            style={styles.forgotWrap}
-          >
+          <View style={styles.forgotWrap}>
             <Text style={styles.forgotText}>¿Olvidó su contraseña?</Text>
-          </TouchableOpacity>
+          </View>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
+          <PrimaryButton
+            title="Next"
             onPress={handleNext}
-            style={[
-              styles.nextBtn,
-              { height: btnHeight, borderRadius: btnRadius, marginTop: 24 },
-            ]}
-          >
-            <Text style={styles.nextText}>Next</Text>
-            <ArrowIcon color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FFFFFF" />}
+            style={{ marginTop: 24 }}
+          />
 
           <View style={styles.registerRow}>
             <Text style={styles.already}>New Member? </Text>
-            <TouchableOpacity onPress={() => router.push('/register')}>
-              <Text style={styles.registerLink}>Register now</Text>
-            </TouchableOpacity>
+            <Text style={styles.registerLink} onPress={() => router.push('/register')}>
+              Register now
+            </Text>
           </View>
         </View>
       </View>
@@ -109,7 +103,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
 
   topArea: { alignItems: 'center' },
-title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
+  title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
 
   form: { paddingBottom: 60 },
 
@@ -124,16 +118,6 @@ title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgotText: { color: '#FF3951', fontSize: 13 },
-
-  nextBtn: {
-    width: '100%',
-    backgroundColor: '#FF3951',
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  nextText: { color: '#FCFCFC', fontSize: 20, fontWeight: '600' },
 
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
   already: { color: '#252525', fontSize: 13, fontWeight: '500' },

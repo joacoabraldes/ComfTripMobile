@@ -1,4 +1,3 @@
-// app/register.tsx
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -10,8 +9,9 @@ import {
   useWindowDimensions,
   Platform,
 } from 'react-native';
-import { MapSvg } from '@/components/MapSvg';
-import { ArrowIcon } from '@/components/ArrowIcon';
+import { MapSvg } from '@/components/icons/MapSvg';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useRouter } from 'expo-router';
 
 export default function RegisterScreen() {
@@ -39,7 +39,7 @@ export default function RegisterScreen() {
     }
     // TODO: call register API
     console.log('Register:', { name, email, phone });
-    // router.push('/welcome');
+    router.replace('/home');
   };
 
   return (
@@ -116,23 +116,26 @@ export default function RegisterScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
+          <PrimaryButton
+            title="Next"
             onPress={handleNext}
-            style={[
-              styles.nextBtn,
-              { height: btnHeight, borderRadius: btnRadius, marginTop: 20 },
-            ]}
-          >
-            <Text style={styles.nextText}>Next</Text>
-            <ArrowIcon color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FFFFFF" />}
+            style={{ marginTop: 20 }}
+          />
 
           <View style={styles.loginRow}>
             <Text style={styles.already}>Already a member? </Text>
-            <TouchableOpacity onPress={() => router.push('/login')}>
-              <Text style={styles.loginLink}>Log In</Text>
-            </TouchableOpacity>
+
+            <PrimaryButton
+              title="Log In"
+              onPress={() => router.push('/login')}
+              height={36}
+              borderRadius={8}
+              style={{ width: undefined, paddingHorizontal: 6, backgroundColor: 'transparent' }}
+              textStyle={{ color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 }}
+            />
           </View>
         </View>
       </View>
@@ -175,7 +178,7 @@ const styles = StyleSheet.create({
   },
   nextText: { color: '#FCFCFC', fontSize: 20, fontWeight: '600' },
 
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18, alignItems: 'center' },
   already: { color: '#252525', fontSize: 13, fontWeight: '500' },
   loginLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
 });
