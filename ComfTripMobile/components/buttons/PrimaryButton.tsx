@@ -19,6 +19,7 @@ type Props = {
   rightIcon?: React.ReactNode;
   activeOpacity?: number;
   disabled?: boolean;
+  children?: React.ReactNode; // <-- add this line
 };
 
 export default function PrimaryButton({
@@ -31,6 +32,7 @@ export default function PrimaryButton({
   rightIcon,
   activeOpacity = 0.9,
   disabled = false,
+  children, // <-- add this line
 }: Props) {
   return (
     <TouchableOpacity
@@ -41,6 +43,7 @@ export default function PrimaryButton({
     >
       <Text style={[styles.title, textStyle]}>{title}</Text>
       {rightIcon ? <View style={styles.iconWrap}>{rightIcon}</View> : null}
+      {children}
     </TouchableOpacity>
   );
 }

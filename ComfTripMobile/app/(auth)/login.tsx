@@ -7,11 +7,14 @@ import {
   TextInput,
   useWindowDimensions,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { MapSvg } from '@/components/icons/MapSvg';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useRouter } from 'expo-router';
+import { apiPost, tokenStorage } from '@/helpers/api';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -19,6 +22,7 @@ export default function LoginScreen() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   // measurements
   const horizontalPadding = Math.round(width * 0.06);
@@ -28,14 +32,33 @@ export default function LoginScreen() {
   const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (!email || !password) {
-      console.log('Por favor complete los campos');
+      Alert.alert('Atención', 'Por favor complete los campos');
       return;
     }
-    // TODO: perform auth
-    // use replace so user can't press back to return to login
-    router.replace('/home');
+    setLoading(true);
+    try {
+      const res = await apiPost('/auth/login', { email, password });
+      const data = res.data ?? res;
+
+      const token =
+        data?.token || data?.accessToken || data?.jwt || data?.data?.token || null;
+
+      if (token) {
+        await tokenStorage.setToken(token);
+      } else {
+        console.warn('No token found in login response, storing full response for debugging', data);
+      }
+
+      router.replace('/home');
+    } catch (err: any) {
+      console.error('Login error', err);
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || 'Login failed';
+      Alert.alert('Login failed', msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,13 +101,15 @@ export default function LoginScreen() {
           </View>
 
           <PrimaryButton
-            title="Next"
+            title= 'Ingresar'
             onPress={handleNext}
             height={btnHeight}
             borderRadius={btnRadius}
             rightIcon={<ArrowIcon color="#FFFFFF" />}
             style={{ marginTop: 24 }}
-          />
+          >
+            {loading && <ActivityIndicator />}
+          </PrimaryButton>
 
           <View style={styles.registerRow}>
             <Text style={styles.already}>New Member? </Text>
