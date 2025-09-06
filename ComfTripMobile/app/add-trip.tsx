@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { Stack } from 'expo-router';
 
 interface CalendarDay {
@@ -11,16 +11,16 @@ export default function AddTrip() {
   const [destination, setDestination] = useState('Roma, Italia');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(5); // June (0-based)
+  const [currentYear, setCurrentYear] = useState(2024);
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
   };
 
   const generateCalendarDays = () => {
-    const year = 2024;
-    const month = 5; // Junio (0-based)
-    const daysInMonth = getDaysInMonth(year, month);
-    const firstDayOfMonth = new Date(year, month, 1).getDay();
+    const daysInMonth = getDaysInMonth(currentYear, currentMonth);
+    const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
 
     const days: CalendarDay[] = [];
     for (let i = 1; i <= daysInMonth; i++) {
@@ -32,7 +32,7 @@ export default function AddTrip() {
   const { days, firstDayOfMonth } = generateCalendarDays();
 
   const handleDateSelect = (day: number) => {
-    const selectedDate = new Date(2024, 5, day);
+    const selectedDate = new Date(currentYear, currentMonth, day);
     
     if (!startDate || (startDate && endDate)) {
       setStartDate(selectedDate);
@@ -49,11 +49,40 @@ export default function AddTrip() {
 
   const isDateInRange = (day: number) => {
     if (!startDate) return false;
-    if (!endDate) return startDate.getDate() === day;
+    if (!endDate) return startDate.getDate() === day && startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear;
     
-    const currentDate = new Date(2024, 5, day);
+    const currentDate = new Date(currentYear, currentMonth, day);
     return currentDate >= startDate && currentDate <= endDate;
   };
+
+  const handlePrevMonth = () => {
+    setCurrentMonth((prev) => {
+      if (prev === 0) {
+        setCurrentYear((year) => year - 1);
+        return 11;
+      }
+      return prev - 1;
+    });
+    setStartDate(null);
+    setEndDate(null);
+  };
+
+  const handleNextMonth = () => {
+    setCurrentMonth((prev) => {
+      if (prev === 11) {
+        setCurrentYear((year) => year + 1);
+        return 0;
+      }
+      return prev + 1;
+    });
+    setStartDate(null);
+    setEndDate(null);
+  };
+
+  const monthNames = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
 
   const weekDays = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
 
@@ -62,18 +91,24 @@ export default function AddTrip() {
       <Stack.Screen options={{ headerShown: false }} />
       
       <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
-      <Pressable style={styles.destinationInput}>
-        <Text style={styles.destinationText}>{destination}</Text>
-        <Text style={styles.closeIcon}>×</Text>
-      </Pressable>
+      <TextInput
+        style={styles.destinationInput}
+        value={destination}
+        onChangeText={setDestination}
+        placeholder="Ingresa tu destino"
+      />
 
       <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
       
       <View style={styles.calendarHeader}>
-        <Text style={styles.monthYear}>Junio 2024</Text>
+        <Text style={styles.monthYear}>{monthNames[currentMonth]} {currentYear}</Text>
         <View style={styles.arrows}>
-          <Text style={styles.arrow}>‹</Text>
-          <Text style={styles.arrow}>›</Text>
+          <TouchableOpacity onPress={handlePrevMonth}>
+            <Text style={styles.arrow}>‹</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleNextMonth}>
+            <Text style={styles.arrow}>›</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -111,7 +146,7 @@ export default function AddTrip() {
 
       {startDate && endDate && (
         <Text style={styles.dateRange}>
-          Se armará un plan turístico para Roma, Italia del {startDate.getDate()}/6/24 al {endDate.getDate()}/6/24
+          Se armará un plan turístico para {destination} del {startDate.getDate()}/{startDate.getMonth() + 1}/{startDate.getFullYear()} al {endDate.getDate()}/{endDate.getMonth() + 1}/{endDate.getFullYear()}
         </Text>
       )}
 
@@ -136,6 +171,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
     color: '#666',
+    textAlign: 'center',
   },
   destinationInput: {
     flexDirection: 'row',
