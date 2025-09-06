@@ -1,4 +1,3 @@
-// app/register.tsx
 import React, { useState } from 'react';
 import {
   SafeAreaView,
@@ -9,10 +8,15 @@ import {
   TextInput,
   useWindowDimensions,
   Platform,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { MapSvg } from '@/components/MapSvg';
-import { ArrowIcon } from '@/components/ArrowIcon';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { MapSvg } from '@/components/icons/MapSvg';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useRouter } from 'expo-router';
+import { apiPost, tokenStorage } from '@/helpers/api';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -20,9 +24,12 @@ export default function RegisterScreen() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [nationality, setNationality] = useState('');
+  const [birthdate, setBirthdate] = useState(''); 
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [accepted, setAccepted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // measurements
   const horizontalPadding = Math.round(width * 0.06);
@@ -32,14 +39,60 @@ export default function RegisterScreen() {
   const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
 
-  const handleNext = () => {
+  const formatDate = (d: Date) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const onDateChange = (_event: any, selected?: Date) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selected) {
+      setBirthdate(formatDate(selected));
+    }
+  };
+
+  const handleNext = async () => {
     if (!name || !email || !password) {
-      console.log('Please fill required fields');
+      Alert.alert('Atención', 'Por favor complete los campos requeridos');
       return;
     }
-    // TODO: call register API
-    console.log('Register:', { name, email, phone });
-    // router.push('/welcome');
+    if (!accepted) {
+      Alert.alert('Atención', 'Debe aceptar los términos y condiciones');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const payload = {
+        name,
+        email,
+        password,
+        password_hash: password,
+        nationality: nationality || null,
+        birthdate: birthdate || null,
+      };
+
+      const res = await apiPost('/auth/register', payload);
+      const data = res.data ?? res;
+
+      const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token || null;
+
+      if (token) {
+        await tokenStorage.setToken(token);
+      } else {
+        console.warn('No token found in register response, storing full response for debugging', data);
+      }
+
+      router.replace('/interests');
+    } catch (err: any) {
+      console.error('Register error', err);
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || 'Register failed';
+      Alert.alert('Registro fallido', msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -78,14 +131,31 @@ export default function RegisterScreen() {
 
           <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
             <TextInput
-              placeholder="Phone number"
+              placeholder="Nacionalidad"
               placeholderTextColor="rgba(0,0,0,0.5)"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
+              value={nationality}
+              onChangeText={setNationality}
               style={styles.textInput}
             />
           </View>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowDatePicker(true)}
+            style={[styles.inputBox, { height: inputHeight, marginTop: 12, justifyContent: 'center' }]}
+          >
+            <Text style={styles.textInput}>{birthdate || 'Select birthdate'}</Text>
+          </TouchableOpacity>
+
+          {showDatePicker && (
+            <DateTimePicker
+              value={birthdate ? new Date(birthdate) : new Date(2000, 0, 1)}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+              maximumDate={new Date()}
+              onChange={onDateChange}
+            />
+          )}
 
           <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
             <TextInput
@@ -116,23 +186,28 @@ export default function RegisterScreen() {
             </Text>
           </View>
 
-          <TouchableOpacity
-            activeOpacity={0.9}
+          <PrimaryButton
+            title={loading ? '' : 'Next'}
             onPress={handleNext}
-            style={[
-              styles.nextBtn,
-              { height: btnHeight, borderRadius: btnRadius, marginTop: 20 },
-            ]}
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FFFFFF" />}
+            style={{ marginTop: 20 }}
           >
-            <Text style={styles.nextText}>Next</Text>
-            <ArrowIcon color="#FFFFFF" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+            {loading && <ActivityIndicator />}
+          </PrimaryButton>
 
           <View style={styles.loginRow}>
             <Text style={styles.already}>Already a member? </Text>
-            <TouchableOpacity onPress={() => router.push('/login')}>
-              <Text style={styles.loginLink}>Log In</Text>
-            </TouchableOpacity>
+
+            <PrimaryButton
+              title="Log In"
+              onPress={() => router.push('/login')}
+              height={36}
+              borderRadius={8}
+              style={{ width: undefined, paddingHorizontal: 6, backgroundColor: 'transparent' }}
+              textStyle={{ color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 }}
+            />
           </View>
         </View>
       </View>
@@ -175,7 +250,7 @@ const styles = StyleSheet.create({
   },
   nextText: { color: '#FCFCFC', fontSize: 20, fontWeight: '600' },
 
-  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18, alignItems: 'center' },
   already: { color: '#252525', fontSize: 13, fontWeight: '500' },
   loginLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
 });
