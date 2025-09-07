@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
-import { Stack } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 
 interface CalendarDay {
   date: number;
@@ -11,8 +11,9 @@ export default function AddTrip() {
   const [destination, setDestination] = useState('Roma, Italia');
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(5); // June (0-based)
-  const [currentYear, setCurrentYear] = useState(2024);
+  const [currentMonth, setCurrentMonth] = useState(9);
+  const [currentYear, setCurrentYear] = useState(2025);
+  const router = useRouter();
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -150,7 +151,10 @@ export default function AddTrip() {
         </Text>
       )}
 
-      <TouchableOpacity style={styles.createTripButton}>
+      <TouchableOpacity
+        style={styles.createTripButton}
+        onPress={() => router.push('/load-trip')} // Navigate to load-trip
+      >
         <Text style={styles.createTripButtonText}>Armar Viaje</Text>
       </TouchableOpacity>
 
