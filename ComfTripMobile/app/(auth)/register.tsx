@@ -178,10 +178,10 @@ export default function RegisterScreen() {
             </TouchableOpacity>
 
             <Text style={styles.termsText}>
-              <Text>By checking the box you agree to our </Text>
-              <Text style={styles.link}>Terms</Text>
-              <Text> and </Text>
-              <Text style={styles.link}>Conditions</Text>
+              <Text>Al marcar la casilla, acepta nuestros </Text>
+              <Text style={styles.link}>Términos</Text>
+              <Text> y </Text>
+              <Text style={styles.link}>condiciones</Text>
               <Text>.</Text>
             </Text>
           </View>
@@ -198,10 +198,10 @@ export default function RegisterScreen() {
           </PrimaryButton>
 
           <View style={styles.loginRow}>
-            <Text style={styles.already}>Already a member? </Text>
+            <Text style={styles.already}>¿Ya eres miembro? </Text>
 
             <PrimaryButton
-              title="Log In"
+              title="Iniciar Sesión"
               onPress={() => router.push('/login')}
               height={36}
               borderRadius={8}
