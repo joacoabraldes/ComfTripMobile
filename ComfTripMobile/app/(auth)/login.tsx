@@ -112,9 +112,9 @@ export default function LoginScreen() {
           </PrimaryButton>
 
           <View style={styles.registerRow}>
-            <Text style={styles.already}>New Member? </Text>
+            <Text style={styles.already}>¿No eres miembro? </Text>
             <Text style={styles.registerLink} onPress={() => router.push('/register')}>
-              Register now
+              Regístrate ahora
             </Text>
           </View>
         </View>
