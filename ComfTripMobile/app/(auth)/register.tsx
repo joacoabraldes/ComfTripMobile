@@ -98,9 +98,9 @@ export default function RegisterScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={[styles.container, { paddingHorizontal: horizontalPadding }]}>
-        <View style={[styles.topArea, { marginTop: 70 }]}>
+        <View style={[styles.topArea, { marginTop: 60 }]}>
           <View style={{ alignItems: 'center', height: topIllustrationHeight }}>
-            <MapSvg width={Math.round(width * 0.52)} height={Math.round(topIllustrationHeight * 0.9)} />
+            <MapSvg width={Math.round(width * 2)} height={Math.round(topIllustrationHeight * 1.4)} />
           </View>
         </View>
 
