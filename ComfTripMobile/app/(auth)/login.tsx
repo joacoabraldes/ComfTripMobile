@@ -1,20 +1,20 @@
+import PrimaryButton from '@/components/buttons/PrimaryButton';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import { MapSvg } from '@/components/icons/MapSvg';
+import { apiPost, tokenStorage } from '@/helpers/api';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
+  Platform,
   SafeAreaView,
-  View,
-  Text,
   StyleSheet,
+  Text,
   TextInput,
   useWindowDimensions,
-  Platform,
-  Alert,
-  ActivityIndicator,
+  View,
 } from 'react-native';
-import { MapSvg } from '@/components/icons/MapSvg';
-import { ArrowIcon } from '@/components/icons/ArrowIcon';
-import PrimaryButton from '@/components/buttons/PrimaryButton';
-import { useRouter } from 'expo-router';
-import { apiPost, tokenStorage } from '@/helpers/api';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();

@@ -34,7 +34,6 @@ export default function TabLayout() {
           title: 'Viajes',
         }}
       />
-      {/* add your other screens here (map, profile, etc). They will be shown as tabs */}
       <Tabs.Screen
         name="map"
         options={{

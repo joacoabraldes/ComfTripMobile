@@ -28,9 +28,9 @@ const LOCATIONS: Loc[] = [
   // Naturaleza
   { id: "tres_febrero", title: "Parque Tres de Febrero (Bosques de Palermo)", category: "Naturaleza", latitude: -34.57071422, longitude: -58.42070191 },
   { id: "reserva", title: "Reserva Ecológica Costanera Sur", category: "Naturaleza", latitude: -34.60752100, longitude: -58.35232500 },
-  { id: "jardin_botanico", title: "Jardín Botánico Carlos Thays", category: "Naturaleza", latitude: -34.58247000, longitude: -58.41859800 }, // botanical garden (wiki)
+  { id: "jardin_botanico", title: "Jardín Botánico Carlos Thays", category: "Naturaleza", latitude: -34.58247000, longitude: -58.41859800 }, 
   { id: "parque_lezama", title: "Parque Lezama", category: "Naturaleza", latitude: -34.62659642, longitude: -58.36955600 },
-  { id: "parque_centenario", title: "Parque Centenario", category: "Naturaleza", latitude: -34.60654373, longitude: -58.43563380 }, // corrected (latlong/net / 2markers)
+  { id: "parque_centenario", title: "Parque Centenario", category: "Naturaleza", latitude: -34.60654373, longitude: -58.43563380 }, 
 
   // Gastronomia
   { id: "cafe_tortoni", title: "Café Tortoni", category: "Gastronomia", latitude: -34.60891700, longitude: -58.37833300 },
