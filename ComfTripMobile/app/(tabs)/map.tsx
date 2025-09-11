@@ -1,5 +1,5 @@
 // app/(tabs)/map.tsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   SafeAreaView,
   View,
@@ -8,52 +8,249 @@ import {
   ActivityIndicator,
   Text,
   Platform,
+  Modal,
+  TouchableOpacity,
+  Image,
+  FlatList,
+  ScrollView,
+  Linking,
 } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { ArrowIcon } from "@/components/icons/ArrowIcon";
 
-type Loc = { id: string; title: string; category: string; latitude: number; longitude: number };
+type Loc = {
+  id: string;
+  title: string;
+  category: string;
+  latitude: number;
+  longitude: number;
+  description?: string;
+  images?: string[];
+};
 
-// 20 locations across three categories
+// Keep your token here (or load from secure env)
+const MAPBOX_ACCESS_TOKEN =
+  "pk.eyJ1IjoibWFuZHJhY2EiLCJhIjoiY21mZnE1dmI0MDlubjJpcG5rYmw3ZnRiZiJ9.RwdRSwXlP1PX_7j7cwUsMA";
+
+// placeholder image helper (you can replace with real urls)
+const img = (id: string, n = 1) => `https://picsum.photos/seed/${id}-${n}/800/520`;
+
 const LOCATIONS: Loc[] = [
-  // Cultura
-  { id: "mnb", title: "Museo Nacional de Bellas Artes", category: "Cultura", latitude: -34.58398611, longitude: -58.39297000 }, // MNBA (official / wiki)
-  { id: "teatro_colon", title: "Teatro Colón", category: "Cultura", latitude: -34.60113100, longitude: -58.38361700 }, // theatre (latlong/net)
-  { id: "malba", title: "MALBA (Museo)", category: "Cultura", latitude: -34.57693340, longitude: -58.40339800 }, // MALBA
-  { id: "recoleta_cc", title: "Centro Cultural Recoleta", category: "Cultura", latitude: -34.58516400, longitude: -58.38866400 },
-  { id: "museo_moderno", title: "Museo de Arte Moderno (MAMBA)", category: "Cultura", latitude: -34.61765000, longitude: -58.36898000 },
-  { id: "teatro_cervantes", title: "Teatro Cervantes", category: "Cultura", latitude: -34.59933300, longitude: -58.38411100 },
+  {
+    id: "mnb",
+    title: "Museo Nacional de Bellas Artes",
+    category: "Cultura",
+    latitude: -34.58398611,
+    longitude: -58.39297,
+    description:
+      "Colección extensa de arte argentino y europeo destacada por pinturas, esculturas y exposiciones temporales.",
+    images: [img("mnb", 1), img("mnb", 2), img("mnb", 3)],
+  },
+  {
+    id: "teatro_colon",
+    title: "Teatro Colón",
+    category: "Cultura",
+    latitude: -34.601131,
+    longitude: -58.383617,
+    description:
+      "Famoso teatro de ópera, reconocido por su acústica y arquitectura; sede de presentaciones clásicas y contemporáneas.",
+    images: [img("teatro_colon", 1), img("teatro_colon", 2)],
+  },
+  {
+    id: "malba",
+    title: "MALBA (Museo)",
+    category: "Cultura",
+    latitude: -34.5769334,
+    longitude: -58.403398,
+    description:
+      "Museo de arte latinoamericano con colecciones permanentes y exposiciones temporales de artistas contemporáneos.",
+    images: [img("malba", 1), img("malba", 2), img("malba", 3)],
+  },
+  {
+    id: "recoleta_cc",
+    title: "Centro Cultural Recoleta",
+    category: "Cultura",
+    latitude: -34.585164,
+    longitude: -58.388664,
+    description:
+      "Centro cultural con muestras de arte, ferias, talleres y actividades culturales en el corazón de Recoleta.",
+    images: [img("recoleta_cc", 1), img("recoleta_cc", 2)],
+  },
+  {
+    id: "museo_moderno",
+    title: "Museo de Arte Moderno (MAMBA)",
+    category: "Cultura",
+    latitude: -34.61765,
+    longitude: -58.36898,
+    description:
+      "Museo dedicado al arte moderno y contemporáneo con colecciones y exhibiciones temporales.",
+    images: [img("museo_moderno", 1), img("museo_moderno", 2), img("museo_moderno", 3)],
+  },
+  {
+    id: "teatro_cervantes",
+    title: "Teatro Cervantes",
+    category: "Cultura",
+    latitude: -34.599333,
+    longitude: -58.384111,
+    description:
+      "Importante espacio teatral con una variada programación de música, teatro y danza.",
+    images: [img("teatro_cervantes", 1), img("teatro_cervantes", 2)],
+  },
 
-  // Naturaleza
-  { id: "tres_febrero", title: "Parque Tres de Febrero (Bosques de Palermo)", category: "Naturaleza", latitude: -34.57071422, longitude: -58.42070191 },
-  { id: "reserva", title: "Reserva Ecológica Costanera Sur", category: "Naturaleza", latitude: -34.60752100, longitude: -58.35232500 },
-  { id: "jardin_botanico", title: "Jardín Botánico Carlos Thays", category: "Naturaleza", latitude: -34.58247000, longitude: -58.41859800 }, 
-  { id: "parque_lezama", title: "Parque Lezama", category: "Naturaleza", latitude: -34.62659642, longitude: -58.36955600 },
-  { id: "parque_centenario", title: "Parque Centenario", category: "Naturaleza", latitude: -34.60654373, longitude: -58.43563380 }, 
+  {
+    id: "tres_febrero",
+    title: "Parque Tres de Febrero (Bosques de Palermo)",
+    category: "Naturaleza",
+    latitude: -34.57071422,
+    longitude: -58.42070191,
+    description:
+      "Amplios jardines, lagos y rosedales: un clásico para paseos, picnics y actividades al aire libre.",
+    images: [img("tres_febrero", 1), img("tres_febrero", 2)],
+  },
+  {
+    id: "reserva",
+    title: "Reserva Ecológica Costanera Sur",
+    category: "Naturaleza",
+    latitude: -34.607521,
+    longitude: -58.352325,
+    description:
+      "Área protegida junto al río con senderos, observación de aves y naturaleza urbana preservada.",
+    images: [img("reserva", 1), img("reserva", 2), img("reserva", 3)],
+  },
+  {
+    id: "jardin_botanico",
+    title: "Jardín Botánico Carlos Thays",
+    category: "Naturaleza",
+    latitude: -34.58247,
+    longitude: -58.418598,
+    description:
+      "Colección botánica y invernáculos con especies locales y exóticas para visitar todo el año.",
+    images: [img("jardin_botanico", 1), img("jardin_botanico", 2)],
+  },
+  {
+    id: "parque_lezama",
+    title: "Parque Lezama",
+    category: "Naturaleza",
+    latitude: -34.62659642,
+    longitude: -58.369556,
+    description:
+      "Espacio histórico y arbolado con esculturas, ideal para pasear y ver la arquitectura vecina.",
+    images: [img("parque_lezama", 1)],
+  },
+  {
+    id: "parque_centenario",
+    title: "Parque Centenario",
+    category: "Naturaleza",
+    latitude: -34.60654373,
+    longitude: -58.4356338,
+    description:
+      "Gran parque con laguna, espacios deportivos y actividades familiares durante los fines de semana.",
+    images: [img("parque_centenario", 1), img("parque_centenario", 2)],
+  },
 
-  // Gastronomia
-  { id: "cafe_tortoni", title: "Café Tortoni", category: "Gastronomia", latitude: -34.60891700, longitude: -58.37833300 },
-  { id: "don_julio", title: "Parrilla Don Julio", category: "Gastronomia", latitude: -34.58634000, longitude: -58.42423000 },
-  { id: "la_cabrera", title: "La Cabrera", category: "Gastronomia", latitude: -34.58935800, longitude: -58.43289800 },
-  { id: "el_preferido", title: "El Preferido de Palermo", category: "Gastronomia", latitude: -34.59125000, longitude: -58.41865000 },
-  { id: "bar_galgos", title: "Bar Los Galgos", category: "Gastronomia", latitude: -34.60625600, longitude: -58.37956800 },
-  { id: "mercado_santelmo", title: "Mercado de San Telmo", category: "Gastronomia", latitude: -34.61926800, longitude: -58.37259200 },
+  {
+    id: "cafe_tortoni",
+    title: "Café Tortoni",
+    category: "Gastronomia",
+    latitude: -34.608917,
+    longitude: -58.378333,
+    description:
+      "Café histórico famoso por su ambiente porteño y eventos culturales. Clásico para tomar algo y ver la arquitectura.",
+    images: [img("cafe_tortoni", 1), img("cafe_tortoni", 2)],
+  },
+  {
+    id: "don_julio",
+    title: "Parrilla Don Julio",
+    category: "Gastronomia",
+    latitude: -34.58634,
+    longitude: -58.42423,
+    description:
+      "Parrilla reconocida por su excelente carne y ambiente acogedor; reserva recomendada en horas pico.",
+    images: [img("don_julio", 1), img("don_julio", 2), img("don_julio", 3)],
+  },
+  {
+    id: "la_cabrera",
+    title: "La Cabrera",
+    category: "Gastronomia",
+    latitude: -34.589358,
+    longitude: -58.432898,
+    description:
+      "Otra parrilla clásica de Palermo, con porciones abundantes y menú tradicional argentino.",
+    images: [img("la_cabrera", 1), img("la_cabrera", 2)],
+  },
+  {
+    id: "el_preferido",
+    title: "El Preferido de Palermo",
+    category: "Gastronomia",
+    latitude: -34.59125,
+    longitude: -58.41865,
+    description:
+      "Bar/restaurante con una mezcla de clásicos porteños y propuestas modernas; buen brunch.",
+    images: [img("el_preferido", 1), img("el_preferido", 2)],
+  },
+  {
+    id: "bar_galgos",
+    title: "Bar Los Galgos",
+    category: "Gastronomia",
+    latitude: -34.606256,
+    longitude: -58.379568,
+    description:
+      "Bar tradicional con historia gastronómica porteña y platos típicos en un ambiente relajado.",
+    images: [img("bar_galgos", 1)],
+  },
+  {
+    id: "mercado_santelmo",
+    title: "Mercado de San Telmo",
+    category: "Gastronomia",
+    latitude: -34.619268,
+    longitude: -58.372592,
+    description:
+      "Mercado y feria con comidas típicas, antigüedades y artesanías; un paseo cultural y gastronómico.",
+    images: [img("mercado_santelmo", 1), img("mercado_santelmo", 2)],
+  },
 
-  // Extra Cultura / Naturaleza
-  { id: "museo_hist", title: "Museo Histórico Nacional", category: "Cultura", latitude: -34.62704012, longitude: -58.37058920 },
-  { id: "plaza_houssay", title: "Plaza Houssay", category: "Naturaleza", latitude: -34.58752400, longitude: -58.40208500 },
-  { id: "puerto_madero", title: "Costanera / Puerto Madero (waterfront)", category: "Naturaleza", latitude: -34.60893800, longitude: -58.36461700 },
+  {
+    id: "museo_hist",
+    title: "Museo Histórico Nacional",
+    category: "Cultura",
+    latitude: -34.62704012,
+    longitude: -58.3705892,
+    description:
+      "Museo con piezas históricas que cuentan la historia argentina; visitas guiadas disponibles.",
+    images: [img("museo_hist", 1), img("museo_hist", 2)],
+  },
+  {
+    id: "plaza_houssay",
+    title: "Plaza Houssay",
+    category: "Naturaleza",
+    latitude: -34.587524,
+    longitude: -58.402085,
+    description:
+      "Pequeña plaza urbana con espacios para descansar cerca de la zona universitaria.",
+    images: [img("plaza_houssay", 1)],
+  },
+  {
+    id: "puerto_madero",
+    title: "Costanera / Puerto Madero (waterfront)",
+    category: "Naturaleza",
+    latitude: -34.608938,
+    longitude: -58.364617,
+    description:
+      "Zona moderna junto al río con paseos, restaurantes y arquitectura contemporánea frente al agua.",
+    images: [img("puerto_madero", 1), img("puerto_madero", 2), img("puerto_madero", 3)],
+  },
 ];
-
 const CATEGORY_COLOR: Record<string, string> = {
   Cultura: "#D9534F",
-  Naturaleza: "#28A745", 
-  Gastronomia: "#F0AD4E", 
+  Naturaleza: "#28A745",
+  Gastronomia: "#F0AD4E",
 };
 
 export default function MapScreen() {
-  const { height } = useWindowDimensions();
+  const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const bottomInset = insets?.bottom ?? 0;
   const webRef = useRef<WebView | null>(null);
@@ -62,6 +259,18 @@ export default function MapScreen() {
   const [webReady, setWebReady] = useState(false);
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [cityName, setCityName] = useState<string | null>(null);
+
+  // modal / detail state
+  const [detailVisible, setDetailVisible] = useState(false);
+  const [selected, setSelected] = useState<{
+    id?: string;
+    title?: string;
+    category?: string;
+    description?: string;
+    images?: string[];
+    coords?: [number, number];
+  } | null>(null);
+  const [imageIndex, setImageIndex] = useState(0);
 
   // get user location + reverse geocode
   useEffect(() => {
@@ -116,8 +325,7 @@ export default function MapScreen() {
   useEffect(() => {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
-    // we also send a setInfo message so the webview's info box shows the city quickly
-    if (cityName) postMessageToWeb({ type: "setInfo", payload: `City: ${cityName}` });
+    if (cityName) postMessageToWeb({ type: "setInfo", payload: `Ciudad: ${cityName}` });
   }, [webReady, userCoords, cityName]);
 
   function handleOnMessage(e: any) {
@@ -126,7 +334,18 @@ export default function MapScreen() {
       if (data?.type === "ready") {
         setWebReady(true);
       } else if (data?.type === "markerClick") {
-        console.log("Marker clicked in webview:", data.payload);
+        // show detail modal with payload from webview
+        const payload = data.payload || {};
+        setSelected({
+          id: payload.id,
+          title: payload.title,
+          category: payload.category,
+          description: payload.description,
+          images: payload.images,
+          coords: payload.coords,
+        });
+        setImageIndex(0);
+        setDetailVisible(true);
       } else if (data?.type === "log") {
         console.log("[WebView log]", data.payload);
       }
@@ -135,117 +354,230 @@ export default function MapScreen() {
     }
   }
 
-  // Insert LOCATIONS into the HTML so markers appear immediately; the RN still posts userLocation later.
+  // Directions helper: open external maps
+  const openDirections = useCallback(() => {
+    if (!selected?.coords) return;
+    // coords from Mapbox are [lng, lat]
+    const [lng, lat] = selected.coords;
+    // try geo: first (works on many mobile devices), fallback to google maps url
+    const geo = `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(selected?.title || "")})`;
+    const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    Linking.canOpenURL(geo)
+      .then((supported) => {
+        if (supported) return Linking.openURL(geo);
+        return Linking.openURL(gmaps);
+      })
+      .catch(() => {
+        Linking.openURL(gmaps);
+      });
+  }, [selected]);
+
+  // Build the HTML that uses Mapbox GL JS, injecting descriptions/images into properties
   const html = `
     <!doctype html>
     <html>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
         <style>
-          html,body,#map { height: 100%; margin:0; padding:0; background:#f7f7f7; }
-          .leaflet-container { touch-action: none; -webkit-user-select:none; -ms-user-select:none; user-select:none; }
-          #info { position:absolute; z-index:1000; left:10px; top:10px; background: rgba(255,255,255,0.95); padding:8px 10px; border-radius:8px; font-family: sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-          .legend { display:flex; gap:8px; align-items:center; margin-top:6px; font-size:13px; color:#333; }
-          .dot { width:12px; height:12px; border-radius:6px; display:inline-block; margin-right:6px; }
+          html,body,#map { height:100%; margin:0; padding:0; background: #f8f8f8; }
+          #info { position:absolute; z-index:999; left:10px; top:10px; background: rgba(255,255,255,0.95); padding:8px 10px; border-radius:10px; font-family: sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+          .marker-popup { font-family: sans-serif; font-size: 14px; color: #222; }
+          .marker-title { font-weight:700; margin-bottom:6px; }
         </style>
       </head>
       <body>
         <div id="map"></div>
         <div id="info">Loading map...</div>
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
         <script>
+          (function forwardConsole(){
+            const origLog = console.log.bind(console);
+            const origError = console.error.bind(console);
+            function sendLog(...args) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', payload: args.map(a => {
+                  try { return typeof a === 'string' ? a : JSON.stringify(a); } catch(e) { return String(a); }
+                }).join(' ') })); } catch(e){}
+            }
+            console.log = function(...args){ origLog(...args); sendLog(...args); };
+            console.error = function(...args){ origError(...args); sendLog('ERROR: ', ...args); };
+
+            window.onerror = function(message, source, lineno, colno, err) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'window.onerror: ' + message + ' @' + source + ':' + lineno })); } catch(e){}
+            };
+            window.addEventListener('unhandledrejection', function(ev) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'unhandledrejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)) })); } catch(e){}
+            });
+          })();
+
+          const MAPBOX_TOKEN = "${MAPBOX_ACCESS_TOKEN}";
+          mapboxgl.accessToken = MAPBOX_TOKEN;
+
           function send(msg) {
             try {
               if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
                 window.ReactNativeWebView.postMessage(JSON.stringify(msg));
               }
-            } catch(e) {}
+            } catch(e){}
           }
 
           send({ type: 'log', payload: 'HTML loaded' });
 
           const LOCATIONS = ${JSON.stringify(LOCATIONS)};
-
           const CATEGORY_COLOR = ${JSON.stringify(CATEGORY_COLOR)};
 
-          window._markers = [];
-          const map = L.map('map', { zoomControl: true }).setView([${LOCATIONS[0].latitude}, ${LOCATIONS[0].longitude}], 13);
-          const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
-          }).addTo(map);
+          const geojson = {
+            type: 'FeatureCollection',
+            features: LOCATIONS.map(l => ({
+              type: 'Feature',
+              properties: { id: l.id, title: l.title, category: l.category, description: l.description, images: l.images },
+              geometry: { type: 'Point', coordinates: [l.longitude, l.latitude] }
+            }))
+          };
 
-          function colorForCategory(cat) {
-            return CATEGORY_COLOR[cat] || '#007bff';
+          try {
+            if (!mapboxgl.supported()) {
+              send({ type: 'log', payload: 'mapboxgl.supported() === false -> likely WebGL not available in this WebView / device.' });
+              document.getElementById('info').innerText = 'WebGL not supported in this WebView/device.';
+            }
+          } catch (e) {
+            send({ type: 'log', payload: 'mapboxgl.supported() check failed: ' + (e && e.message) });
           }
 
-          function addLocations(locations) {
-            window._markers = [];
-            locations.forEach(l => {
-              const color = colorForCategory(l.category);
-              const m = L.circleMarker([l.latitude, l.longitude], {
-                radius: 8,
-                color,
-                weight: 1,
-                fillColor: color,
-                fillOpacity: 0.95
-              }).addTo(map)
-                .bindPopup('<b>' + l.title + '</b><br/><i>' + l.category + '</i>');
-              m.on('click', () => send({ type: 'markerClick', payload: l }));
-              window._markers.push(m);
+          let map;
+          try {
+            map = new mapboxgl.Map({
+              container: 'map',
+              style: 'mapbox://styles/mapbox/streets-v11',
+              center: [${LOCATIONS[0].longitude}, ${LOCATIONS[0].latitude}],
+              zoom: 12
             });
-            if (window._markers.length) {
-              const group = L.featureGroup(window._markers);
-              map.fitBounds(group.getBounds().pad(0.35));
-            }
+          } catch (err) {
+            send({ type: 'log', payload: 'Map constructor failed: ' + (err && err.message ? err.message : String(err)) });
           }
 
-          function updateUserLocation(lat, lng) {
-            if (window._userMarker) {
-              window._userMarker.setLatLng([lat, lng]);
-            } else {
-              window._userMarker = L.circleMarker([lat, lng], { radius: 9, color: '#007bff', fillColor: '#007bff', fillOpacity: 0.95 }).addTo(map).bindPopup('You are here');
-            }
-            const pts = window._markers.map(m => m.getLatLng());
-            pts.push({ lat, lng });
-            try {
-              const bounds = L.latLngBounds(pts);
-              map.fitBounds(bounds.pad(0.30));
-            } catch(e){}
-            document.getElementById('info').innerText = 'User located';
-          }
+          if (map) {
+            map.on('load', () => {
+              try {
+                map.addSource('places', { type: 'geojson', data: geojson });
 
-          function onMessage(event) {
-            try {
-              const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-              if (!data || !data.type) return;
-              if (data.type === 'userLocation') {
-                const { lat, lng } = data.payload || {};
-                if (lat && lng) updateUserLocation(lat, lng);
-              } else if (data.type === 'setInfo') {
-                document.getElementById('info').innerText = data.payload || '';
-              } else if (data.type === 'locations') {
-                // accept locations posted from RN if needed
-                addLocations(data.payload || []);
+                map.addLayer({
+                  id: 'places-layer',
+                  type: 'circle',
+                  source: 'places',
+                  paint: {
+                    'circle-radius': 8,
+                    'circle-color': ['match', ['get', 'category'],
+                      'Cultura', '${CATEGORY_COLOR.Cultura}',
+                      'Naturaleza', '${CATEGORY_COLOR.Naturaleza}',
+                      'Gastronomia', '${CATEGORY_COLOR.Gastronomia}',
+                      '#007bff'
+                    ],
+                    'circle-stroke-color': '#ffffff',
+                    'circle-stroke-width': 1
+                  }
+                });
+
+                map.on('click', 'places-layer', (e) => {
+                  try {
+                    if (!e.features || !e.features.length) return;
+                    const f = e.features[0];
+                    const props = f.properties || {};
+                    let images = [];
+                    try { images = (typeof props.images === 'string') ? JSON.parse(props.images) : props.images; } catch (err) { images = props.images || []; }
+                    const payload = {
+                      id: props.id,
+                      title: props.title,
+                      category: props.category,
+                      description: props.description,
+                      images: images,
+                      coords: f.geometry.coordinates
+                    };
+                    send({ type: 'markerClick', payload });
+                    const coords = f.geometry.coordinates.slice();
+                    const popupHtml = '<div class="marker-popup"><div class="marker-title">' + (props.title || '') + '</div><div>' + (props.category || '') + '</div></div>';
+                    new mapboxgl.Popup({ offset: 10 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
+                  } catch (err) {
+                    send({ type: 'log', payload: 'click handler error: ' + (err && err.message) });
+                  }
+                });
+
+                map.on('mouseenter', 'places-layer', () => map.getCanvas().style.cursor = 'pointer');
+                map.on('mouseleave', 'places-layer', () => map.getCanvas().style.cursor = '');
+
+                if (geojson.features.length) {
+                  try {
+                    const bounds = geojson.features.reduce((b, f) => b.extend(f.geometry.coordinates), new mapboxgl.LngLatBounds(geojson.features[0].geometry.coordinates, geojson.features[0].geometry.coordinates));
+                    map.fitBounds(bounds.pad(0.25), { animate: false });
+                  } catch(e){}
+                }
+
+                send({ type: 'ready' });
+                send({ type: 'log', payload: 'map load event fired' });
+              } catch (e) {
+                send({ type: 'log', payload: 'map.on(load) handler failed: ' + (e && e.message) });
               }
-            } catch (e) {
-              send({ type: 'log', payload: 'onMessage parse error: ' + (e && e.message) });
+            });
+
+            map.on('error', (e) => {
+              try { send({ type: 'log', payload: 'map error: ' + JSON.stringify(e && e.error ? e.error.message : e) }); } catch(e){}
+            });
+            map.on('style.load', () => { try { send({ type: 'log', payload: 'style.load fired' }); } catch(e){} });
+            map.on('styledata', () => { try { send({ type: 'log', payload: 'styledata fired' }); } catch(e){} });
+
+            let userMarker = null;
+            function updateUserLocation(lat, lng) {
+              const lngLat = [lng, lat];
+              try {
+                if (userMarker) {
+                  userMarker.setLngLat(lngLat);
+                } else {
+                  userMarker = new mapboxgl.Marker({ color: '#007bff' }).setLngLat(lngLat).setPopup(new mapboxgl.Popup().setText('You are here')).addTo(map);
+                }
+
+                const allCoords = geojson.features.map(f => f.geometry.coordinates).concat([lngLat]);
+                const bounds = allCoords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(allCoords[0], allCoords[0]));
+                try {
+                  map.fitBounds(bounds.pad(0.25));
+                } catch (e) {}
+                document.getElementById('info').innerText = 'User located';
+              } catch (e) {
+                send({ type: 'log', payload: 'updateUserLocation error: ' + (e && e.message) });
+              }
             }
-          }
 
-          document.addEventListener('message', onMessage);
-          window.addEventListener('message', onMessage);
+            function onMessage(event) {
+              try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (!data || !data.type) return;
+                if (data.type === 'userLocation') {
+                  const { lat, lng } = data.payload || {};
+                  if (lat && lng) updateUserLocation(lat, lng);
+                } else if (data.type === 'setInfo') {
+                  document.getElementById('info').innerText = data.payload || '';
+                } else if (data.type === 'locations') {
+                  try { map.getSource('places').setData(data.payload || geojson); } catch (e) { send({ type:'log', payload: 'setData failed: ' + (e && e.message) }); }
+                }
+              } catch (e) {
+                send({ type: 'log', payload: 'onMessage parse error: ' + (e && e.message) });
+              }
+            }
 
-          // init
-          setTimeout(() => {
-            addLocations(LOCATIONS);
-            send({ type: 'ready' });
-            send({ type: 'log', payload: 'map ready posted' });
-          }, 250);
+            document.addEventListener('message', onMessage);
+            window.addEventListener('message', onMessage);
+          } // end if(map)
         </script>
       </body>
     </html>
   `;
+
+  // image carousel viewability config
+  const onViewRef = useRef(({ viewableItems }: any) => {
+    if (viewableItems && viewableItems.length) {
+      setImageIndex(viewableItems[0].index ?? 0);
+    }
+  });
+  const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -283,6 +615,7 @@ export default function MapScreen() {
           startInLoadingState
           onMessage={handleOnMessage}
           onError={(e) => console.warn("WebView error", e)}
+          androidLayerType="hardware"
         />
         {(loadingPosition || !webReady) && (
           <View style={styles.loadingOverlay}>
@@ -290,12 +623,89 @@ export default function MapScreen() {
           </View>
         )}
       </View>
+
+      {/* Detail modal */}
+      <Modal visible={detailVisible} animationType="slide" onRequestClose={() => setDetailVisible(false)}>
+        <SafeAreaView style={styles.modalSafe}>
+          {/* top header with close */}
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeBtn}>
+              <Text style={styles.closeText}>Cerrar</Text>
+            </TouchableOpacity>
+
+            <View style={styles.headerTitles}>
+              <Text style={styles.modalTitle}>{selected?.title}</Text>
+              <Text style={styles.modalCategory}>{selected?.category}</Text>
+            </View>
+          </View>
+
+          {/* Image carousel */}
+          {selected?.images && selected.images.length > 0 ? (
+            <View style={styles.imagesWrap}>
+              <FlatList
+                data={selected.images}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(i) => i}
+                renderItem={({ item }) => (
+                  <Image source={{ uri: item }} style={[styles.detailImage, { width: width }]} resizeMode="cover" />
+                )}
+                onViewableItemsChanged={onViewRef.current}
+                viewabilityConfig={viewConfigRef.current}
+              />
+              {/* dark overlay with title */}
+              <View style={styles.imageOverlay}>
+                <Text numberOfLines={1} style={styles.overlayTitle}>
+                  {selected?.title}
+                </Text>
+              </View>
+              {/* dots */}
+              <View style={styles.dots}>
+                {selected.images.map((_, i) => (
+                  <View key={i} style={[styles.dot, i === imageIndex ? styles.dotActive : undefined]} />
+                ))}
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.imagesWrap, { alignItems: "center", justifyContent: "center" }]}>
+              <Text style={{ color: "rgba(0,0,0,0.5)" }}>No hay imágenes</Text>
+            </View>
+          )}
+
+          <ScrollView style={styles.modalBody} contentContainerStyle={{ padding: 20 }}>
+            <View style={styles.rowTop}>
+              <View style={[styles.badge, { backgroundColor: CATEGORY_COLOR[selected?.category ?? ""] || "#ddd" }]}>
+                <Text style={styles.badgeText}>{selected?.category}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.descriptionText}>{selected?.description}</Text>
+
+            <View style={styles.actionsRow}>
+              <PrimaryButton
+                title="Cómo llegar"
+                onPress={openDirections}
+                height={52}
+                borderRadius={10}
+                rightIcon={<ArrowIcon color="#FFFFFF" />}
+                style={{ flex: 1 }}
+                activeOpacity={0.95}
+              />
+              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.secondaryBtn}>
+                <Text style={styles.secondaryTxt}>Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
+
   header: {
     paddingHorizontal: 16,
     paddingTop: 30,
@@ -306,7 +716,6 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   headerText: { fontSize: 16, fontWeight: "600" },
-  smallHint: { fontSize: 12, color: "#666" },
   legendRow: { flexDirection: "row", marginTop: 8, gap: 12, alignItems: "center" },
   legendItem: { flexDirection: "row", alignItems: "center", marginRight: 12 },
   legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
@@ -323,4 +732,95 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.6)",
   },
+
+  /* Modal */
+  modalSafe: { flex: 1, backgroundColor: "#fff" },
+  modalHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: "#eee",
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  closeBtn: { padding: 8 },
+  closeText: { color: "#007bff", fontWeight: "600" },
+  headerTitles: { flex: 1, alignItems: "center" },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111" },
+  modalCategory: { fontSize: 13, color: "rgba(0,0,0,0.6)", marginTop: 4 },
+
+  imagesWrap: {
+    height: 220,
+    backgroundColor: "#000",
+  },
+  detailImage: {
+    height: 220,
+  },
+  imageOverlay: {
+    position: "absolute",
+    left: 16,
+    bottom: 16,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  overlayTitle: { color: "#fff", fontWeight: "700", fontSize: 16, maxWidth: "85%" },
+
+  dots: {
+    position: "absolute",
+    bottom: 10,
+    right: 16,
+    flexDirection: "row",
+    gap: 6,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "rgba(255,255,255,0.45)",
+    marginHorizontal: 3,
+  },
+  dotActive: { backgroundColor: "#fff", width: 10, height: 10 },
+
+  modalBody: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+
+  rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  badgeText: { color: "#fff", fontWeight: "700" },
+
+  descriptionText: {
+    fontSize: 16,
+    color: "rgba(0,0,0,0.8)",
+    lineHeight: 22,
+    marginBottom: 18,
+  },
+
+  actionsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 6,
+    alignItems: "center",
+  },
+
+  secondaryBtn: {
+    marginLeft: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#eee",
+    justifyContent: "center",
+  },
+  secondaryTxt: { color: "#444", fontWeight: "600" },
 });
+
