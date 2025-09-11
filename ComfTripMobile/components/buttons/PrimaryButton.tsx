@@ -32,8 +32,22 @@ export default function PrimaryButton({
   rightIcon,
   activeOpacity = 0.9,
   disabled = false,
-  children, // <-- add this line
+  children,
 }: Props) {
+  function renderChildren(child: React.ReactNode) {
+    if (typeof child === 'string' || typeof child === 'number') {
+      return <Text style={[styles.title, textStyle]}>{child}</Text>;
+    }
+    if (Array.isArray(child)) {
+      return child.map((c, i) =>
+        typeof c === 'string' || typeof c === 'number'
+          ? <Text key={i} style={[styles.title, textStyle]}>{c}</Text>
+          : c
+      );
+    }
+    return child;
+  }
+
   return (
     <TouchableOpacity
       activeOpacity={activeOpacity}
@@ -41,9 +55,11 @@ export default function PrimaryButton({
       disabled={disabled}
       style={[styles.button, { height, borderRadius }, style]}
     >
-      <Text style={[styles.title, textStyle]}>{title}</Text>
-      {rightIcon ? <View style={styles.iconWrap}>{rightIcon}</View> : null}
-      {children}
+      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
+        {title ? <Text style={[styles.title, textStyle]}>{title}</Text> : null}
+        {renderChildren(children)}
+        {rightIcon ? <View style={styles.iconWrap}>{rightIcon}</View> : null}
+      </View>
     </TouchableOpacity>
   );
 }

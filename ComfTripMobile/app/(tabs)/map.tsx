@@ -1,4 +1,4 @@
-// app/(tabs)/map.tsx
+// MapScreen.tsx (fixed)
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   SafeAreaView,
@@ -10,11 +10,13 @@ import {
   Platform,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   Image,
   FlatList,
   ScrollView,
   Linking,
 } from "react-native";
+import type { ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,11 +33,9 @@ type Loc = {
   images?: string[];
 };
 
-// Keep your token here (or load from secure env)
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoibWFuZHJhY2EiLCJhIjoiY21mZnE1dmI0MDlubjJpcG5rYmw3ZnRiZiJ9.RwdRSwXlP1PX_7j7cwUsMA";
 
-// placeholder image helper (you can replace with real urls)
 const img = (id: string, n = 1) => `https://picsum.photos/seed/${id}-${n}/800/520`;
 
 const LOCATIONS: Loc[] = [
@@ -47,7 +47,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.39297,
     description:
       "Colección extensa de arte argentino y europeo destacada por pinturas, esculturas y exposiciones temporales.",
-    images: [img("mnb", 1), img("mnb", 2), img("mnb", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/c/c2/Museo_Nacional_de_Bellas_Artes_%28Buenos_Aires%29_10209.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/55/Museo_Nacional_de_Bellas_Artes_-_Buenos_Aires%2C_Argentina.jpg",
+      "https://picsum.photos/seed/mnb-3/800/520",
+    ],
   },
   {
     id: "teatro_colon",
@@ -57,7 +61,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.383617,
     description:
       "Famoso teatro de ópera, reconocido por su acústica y arquitectura; sede de presentaciones clásicas y contemporáneas.",
-    images: [img("teatro_colon", 1), img("teatro_colon", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/3/3a/Teatro_Col%C3%B3n%2C_Buenos_Aires.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/9/9e/Teatro_Col%C3%B3n_-_Buenos_Aires.jpg",
+    ],
   },
   {
     id: "malba",
@@ -67,7 +74,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.403398,
     description:
       "Museo de arte latinoamericano con colecciones permanentes y exposiciones temporales de artistas contemporáneos.",
-    images: [img("malba", 1), img("malba", 2), img("malba", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/9/9a/Malba_-_Buenos_Aires.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/0/03/MALBA_%28Museo_de_Arte_Latinoamericano_de_Buenos_Aires%29.jpg",
+      "https://picsum.photos/seed/malba-3/800/520",
+    ],
   },
   {
     id: "recoleta_cc",
@@ -77,7 +88,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.388664,
     description:
       "Centro cultural con muestras de arte, ferias, talleres y actividades culturales en el corazón de Recoleta.",
-    images: [img("recoleta_cc", 1), img("recoleta_cc", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f0/Centro_Cultural_Recoleta%2C_Buenos_Aires.jpg",
+      "https://picsum.photos/seed/recoleta-2/800/520",
+    ],
   },
   {
     id: "museo_moderno",
@@ -87,7 +101,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.36898,
     description:
       "Museo dedicado al arte moderno y contemporáneo con colecciones y exhibiciones temporales.",
-    images: [img("museo_moderno", 1), img("museo_moderno", 2), img("museo_moderno", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/1/13/Museo_de_Arte_Moderno_de_Buenos_Aires.jpg",
+      "https://picsum.photos/seed/museo_moderno-2/800/520",
+      "https://picsum.photos/seed/museo_moderno-3/800/520",
+    ],
   },
   {
     id: "teatro_cervantes",
@@ -97,9 +115,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.384111,
     description:
       "Importante espacio teatral con una variada programación de música, teatro y danza.",
-    images: [img("teatro_cervantes", 1), img("teatro_cervantes", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/f/f4/Teatro_Cervantes.jpg",
+      "https://picsum.photos/seed/teatro_cervantes-2/800/520",
+    ],
   },
-
   {
     id: "tres_febrero",
     title: "Parque Tres de Febrero (Bosques de Palermo)",
@@ -108,7 +128,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.42070191,
     description:
       "Amplios jardines, lagos y rosedales: un clásico para paseos, picnics y actividades al aire libre.",
-    images: [img("tres_febrero", 1), img("tres_febrero", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/1/10/Parque_Tres_de_Febrero.jpg",
+      "https://picsum.photos/seed/tres_febrero-2/800/520",
+    ],
   },
   {
     id: "reserva",
@@ -118,7 +141,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.352325,
     description:
       "Área protegida junto al río con senderos, observación de aves y naturaleza urbana preservada.",
-    images: [img("reserva", 1), img("reserva", 2), img("reserva", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/2/22/Costanera_Sur_-_Buenos_Aires.jpg",
+      "https://picsum.photos/seed/reserva-2/800/520",
+      "https://picsum.photos/seed/reserva-3/800/520",
+    ],
   },
   {
     id: "jardin_botanico",
@@ -128,7 +155,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.418598,
     description:
       "Colección botánica y invernáculos con especies locales y exóticas para visitar todo el año.",
-    images: [img("jardin_botanico", 1), img("jardin_botanico", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/4/49/Jardin_Botanico_Carlos_Thays_01.jpg",
+      "https://picsum.photos/seed/jardin_botanico-2/800/520",
+    ],
   },
   {
     id: "parque_lezama",
@@ -138,7 +168,7 @@ const LOCATIONS: Loc[] = [
     longitude: -58.369556,
     description:
       "Espacio histórico y arbolado con esculturas, ideal para pasear y ver la arquitectura vecina.",
-    images: [img("parque_lezama", 1)],
+    images: ["https://picsum.photos/seed/parque_lezama-1/800/520"],
   },
   {
     id: "parque_centenario",
@@ -148,9 +178,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.4356338,
     description:
       "Gran parque con laguna, espacios deportivos y actividades familiares durante los fines de semana.",
-    images: [img("parque_centenario", 1), img("parque_centenario", 2)],
+    images: [
+      "https://turismo.buenosaires.gob.ar/sites/turismo/files/parque-centenario-2023-1500x610.jpg",
+      "https://turismo.buenosaires.gob.ar/sites/turismo/files/parque-centenario-2023-1500x610.jpg",
+    ],
   },
-
   {
     id: "cafe_tortoni",
     title: "Café Tortoni",
@@ -159,7 +191,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.378333,
     description:
       "Café histórico famoso por su ambiente porteño y eventos culturales. Clásico para tomar algo y ver la arquitectura.",
-    images: [img("cafe_tortoni", 1), img("cafe_tortoni", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/3/32/Cafe_Tortoni_Buenos_Aires.jpg",
+      "https://picsum.photos/seed/cafe_tortoni-2/800/520",
+    ],
   },
   {
     id: "don_julio",
@@ -169,7 +204,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.42423,
     description:
       "Parrilla reconocida por su excelente carne y ambiente acogedor; reserva recomendada en horas pico.",
-    images: [img("don_julio", 1), img("don_julio", 2), img("don_julio", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/2/2b/Parrilla_Don_Julio.jpg",
+      "https://upload.wikimedia.org/wikipedia/commons/5/5c/Don_Julio_01_%28interior%29.jpg",
+      "https://picsum.photos/seed/don_julio-3/800/520",
+    ],
   },
   {
     id: "la_cabrera",
@@ -179,7 +218,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.432898,
     description:
       "Otra parrilla clásica de Palermo, con porciones abundantes y menú tradicional argentino.",
-    images: [img("la_cabrera", 1), img("la_cabrera", 2)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/0/0d/Parrila_La_Cabrera.jpg",
+      "https://picsum.photos/seed/la_cabrera-2/800/520",
+    ],
   },
   {
     id: "el_preferido",
@@ -189,7 +231,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.41865,
     description:
       "Bar/restaurante con una mezcla de clásicos porteños y propuestas modernas; buen brunch.",
-    images: [img("el_preferido", 1), img("el_preferido", 2)],
+    images: [
+      "https://picsum.photos/seed/el_preferido-1/800/520",
+      "https://picsum.photos/seed/el_preferido-2/800/520",
+    ],
   },
   {
     id: "bar_galgos",
@@ -199,7 +244,7 @@ const LOCATIONS: Loc[] = [
     longitude: -58.379568,
     description:
       "Bar tradicional con historia gastronómica porteña y platos típicos en un ambiente relajado.",
-    images: [img("bar_galgos", 1)],
+    images: ["https://picsum.photos/seed/bar_galgos-1/800/520"],
   },
   {
     id: "mercado_santelmo",
@@ -209,9 +254,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.372592,
     description:
       "Mercado y feria con comidas típicas, antigüedades y artesanías; un paseo cultural y gastronómico.",
-    images: [img("mercado_santelmo", 1), img("mercado_santelmo", 2)],
+    images: [
+      "https://picsum.photos/seed/mercado_santelmo-1/800/520",
+      "https://picsum.photos/seed/mercado_santelmo-2/800/520",
+    ],
   },
-
   {
     id: "museo_hist",
     title: "Museo Histórico Nacional",
@@ -220,7 +267,10 @@ const LOCATIONS: Loc[] = [
     longitude: -58.3705892,
     description:
       "Museo con piezas históricas que cuentan la historia argentina; visitas guiadas disponibles.",
-    images: [img("museo_hist", 1), img("museo_hist", 2)],
+    images: [
+      "https://picsum.photos/seed/museo_hist-1/800/520",
+      "https://picsum.photos/seed/museo_hist-2/800/520",
+    ],
   },
   {
     id: "plaza_houssay",
@@ -230,7 +280,7 @@ const LOCATIONS: Loc[] = [
     longitude: -58.402085,
     description:
       "Pequeña plaza urbana con espacios para descansar cerca de la zona universitaria.",
-    images: [img("plaza_houssay", 1)],
+    images: ["https://picsum.photos/seed/plaza_houssay-1/800/520"],
   },
   {
     id: "puerto_madero",
@@ -240,7 +290,11 @@ const LOCATIONS: Loc[] = [
     longitude: -58.364617,
     description:
       "Zona moderna junto al río con paseos, restaurantes y arquitectura contemporánea frente al agua.",
-    images: [img("puerto_madero", 1), img("puerto_madero", 2), img("puerto_madero", 3)],
+    images: [
+      "https://upload.wikimedia.org/wikipedia/commons/6/66/Puerto_Madero%2C_Buenos_Aires.jpg",
+      "https://picsum.photos/seed/puerto_madero-2/800/520",
+      "https://picsum.photos/seed/puerto_madero-3/800/520",
+    ],
   },
 ];
 const CATEGORY_COLOR: Record<string, string> = {
@@ -248,6 +302,21 @@ const CATEGORY_COLOR: Record<string, string> = {
   Naturaleza: "#28A745",
   Gastronomia: "#F0AD4E",
 };
+
+// Simplified URI normalization
+function normalizeUri(uri?: string | null): string | undefined {
+  if (!uri) return undefined;
+
+  try {
+    // Only decode once to handle encoded URLs properly
+    const decoded = decodeURIComponent(uri);
+    // Re-encode to ensure it's a valid URI
+    return encodeURI(decoded);
+  } catch (e) {
+    console.warn("Failed to normalize URI:", uri, e);
+    return uri ?? undefined;
+  }
+}
 
 export default function MapScreen() {
   const { height, width } = useWindowDimensions();
@@ -260,7 +329,6 @@ export default function MapScreen() {
   const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const [cityName, setCityName] = useState<string | null>(null);
 
-  // modal / detail state
   const [detailVisible, setDetailVisible] = useState(false);
   const [selected, setSelected] = useState<{
     id?: string;
@@ -272,7 +340,6 @@ export default function MapScreen() {
   } | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
 
-  // get user location + reverse geocode
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -288,7 +355,6 @@ export default function MapScreen() {
         const coords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setUserCoords(coords);
 
-        // reverse geocode
         try {
           const places = await Location.reverseGeocodeAsync({ latitude: coords.lat, longitude: coords.lng });
           if (places && places.length > 0) {
@@ -321,7 +387,6 @@ export default function MapScreen() {
     }
   }
 
-  // send user coords when web ready
   useEffect(() => {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
@@ -334,14 +399,30 @@ export default function MapScreen() {
       if (data?.type === "ready") {
         setWebReady(true);
       } else if (data?.type === "markerClick") {
-        // show detail modal with payload from webview
         const payload = data.payload || {};
+
+        const rawImages = payload.images || [];
+        const images = Array.isArray(rawImages)
+          ? rawImages
+              .map((itm: any) => {
+                if (!itm && itm !== 0) return null;
+                try {
+                  if (typeof itm === "string") return normalizeUri(itm);
+                  if (itm && (itm.url || itm.uri)) return normalizeUri(itm.url || itm.uri);
+                  return normalizeUri(String(itm));
+                } catch (e) {
+                  return null;
+                }
+              })
+              .filter(Boolean) as string[]
+          : [];
+
         setSelected({
           id: payload.id,
           title: payload.title,
           category: payload.category,
           description: payload.description,
-          images: payload.images,
+          images,
           coords: payload.coords,
         });
         setImageIndex(0);
@@ -354,12 +435,9 @@ export default function MapScreen() {
     }
   }
 
-  // Directions helper: open external maps
   const openDirections = useCallback(() => {
     if (!selected?.coords) return;
-    // coords from Mapbox are [lng, lat]
     const [lng, lat] = selected.coords;
-    // try geo: first (works on many mobile devices), fallback to google maps url
     const geo = `geo:${lat},${lng}?q=${lat},${lng}(${encodeURIComponent(selected?.title || "")})`;
     const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     Linking.canOpenURL(geo)
@@ -372,7 +450,6 @@ export default function MapScreen() {
       });
   }, [selected]);
 
-  // Build the HTML that uses Mapbox GL JS, injecting descriptions/images into properties
   const html = `
     <!doctype html>
     <html>
@@ -449,7 +526,7 @@ export default function MapScreen() {
             map = new mapboxgl.Map({
               container: 'map',
               style: 'mapbox://styles/mapbox/streets-v11',
-              center: [${LOCATIONS[0].longitude}, ${LOCATIONS[0].latitude}],
+              center: [${LOCATIONS[0]?.longitude ?? 0}, ${LOCATIONS[0]?.latitude ?? 0}],
               zoom: 12
             });
           } catch (err) {
@@ -485,6 +562,7 @@ export default function MapScreen() {
                     const props = f.properties || {};
                     let images = [];
                     try { images = (typeof props.images === 'string') ? JSON.parse(props.images) : props.images; } catch (err) { images = props.images || []; }
+
                     const payload = {
                       id: props.id,
                       title: props.title,
@@ -571,13 +649,77 @@ export default function MapScreen() {
     </html>
   `;
 
-  // image carousel viewability config
   const onViewRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length) {
       setImageIndex(viewableItems[0].index ?? 0);
     }
   });
   const viewConfigRef = useRef({ viewAreaCoveragePercentThreshold: 50 });
+
+  function ImageWithFallback({
+    uri,
+    fallbackSeed,
+    style,
+    resizeMode,
+  }: {
+    uri?: string;
+    fallbackSeed?: string;
+    style?: any;
+    resizeMode?: any;
+  }) {
+    const [failed, setFailed] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const normalized = normalizeUri(uri);
+    const flatStyle = StyleSheet.flatten(style) || {};
+    const containerWidth = flatStyle.width ?? undefined;
+    const containerHeight = flatStyle.height ?? undefined;
+
+    const containerStyle: ViewStyle = {
+      width: containerWidth ?? 300,
+      height: containerHeight ?? 220,
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: flatStyle.backgroundColor ?? "#000",
+      overflow: "hidden",
+    };
+
+    const source = !failed && normalized
+      ? { uri: normalized, headers: { Referer: "https://commons.wikimedia.org/", "User-Agent": "Mozilla/5.0 (compatible)" } }
+      : { uri: img(fallbackSeed || "placeholder", 1) };
+
+    return (
+      <View style={containerStyle}>
+        {loading && (
+          <View style={[StyleSheet.absoluteFillObject, { justifyContent: "center", alignItems: "center" }]}>
+            <ActivityIndicator />
+          </View>
+        )}
+
+        <Image
+          source={source as any}
+          style={[{ width: "100%", height: "100%" }, flatStyle]}
+          resizeMode={resizeMode || "cover"}
+          onLoadStart={() => {
+            setLoading(true);
+            setFailed(false);
+          }}
+          onLoadEnd={() => setLoading(false)}
+          onError={(e) => {
+            console.warn("Image load failed:", normalized || uri, e?.nativeEvent || e);
+            setFailed(true);
+            setLoading(false);
+          }}
+        />
+
+        {failed && !loading && (
+          <View style={[StyleSheet.absoluteFillObject, { justifyContent: "center", alignItems: "center" }]}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Imagen no disponible</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -624,80 +766,111 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Detail modal */}
-      <Modal visible={detailVisible} animationType="slide" onRequestClose={() => setDetailVisible(false)}>
-        <SafeAreaView style={styles.modalSafe}>
-          {/* top header with close */}
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeBtn}>
-              <Text style={styles.closeText}>Cerrar</Text>
-            </TouchableOpacity>
+      <Modal
+        visible={detailVisible}
+        animationType="slide"
+        onRequestClose={() => setDetailVisible(false)}
+        transparent
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableWithoutFeedback onPress={() => setDetailVisible(false)}>
+            <View style={styles.backdrop} />
+          </TouchableWithoutFeedback>
 
-            <View style={styles.headerTitles}>
-              <Text style={styles.modalTitle}>{selected?.title}</Text>
-              <Text style={styles.modalCategory}>{selected?.category}</Text>
-            </View>
-          </View>
-
-          {/* Image carousel */}
-          {selected?.images && selected.images.length > 0 ? (
-            <View style={styles.imagesWrap}>
-              <FlatList
-                data={selected.images}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(i) => i}
-                renderItem={({ item }) => (
-                  <Image source={{ uri: item }} style={[styles.detailImage, { width: width }]} resizeMode="cover" />
-                )}
-                onViewableItemsChanged={onViewRef.current}
-                viewabilityConfig={viewConfigRef.current}
-              />
-              {/* dark overlay with title */}
-              <View style={styles.imageOverlay}>
-                <Text numberOfLines={1} style={styles.overlayTitle}>
-                  {selected?.title}
-                </Text>
-              </View>
-              {/* dots */}
-              <View style={styles.dots}>
-                {selected.images.map((_, i) => (
-                  <View key={i} style={[styles.dot, i === imageIndex ? styles.dotActive : undefined]} />
-                ))}
-              </View>
-            </View>
-          ) : (
-            <View style={[styles.imagesWrap, { alignItems: "center", justifyContent: "center" }]}>
-              <Text style={{ color: "rgba(0,0,0,0.5)" }}>No hay imágenes</Text>
-            </View>
-          )}
-
-          <ScrollView style={styles.modalBody} contentContainerStyle={{ padding: 20 }}>
-            <View style={styles.rowTop}>
-              <View style={[styles.badge, { backgroundColor: CATEGORY_COLOR[selected?.category ?? ""] || "#ddd" }]}>
-                <Text style={styles.badgeText}>{selected?.category}</Text>
-              </View>
-            </View>
-
-            <Text style={styles.descriptionText}>{selected?.description}</Text>
-
-            <View style={styles.actionsRow}>
-              <PrimaryButton
-                title="Cómo llegar"
-                onPress={openDirections}
-                height={52}
-                borderRadius={10}
-                rightIcon={<ArrowIcon color="#FFFFFF" />}
-                style={{ flex: 1 }}
-                activeOpacity={0.95}
-              />
-              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.secondaryBtn}>
-                <Text style={styles.secondaryTxt}>Cerrar</Text>
+          <SafeAreaView
+            style={[
+              styles.modalContent,
+              { height: Math.min(500, Math.round(height * 0.6)) },
+            ]}
+          >
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeBtn}>
+                <Text style={styles.closeText}>Cerrar</Text>
               </TouchableOpacity>
+
+              <View style={styles.headerTitles}>
+                {selected?.title ? <Text style={styles.modalTitle}>{selected.title}</Text> : null}
+                {selected?.category ? <Text style={styles.modalCategory}>{selected.category}</Text> : null}
+              </View>
             </View>
-          </ScrollView>
-        </SafeAreaView>
+
+            {selected?.images && selected.images.length > 0 ? (
+              <View style={[styles.imagesWrap, { height: 160 }]}>
+                <FlatList
+                  data={selected.images}
+                  horizontal
+                  pagingEnabled
+                  showsHorizontalScrollIndicator={false}
+                  initialNumToRender={1}
+                  windowSize={2}
+                  removeClippedSubviews={false}
+                  keyExtractor={(_, idx) => `${selected?.id ?? "img"}-${idx}`}
+                  snapToInterval={width}
+                  decelerationRate="fast"
+                  renderItem={({ item }) => {
+                    const uri = typeof item === "string" ? item : String(item);
+                    return (
+                      <View style={{ width: width, height: 160, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+                        <ImageWithFallback
+                          uri={uri}
+                          fallbackSeed={selected?.id ?? "placeholder"}
+                          style={[styles.detailImage, { width, height: 160 }]}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    );
+                  }}
+                  onViewableItemsChanged={onViewRef.current}
+                  viewabilityConfig={viewConfigRef.current}
+                />
+
+                <View style={styles.imageOverlay}>
+                  <Text numberOfLines={1} style={styles.overlayTitle}>
+                    {selected?.title ?? ""}
+                  </Text>
+                </View>
+
+                <View style={styles.dots}>
+                  {selected.images.map((_, i) => (
+                    <View key={i} style={[styles.dot, i === imageIndex ? styles.dotActive : undefined]} />
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <View style={[styles.imagesWrap, { height: 120, alignItems: "center", justifyContent: "center" }]}>
+                <Text style={{ color: "rgba(0,0,0,0.5)" }}>No hay imágenes</Text>
+              </View>
+            )}
+
+            <ScrollView style={{ flex: 1, backgroundColor: "#fff" }} contentContainerStyle={{ padding: 20 }}>
+              <View style={styles.rowTop}>
+                <View style={[styles.badge, { backgroundColor: CATEGORY_COLOR[selected?.category ?? ""] || "#ddd" }]}>
+                  {selected?.category ? <Text style={styles.badgeText}>{selected.category}</Text> : null}
+                </View>
+              </View>
+
+              {selected?.description ? <Text style={styles.descriptionText}>{selected.description}</Text> : null}
+
+              <View style={styles.actionsRow}>
+                <View style={{ flex: 1 }}>
+                  <PrimaryButton
+                    title="Cómo llegar"
+                    onPress={openDirections}
+                    height={52}
+                    borderRadius={10}
+                    rightIcon={<ArrowIcon color="#FFFFFF" />}
+                    style={{ flex: 1 }}
+                    activeOpacity={0.95}
+                  />
+                </View>
+
+                <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.secondaryBtn}>
+                  <Text style={styles.secondaryTxt}>Cerrar</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -716,7 +889,7 @@ const styles = StyleSheet.create({
   },
   headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   headerText: { fontSize: 16, fontWeight: "600" },
-  legendRow: { flexDirection: "row", marginTop: 8, gap: 12, alignItems: "center" },
+  legendRow: { flexDirection: "row", marginTop: 8, alignItems: "center" },
   legendItem: { flexDirection: "row", alignItems: "center", marginRight: 12 },
   legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
   legendLabel: { fontSize: 13, color: "#333" },
@@ -733,7 +906,6 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.6)",
   },
 
-  /* Modal */
   modalSafe: { flex: 1, backgroundColor: "#fff" },
   modalHeader: {
     paddingHorizontal: 16,
@@ -773,7 +945,6 @@ const styles = StyleSheet.create({
     bottom: 10,
     right: 16,
     flexDirection: "row",
-    gap: 6,
   },
   dot: {
     width: 8,
@@ -807,7 +978,6 @@ const styles = StyleSheet.create({
 
   actionsRow: {
     flexDirection: "row",
-    gap: 12,
     marginTop: 6,
     alignItems: "center",
   },
@@ -822,5 +992,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   secondaryTxt: { color: "#444", fontWeight: "600" },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  backdrop: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    overflow: "hidden",
+  },
 });
-
