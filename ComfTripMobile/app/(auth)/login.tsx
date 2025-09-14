@@ -137,9 +137,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(196,196,196,0.2)',
     borderRadius: 10,
     justifyContent: 'center',
-    paddingHorizontal: 22,
   },
-  textInput: { fontSize: 14, color: '#252525', padding: 0 },
+  textInput: {fontSize: 14, color: '#252525', paddingHorizontal:22, paddingVertical: 18, borderRadius: 10,},
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgotText: { color: '#FF3951', fontSize: 13 },
