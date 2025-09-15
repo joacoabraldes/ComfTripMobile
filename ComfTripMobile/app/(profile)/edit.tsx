@@ -1,5 +1,6 @@
 // moved from EditProfileScreen.tsx
 import DateTimePicker from "@react-native-community/datetimepicker";
+import countries from "world-countries";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPut, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
@@ -13,11 +14,16 @@ import {
   TextInput,
   View,
   TouchableOpacity,
-  Platform,
+  Platform, FlatList,
 } from "react-native";
 
 export const options = {
   headerShown: false,
+};
+
+type SimpleCountry = {
+  name: string;
+  code: string;
 };
 
 function parseJwt(token: string | null) {
@@ -65,7 +71,10 @@ export default function EditProfileScreen() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [nationality, setNationality] = useState("");
+
+  const [nationality, setNationality] = useState<SimpleCountry | null>(null);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
   // birthdate state now as Date | null (for picker) and display string
   const [birthdateDate, setBirthdateDate] = useState<Date | null>(null);
   const [birthdateDisplay, setBirthdateDisplay] = useState("");
@@ -74,6 +83,15 @@ export default function EditProfileScreen() {
 
   // DateTimePicker visibility (for Android modal / iOS inline)
   const [showPicker, setShowPicker] = useState(false);
+
+  const countryList: SimpleCountry[] = countries.map(c => ({
+    name: c.name.common,
+    code: c.cca2,
+  }));
+
+  const filteredCountries = countryList.filter(c =>
+      c.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   useEffect(() => {
     (async () => {
@@ -91,7 +109,9 @@ export default function EditProfileScreen() {
         setName(user.name || "");
         setEmail(user.email || "");
         setPhone(user.phone || "");
-        setNationality(user.nationality || "");
+        const rawNationality: string = user.nationality || "";
+        const matched = countryList.find(c => c.name === rawNationality) || null;
+        setNationality(matched);
 
         // parse birthdate into Date if possible
         const raw = user.birthdate || "";
@@ -142,7 +162,7 @@ export default function EditProfileScreen() {
         name,
         email,
         phone,
-        nationality,
+        nationality: nationality?.name || "",
         // send ISO date (YYYY-MM-DD) if we have one, otherwise empty string
         birthdate: birthdateDate ? dateToISODate(birthdateDate) : birthdateDisplay || "",
       });
@@ -174,7 +194,60 @@ export default function EditProfileScreen() {
         <TextInput style={styles.input} placeholder="Nombre" value={name} onChangeText={setName} />
         <TextInput style={styles.input} placeholder="Correo" value={email} onChangeText={setEmail} />
         <TextInput style={styles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} />
-        <TextInput style={styles.input} placeholder="Nacionalidad" value={nationality} onChangeText={setNationality} />
+
+
+        {/* Input para abrir el dropdown */}
+        {!open ? (
+            <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setOpen(!open)}
+                style={[styles.inputBox, { justifyContent: 'flex-start', flexDirection: "row"}]}
+            >
+              <Text style={[styles.textInput, {color: nationality? "black" : "rgba(0,0,0,0.5)"}]}>
+                {nationality ? nationality.name : "Nacionalidad"}
+              </Text>
+              <Text style={[styles.textInput, { marginLeft: "auto", fontSize: 16 }]}> ▼ </Text>
+            </TouchableOpacity>
+        ) : (
+            <View style={styles.dropdown}>
+              <View style={[styles.inputBox, {marginBottom:0 , flexDirection: "row", alignItems: "center", borderColor: "black", backgroundColor: "white", borderWidth: 2 }]}>
+                <TextInput
+                    style={[styles.textInput, { flex:1, borderWidth:0, outline:"none" }]}
+                    placeholder={nationality? nationality.name : "Nacionalidad"}
+                    value={search}
+                    onChangeText={setSearch}
+                />
+                <Text
+                    style={{ fontSize: 16, marginLeft: "auto" }}
+                    onPress={() => setOpen(false)}
+                >
+                  ▲
+                </Text>
+              </View>
+
+              <FlatList
+                  data={filteredCountries}
+                  keyExtractor={(item) => item.code}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => {
+                    const isSelected = nationality?.code === item.code;
+                    return (
+                        <TouchableOpacity
+                            style={[styles.item,
+                              isSelected && styles.itemSelected]}
+                            onPress={() => {
+                              setNationality(item);
+                              setSearch("");
+                              setOpen(false);
+                            }}
+                        >
+                          <Text>{item.name}</Text>
+                        </TouchableOpacity>
+                    );
+                  }}
+              />
+            </View>
+        )}
 
         {/* Birthdate field: tap to open native picker */}
         <TouchableOpacity
@@ -215,6 +288,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+
+  inputBox: {
+    backgroundColor: 'rgba(196,196,196,0.2)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    justifyContent: 'center' },
+
+  textInput: { fontSize: 16, color: '#252525', borderRadius: 8},
   dateInput: {
     // make the TouchableOpacity look like the other inputs
     justifyContent: "center",
@@ -226,4 +308,18 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: "#999",
   },
+
+  dropdown: { left: 0, right: 0,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    maxHeight: 200,
+    zIndex: 1000,
+    elevation: 10,
+    marginBottom: 12,},
+
+  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: "#fff" },
+  itemHover: { backgroundColor: "#f0f0f0" },
+  itemSelected: { backgroundColor: "#d0d0d0" },
 });
