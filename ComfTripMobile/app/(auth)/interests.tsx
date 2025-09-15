@@ -1,5 +1,5 @@
 // app/(auth)/interests.tsx
-import React, { useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -9,9 +9,49 @@ import {
   FlatList,
   Dimensions,
   Image,
+  Alert,
+  ActivityIndicator,
 } from "react-native";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
+
+/**
+ * Helper: base64url decode (works in RN / browser)
+ */
+function base64UrlDecode(input: string) {
+  try {
+    let s = input.replace(/-/g, "+").replace(/_/g, "/");
+    while (s.length % 4) s += "=";
+    if (typeof atob !== "undefined") {
+      return atob(s);
+    }
+    // node / buffer fallback
+    // @ts-ignore
+    const Buffer = require("buffer").Buffer;
+    return Buffer.from(s, "base64").toString("utf8");
+  } catch (e) {
+    return null;
+  }
+}
+
+function parseJwt(token: string | null) {
+  if (!token) return null;
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    const decoded = base64UrlDecode(parts[1]);
+    if (!decoded) return null;
+    return JSON.parse(decoded);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Small wait helper
+ */
+const wait = (ms = 250) => new Promise((res) => setTimeout(res, ms));
 
 const INTERESTS = [
   {
@@ -36,7 +76,6 @@ const INTERESTS = [
     title: "Compras y Paseos",
     subtitle:
       "Ferias y mercados • Centros comerciales • Tiendas de diseño • Artesanías • Outlets",
-    // fallback image until you add a dedicated one:
     image: require("../../assets/images/icon.png"),
   },
   {
@@ -64,6 +103,7 @@ const INTERESTS = [
 
 export default function InterestsScreen() {
   const [selected, setSelected] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
   const { width } = Dimensions.get("window");
 
@@ -84,7 +124,6 @@ export default function InterestsScreen() {
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
       >
-        {/* local image (require) -> pass directly as source */}
         <Image source={item.image} style={styles.image} resizeMode="cover" />
 
         <View style={styles.content}>
@@ -103,6 +142,107 @@ export default function InterestsScreen() {
     );
   };
 
+  /**
+   * Try to read token a few times (handles small race where login sets token just before navigation)
+   * mirrors the pattern used in your ProfileScreen example
+   */
+  const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
+    for (let i = 0; i < attempts; i++) {
+      try {
+        const t = await tokenStorage.getToken();
+        if (t) return t;
+      } catch (e) {
+        // ignore
+      }
+      // small wait
+      // eslint-disable-next-line no-await-in-loop
+      await wait(delayMs);
+    }
+    return null;
+  }, []);
+
+  const handleSaveInterests = async () => {
+    if (selected.length === 0) return;
+    setLoading(true);
+
+    try {
+      // 1) get token (with retries)
+      const token = await getTokenWithRetries(6, 250);
+      if (!token) {
+        Alert.alert("Atención", "No se encontró sesión activa. Por favor inicia sesión nuevamente.");
+        router.replace("/login");
+        return;
+      }
+
+      // 2) decode token to try to obtain userId
+      let userId: number | string | null = null;
+      try {
+        const payload = parseJwt(token);
+        userId = payload?.id ?? payload?.userId ?? payload?.sub ?? null;
+      } catch (e) {
+        console.warn("parseJwt failed:", e);
+      }
+
+      // 4) fetch server interests list to map titles -> ids
+      let serverInterests: Array<{ id: number; title?: string; slug?: string }> = [];
+      try {
+        const res = await apiGet("/users/interests");
+        const data = res?.data ?? res;
+        if (Array.isArray(data)) serverInterests = data;
+      } catch (e) {
+        // non-fatal: backend may not expose that endpoint or helper may not exist
+        console.warn("apiGet('/users/interests') failed:", e);
+      }
+
+      // 5) map selected titles to server IDs (case-insensitive)
+      const mapTitle = (t?: string) => (t ? t.trim().toLowerCase() : "");
+      const selectedIds: number[] = [];
+      for (const title of selected) {
+        const match = serverInterests.find(
+          (s) => mapTitle(s.title) === mapTitle(title) || mapTitle(s.slug) === mapTitle(title)
+        );
+        if (match?.id) selectedIds.push(match.id);
+      }
+
+      // 6) prepare payload. Prefer interestIds if mapped; otherwise send names fallback
+      const payload = selectedIds.length > 0 ? { interestIds: selectedIds } : { interestNames: selected };
+
+      // 7) perform POST to /users/:id/interests (preferred) or fallback to /users/interests
+      let postRes: any = null;
+      try {
+        if (userId) {
+          postRes = await apiPost(`/users/${userId}/interests`, payload);
+        } else {
+          postRes = await apiPost("/users/interests", payload);
+        }
+      } catch (e) {
+        console.warn("apiPost to save interests failed:", e);
+      }
+
+      const postData = postRes?.data ?? postRes;
+      const success =
+        (postRes && postRes.status >= 200 && postRes.status < 300) ||
+        Boolean(postData && (postData.message || postData.success));
+
+      if (success) {
+        Alert.alert("Listo", "Intereses guardados correctamente");
+        router.replace("/home");
+      } else {
+        console.warn("Save interests unexpected response:", postRes);
+        Alert.alert(
+          "Error",
+          "No se pudieron guardar los intereses. Revisa la consola para más detalles."
+        );
+      }
+    } catch (err: any) {
+      console.error("Error saving interests:", err);
+      const msg = (err && err.message) || JSON.stringify(err) || "Error al guardar intereses";
+      Alert.alert("Error", msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -118,12 +258,20 @@ export default function InterestsScreen() {
 
         <PrimaryButton
           title={selected.length ? `Continuar (${selected.length})` : "Continuar"}
-          onPress={() => router.replace("/home")}
+          onPress={handleSaveInterests}
           height={52}
           borderRadius={12}
           style={{ marginTop: 12 }}
-          disabled={selected.length === 0}
-        />
+          disabled={selected.length === 0 || loading}
+        >
+          {loading && <ActivityIndicator />}
+        </PrimaryButton>
+
+        {loading && (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" />
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -205,5 +353,16 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     lineHeight: 18,
+  },
+
+  loadingOverlay: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.6)",
   },
 });
