@@ -1,6 +1,5 @@
 // moved from EditProfileScreen.tsx
 import DateTimePicker from "@react-native-community/datetimepicker";
-import countries from "world-countries";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPut, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
@@ -16,14 +15,10 @@ import {
   TouchableOpacity,
   Platform, FlatList,
 } from "react-native";
+import {countryNames} from "country-region-data";
 
 export const options = {
   headerShown: false,
-};
-
-type SimpleCountry = {
-  name: string;
-  code: string;
 };
 
 function parseJwt(token: string | null) {
@@ -72,7 +67,7 @@ export default function EditProfileScreen() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
-  const [nationality, setNationality] = useState<SimpleCountry | null>(null);
+  const [nationality, setNationality] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   // birthdate state now as Date | null (for picker) and display string
@@ -84,13 +79,8 @@ export default function EditProfileScreen() {
   // DateTimePicker visibility (for Android modal / iOS inline)
   const [showPicker, setShowPicker] = useState(false);
 
-  const countryList: SimpleCountry[] = countries.map(c => ({
-    name: c.name.common,
-    code: c.cca2,
-  }));
-
-  const filteredCountries = countryList.filter(c =>
-      c.name.toLowerCase().includes(search.toLowerCase())
+  const filteredCountries = countryNames.filter((c) =>
+      c.toLowerCase().includes(search.toLowerCase())
   );
 
   useEffect(() => {
@@ -109,9 +99,7 @@ export default function EditProfileScreen() {
         setName(user.name || "");
         setEmail(user.email || "");
         setPhone(user.phone || "");
-        const rawNationality: string = user.nationality || "";
-        const matched = countryList.find(c => c.name === rawNationality) || null;
-        setNationality(matched);
+        setNationality(user.nationality || "");
 
         // parse birthdate into Date if possible
         const raw = user.birthdate || "";
@@ -162,7 +150,7 @@ export default function EditProfileScreen() {
         name,
         email,
         phone,
-        nationality: nationality?.name || "",
+        nationality: nationality || "",
         // send ISO date (YYYY-MM-DD) if we have one, otherwise empty string
         birthdate: birthdateDate ? dateToISODate(birthdateDate) : birthdateDisplay || "",
       });
@@ -197,40 +185,29 @@ export default function EditProfileScreen() {
 
 
         {/* Input para abrir el dropdown */}
-        {!open ? (
-            <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setOpen(!open)}
-                style={[styles.inputBox, { justifyContent: 'flex-start', flexDirection: "row"}]}
-            >
-              <Text style={[styles.textInput, {color: nationality? "black" : "rgba(0,0,0,0.5)"}]}>
-                {nationality ? nationality.name : "Nacionalidad"}
-              </Text>
-              <Text style={[styles.textInput, { marginLeft: "auto", fontSize: 16 }]}> ▼ </Text>
-            </TouchableOpacity>
-        ) : (
-            <View style={styles.dropdown}>
-              <View style={[styles.inputBox, {marginBottom:0 , flexDirection: "row", alignItems: "center", borderColor: "black", backgroundColor: "white", borderWidth: 2 }]}>
-                <TextInput
-                    style={[styles.textInput, { flex:1, borderWidth:0, outline:"none" }]}
-                    placeholder={nationality? nationality.name : "Nacionalidad"}
-                    value={search}
-                    onChangeText={setSearch}
-                />
-                <Text
-                    style={{ fontSize: 16, marginLeft: "auto" }}
-                    onPress={() => setOpen(false)}
-                >
-                  ▲
-                </Text>
-              </View>
-
+        <View style={[styles.inputBox, { flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0 }]}
+              onFocus={()=>setOpen(true)}>
+          <TextInput
+              style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? "#252525" : "rgba(0,0,0,0.5)"}]}
+              placeholder={nationality? nationality : "Seleccionar nacionalidad"}
+              value={search}
+              onChangeText={setSearch}
+          />
+          <Text
+              style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: open ? "0deg" : "180deg" }]}}
+              onPress={() => setOpen(!open)}
+          >
+            ▲
+          </Text>
+        </View>
+        {open && (
+              <View style={styles.dropdown}>
               <FlatList
                   data={filteredCountries}
-                  keyExtractor={(item) => item.code}
+                  keyExtractor={(item) => item}
                   keyboardShouldPersistTaps="handled"
                   renderItem={({ item }) => {
-                    const isSelected = nationality?.code === item.code;
+                    const isSelected = nationality === item;
                     return (
                         <TouchableOpacity
                             style={[styles.item,
@@ -241,7 +218,7 @@ export default function EditProfileScreen() {
                               setOpen(false);
                             }}
                         >
-                          <Text>{item.name}</Text>
+                          <Text>{item}</Text>
                         </TouchableOpacity>
                     );
                   }}

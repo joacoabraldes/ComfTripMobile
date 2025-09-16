@@ -19,9 +19,9 @@ import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
-  cultura: require("../../assets/images/interests/cultura.png"),
-  gastronomia: require("../../assets/images/interests/gastronomia.png"),
-  naturaleza: require("../../assets/images/interests/naturaleza.png"),
+  cultura: require("../../assets/images/interests/Cultura.png"),
+  gastronomia: require("../../assets/images/interests/Gastronomia.png"),
+  naturaleza: require("../../assets/images/interests/Naturaleza.png"),
   compras: require("../../assets/images/interests/compras.png"),
   deportes: require("../../assets/images/interests/deportes.png"),
   familia: require("../../assets/images/interests/familia.png"),

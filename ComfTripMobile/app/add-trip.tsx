@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
+import React, {use, useState} from 'react';
+import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList} from 'react-native';
 import countries from "world-countries";
-import {allCountries} from "country-region-data";
+import {allCountries, countryNames} from "country-region-data";
 import { Stack, useRouter } from 'expo-router';
 import { apiPost } from '@/helpers/api'; // <- uses your existing api helper
 
@@ -11,13 +11,36 @@ interface CalendarDay {
 }
 
 export default function AddTrip() {
-  const [destination, setDestination] = useState('Roma, Italia');
+  const [destination, setDestination] =  useState<string | null>(null);
+  const [country, setCountry]=useState<string | null>(null);
+  const [province, setProvince]=useState<string|null>(null);
+  const [openCountry, setOpenCountry] = useState(false);
+  const [openProvince, setOpenProvince]= useState(false);
+  const [search, setSearch] = useState("");
+  const [searchProvince, setSearchProvince] = useState("");
+
+  const today = new Date();
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
-  const [currentMonth, setCurrentMonth] = useState(9);
-  const [currentYear, setCurrentYear] = useState(2025);
+  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+
+  // Lista filtrada de países
+  const filteredCountries = countryNames.filter((c) =>
+      c.toLowerCase().includes(search.toLowerCase())
+  );
+
+// Provincias disponibles del país seleccionado
+  const availableProvinces = country
+      ? allCountries.find((c) => c[0] === country)?.[2] || []
+      : [];
+
+// Lista filtrada de provincias
+  const filteredProvinces = availableProvinces.filter((p: [string, string]) =>
+      p[0].toLowerCase().includes(searchProvince.toLowerCase())
+  );
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -32,6 +55,13 @@ export default function AddTrip() {
       days.push({ date: i, selected: false });
     }
     return { days, firstDayOfMonth };
+  };
+
+  const isPastDate = (day: number) => {
+    const currentDate = new Date(currentYear, currentMonth, day);
+    const today = new Date();
+    today.setHours(0,0,0,0); // normalizar (ignorar horas)
+    return currentDate < today;
   };
 
   const { days, firstDayOfMonth } = generateCalendarDays();
@@ -130,17 +160,85 @@ export default function AddTrip() {
   };
 
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ headerShown: false }} />
-      
-      <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
-      <TextInput
-        style={styles.destinationInput}
-        value={destination}
-        onChangeText={setDestination}
-        placeholder="Ingresa tu destino"
-      />
 
+      <View style={styles.container}>
+        <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
+      <View style={[styles.destinationInput, { marginBottom: openCountry ? 0 : 20, flexDirection: "row", backgroundColor: openCountry ? "white" : 'rgba(196,196,196,0.2)', borderWidth: openCountry ? 2 : 0 }]}
+            onFocus={()=>setOpenCountry(true)}>
+        <TextInput
+            style={[{ flex:1, borderWidth:0, outline:"none", color: country? "#252525" : "rgba(0,0,0,0.5)"}]}
+            placeholder={country ? country : "Seleccionar pais"}
+            value={search}
+            onChangeText={setSearch}
+        />
+        <Text
+            style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: openCountry ? "0deg" : "180deg" }]}}
+            onPress={() => setOpenCountry(!openCountry)}
+        >
+          ▲
+        </Text>
+      </View>
+        {openCountry && (
+            <View style={styles.dropdown}>
+              <FlatList
+                  data={filteredCountries}
+                  keyExtractor={(item) => item}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                      <TouchableOpacity
+                          style={[styles.item, country === item && styles.itemSelected]}
+                          onPress={() => {
+                            setCountry(item);
+                            setProvince(null); // limpiar provincia al cambiar país
+                            setDestination(null);
+                            setSearch("");
+                            setOpenCountry(false);
+                          }}
+                      >
+                        <Text>{item}</Text>
+                      </TouchableOpacity>
+                  )}
+              />
+            </View>
+        )}
+
+        <View style={[styles.destinationInput, { marginBottom: openProvince ? 0 : 20, flexDirection: "row", backgroundColor: openProvince ? "white" : 'rgba(196,196,196,0.2)', borderWidth: openProvince ? 2 : 0 }]}
+              onFocus={()=>setOpenProvince(true)}>
+          <TextInput
+              style={[{ flex:1, borderWidth:0, outline:"none", color: province? "#252525" : "rgba(0,0,0,0.5)"}]}
+              placeholder={province ? province: "Seleccionar provincia"}
+              value={searchProvince}
+              onChangeText={setSearchProvince}
+          />
+          <Text
+              style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: openProvince ? "0deg" : "180deg" }]}}
+              onPress={() => setOpenProvince(!openProvince)}
+          >
+            ▲
+          </Text>
+        </View>
+        {openProvince && (
+            <View style={styles.dropdown}>
+              <FlatList
+                  data={filteredProvinces}
+                  keyExtractor={(item, idx) => idx.toString()}
+                  keyboardShouldPersistTaps="handled"
+                  renderItem={({ item }) => (
+                      <TouchableOpacity
+                          style={[styles.item, province === item[0] && styles.itemSelected]}
+                          onPress={() => {
+                            setProvince(item[0]);
+                            setSearchProvince("");
+                            setDestination(`${province}, ${country}`);
+                            setOpenProvince(false);
+                          }}
+                      >
+                        <Text>{item[0]}</Text>
+                      </TouchableOpacity>
+                  )}
+              />
+            </View>
+        )}
       <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
       
       <View style={styles.calendarHeader}>
@@ -166,24 +264,33 @@ export default function AddTrip() {
           {Array(firstDayOfMonth).fill(null).map((_, index) => (
             <View key={`empty-${index}`} style={styles.emptyDay} />
           ))}
-          
-          {days.map((day) => (
-            <TouchableOpacity
-              key={day.date}
-              style={[
-                styles.day,
-                isDateInRange(day.date) && styles.selectedDay
-              ]}
-              onPress={() => handleDateSelect(day.date)}
-            >
-              <Text style={[
-                styles.dayText,
-                isDateInRange(day.date) && styles.selectedDayText
-              ]}>
-                {day.date}
-              </Text>
-            </TouchableOpacity>
-          ))}
+
+          {days.map((day) => {
+            const past = isPastDate(day.date);
+
+            return (
+                <TouchableOpacity
+                    key={day.date}
+                    style={[
+                      styles.day,
+                      isDateInRange(day.date) && styles.selectedDay,
+                    ]}
+                    disabled={past} // 👈 no clickeable si es pasado
+                    onPress={() => handleDateSelect(day.date)}
+                >
+                  <Text
+                      style={[
+                        styles.dayText,
+                        past && styles.pastDayText,         // 👈 gris si es pasado
+                        isDateInRange(day.date) && styles.selectedDayText
+                      ]}
+                  >
+                    {day.date}
+                  </Text>
+                </TouchableOpacity>
+            );
+          })}
+
         </View>
       </View>
 
@@ -227,7 +334,6 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 25,
     backgroundColor: '#F8F8F8',
-    marginBottom: 20,
   },
   destinationText: {
     fontSize: 16,
@@ -289,6 +395,9 @@ const styles = StyleSheet.create({
   selectedDayText: {
     color: '#FF3951',
   },
+  pastDayText: {
+    color: '#CCC', // gris clarito
+  },
   dateRange: {
     textAlign: 'center',
     marginTop: 20,
@@ -317,4 +426,19 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 16,
   },
+
+  dropdown: { left: 0, right: 0,
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    marginTop: 4,
+    marginBottom: 20,
+    maxHeight: 200,
+    zIndex: 1000,
+    elevation: 10 },
+
+  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: "#fff" },
+  itemHover: { backgroundColor: "#f0f0f0" },
+  itemSelected: { backgroundColor: "#d0d0d0" },
 });
