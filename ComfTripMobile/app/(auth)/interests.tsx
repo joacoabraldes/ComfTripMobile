@@ -1,5 +1,5 @@
 // app/(auth)/interests.tsx
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   SafeAreaView,
   View,
@@ -15,34 +15,31 @@ import {
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
+import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 
-
+// --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
   cultura: require("../../assets/images/interests/cultura.png"),
   gastronomia: require("../../assets/images/interests/gastronomia.png"),
   naturaleza: require("../../assets/images/interests/naturaleza.png"),
-  // Add more mappings here as you add files to app/assets/images/interests
+  compras: require("../../assets/images/interests/compras.png"),
+  deportes: require("../../assets/images/interests/deportes.png"),
+  familia: require("../../assets/images/interests/familia.png"),
+  fiestas: require("../../assets/images/interests/fiestas.png"),
+  relax: require("../../assets/images/interests/relax.png"),
 };
+
+const defaultImage = require("../../assets/images/icon.png");
 
 const getImageSource = (slug?: string) => {
   if (!slug) return defaultImage;
   const key = String(slug).trim().toLowerCase();
   if (IMAGES[key]) return IMAGES[key];
-
-    return defaultImage;
+  return defaultImage;
 };
 
-// Local fallback icon (should exist in your repo)
-const defaultImage = require("../../assets/images/icon.png");
-
-/**
- * Small wait helper used when retrieving the token
- */
 const wait = (ms = 250) => new Promise((res) => setTimeout(res, ms));
 
-/**
- * JWT helpers (copied from your original file)
- */
 function base64UrlDecode(input: string) {
   try {
     let s = input.replace(/-/g, "+").replace(/_/g, "/");
@@ -71,22 +68,83 @@ function parseJwt(token: string | null) {
 
 type ServerInterest = { id: number; slug: string; title?: string; description?: string };
 
+const { width } = Dimensions.get("window"); // kept in top-level
+
+// ---------- Memoized Card Component ----------
+const ITEM_IMAGE_SIZE = 96;
+
+const InterestCard = React.memo(function InterestCard({
+  item,
+  onToggle,
+  isSelected,
+  imageFailed,
+}: {
+  item: ServerInterest;
+  onToggle: (slug: string) => void;
+  isSelected: boolean;
+  imageFailed?: boolean;
+}) {
+  const [imgLoading, setImgLoading] = useState(true);
+  const imageSource = imageFailed ? defaultImage : getImageSource(item.slug);
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={() => onToggle(item.slug)}
+      style={[styles.card, isSelected && styles.cardSelected]}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
+    >
+      <View style={{ width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, marginRight: 14 }}>
+        <Image
+          source={imageSource}
+          style={styles.image}
+          resizeMode="cover"
+          onLoadEnd={() => setImgLoading(false)}
+          onError={() => {
+            setImgLoading(false);
+            // parent will mark as failed through onToggle flow if you want;
+            // but we still show fallback image
+          }}
+        />
+        {imgLoading && (
+          <View style={[styles.image, styles.imageLoader]}>
+            <ActivityIndicator />
+          </View>
+        )}
+      </View>
+
+      <View style={styles.content}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardSubtitle} numberOfLines={3}>
+          {item.description}
+        </Text>
+      </View>
+      {isSelected && (
+        <View style={styles.checkBadge}>
+          <Text style={styles.checkText}>✓</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+});
+
+// ---------- Main Screen ----------
 export default function InterestsScreen() {
-  const [selected, setSelected] = useState<string[]>([]); // selected slugs
+  const [selected, setSelected] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [interests, setInterests] = useState<ServerInterest[]>([]);
   const [imageLoadFailed, setImageLoadFailed] = useState<Record<string, boolean>>({});
+  const [assetsReady, setAssetsReady] = useState(false);
 
   const router = useRouter();
-  const { width } = Dimensions.get("window");
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       setFetching(true);
       try {
-        // User requested GET /api/users/interests
         const res = await apiGet("/users/interests");
         const data = res?.data ?? res;
         if (Array.isArray(data) && mounted) {
@@ -115,49 +173,65 @@ export default function InterestsScreen() {
     };
   }, []);
 
-  const toggleInterest = (slug: string) => {
+  // Preload local images with expo-asset **after** interests are fetched
+  useEffect(() => {
+    let mounted = true;
+    const preload = async () => {
+      try {
+        // gather unique modules to load (local assets returned by require(...))
+        const modules: any[] = [];
+        // always include defaultImage
+        modules.push(defaultImage);
+        for (const it of interests) {
+          const src = getImageSource(it.slug);
+          if (!modules.includes(src)) modules.push(src);
+        }
+        if (modules.length > 0) {
+          // Asset.loadAsync will cache & decode bundled images
+          await Asset.loadAsync(modules);
+        }
+        if (mounted) setAssetsReady(true);
+      } catch (e) {
+        console.warn("Asset preload failed:", e);
+        if (mounted) setAssetsReady(true);
+      }
+    };
+
+    // Only preload when we actually have interests
+    if (interests.length > 0) {
+      preload();
+    } else {
+      setAssetsReady(true); // nothing to preload
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [interests]);
+
+  const toggleInterest = useCallback((slug: string) => {
     setSelected((prev) => (prev.includes(slug) ? prev.filter((i) => i !== slug) : [...prev, slug]));
-  };
+  }, []);
 
-  const renderItem = ({ item }: { item: ServerInterest }) => {
-    const isSelected = selected.includes(item.slug);
-    const imageSource = getImageSource(item.slug);
+  // mark image load failure to show fallback persistently if needed
+  const onImageError = useCallback((slug: string) => {
+    setImageLoadFailed((s) => ({ ...s, [slug]: true }));
+  }, []);
 
-    return (
-      <TouchableOpacity
-        activeOpacity={0.85}
-        onPress={() => toggleInterest(item.slug)}
-        style={[styles.card, isSelected && styles.cardSelected]}
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
-      >
-        <Image
-          source={imageSource}
-          style={styles.image}
-          resizeMode="cover"
-          onError={() => {
-            // mark this slug as failed so we show the local fallback next time
-            setImageLoadFailed((s) => ({ ...s, [item.slug]: true }));
-          }}
-        />
-        <View style={styles.content}>
-          <Text style={styles.cardTitle}>{item.title}</Text>
-          <Text style={styles.cardSubtitle} numberOfLines={3}>
-            {item.description}
-          </Text>
-        </View>
-        {isSelected && (
-          <View style={styles.checkBadge}>
-            <Text style={styles.checkText}>✓</Text>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
+  const renderItem = useCallback(
+    ({ item }: { item: ServerInterest }) => (
+      <InterestCard
+        item={item}
+        onToggle={toggleInterest}
+        isSelected={selected.includes(item.slug)}
+        imageFailed={Boolean(imageLoadFailed[item.slug])}
+      />
+    ),
+    [selected, imageLoadFailed, toggleInterest]
+  );
 
-  /**
-   * Try to read token a few times (handles small race where login sets token just before navigation)
-   */
+  const keyExtractor = useCallback((i: ServerInterest) => String(i.id ?? i.slug), []);
+
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
     for (let i = 0; i < attempts; i++) {
       try {
@@ -192,21 +266,20 @@ export default function InterestsScreen() {
         console.warn("parseJwt failed:", e);
       }
 
-      // Map selected slugs -> ids using the already-fetched interests
       const selectedIds: number[] = [];
       for (const slug of selected) {
         const match = interests.find((s) => (s.slug ?? "").trim().toLowerCase() === slug.trim().toLowerCase());
         if (match?.id) selectedIds.push(match.id);
       }
 
-      const payload = selectedIds.length > 0 ? { interestIds: selectedIds } : { interestSlugs: selected };
+      const payloadBody = selectedIds.length > 0 ? { interestIds: selectedIds } : { interestSlugs: selected };
 
       let postRes: any = null;
       try {
         if (userId) {
-          postRes = await apiPost(`/users/${userId}/interests`, payload);
+          postRes = await apiPost(`/users/${userId}/interests`, payloadBody);
         } else {
-          postRes = await apiPost("/users/interests", payload);
+          postRes = await apiPost("/users/interests", payloadBody);
         }
       } catch (e) {
         console.warn("apiPost to save interests failed:", e);
@@ -231,20 +304,24 @@ export default function InterestsScreen() {
     }
   };
 
+  // While fetching OR while we are preloading assets, show spinner
+  const showLoadingList = fetching || !assetsReady;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Seleccione sus intereses</Text>
 
-        {fetching ? (
+        {showLoadingList ? (
           <View style={{ alignItems: "center", marginTop: 40 }}>
             <ActivityIndicator size="large" />
+            <Text style={{ color: "#6f6f6f", marginTop: 8 }}>Cargando recursos...</Text>
           </View>
         ) : (
           <FlatList
             data={interests}
             renderItem={renderItem}
-            keyExtractor={(i) => i.slug || String(i.id)}
+            keyExtractor={keyExtractor}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: 24 }}
             ListEmptyComponent={
@@ -252,6 +329,11 @@ export default function InterestsScreen() {
                 <Text style={{ color: "#6f6f6f" }}>No hay intereses disponibles.</Text>
               </View>
             }
+            // performance tuning
+            initialNumToRender={6}
+            maxToRenderPerBatch={6}
+            windowSize={7}
+            removeClippedSubviews={true}
           />
         )}
 
@@ -296,7 +378,14 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   cardSelected: { borderColor: "#FF3951", backgroundColor: "#FFF5F6" },
-  image: { width: 96, height: 96, borderRadius: 10, marginRight: 14, backgroundColor: "#EDEDED" },
+  image: { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, borderRadius: 10, backgroundColor: "#EDEDED" },
+  imageLoader: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
   content: { flex: 1, justifyContent: "center" },
   cardTitle: { fontSize: 16, fontWeight: "700", color: "#1E1E1E", marginBottom: 6 },
   cardSubtitle: { fontSize: 13, color: "#6F6F6F", lineHeight: 18 },
