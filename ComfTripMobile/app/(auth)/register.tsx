@@ -16,14 +16,9 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { MapSvg } from '@/components/icons/MapSvg';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import countries from "world-countries";
 import { useRouter } from 'expo-router';
 import { apiPost, tokenStorage } from '@/helpers/api';
-
-type SimpleCountry = {
-  name: string;
-  code: string;
-};
+import {countryNames} from "country-region-data";
 
 
 export default function RegisterScreen() {
@@ -34,7 +29,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const [nationality, setNationality] = useState<SimpleCountry | null>(null);
+  const [nationality, setNationality] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
 
@@ -63,13 +58,8 @@ export default function RegisterScreen() {
     if (selected) setBirthdate(formatDate(selected));
   };
 
-  const countryList: SimpleCountry[] = countries.map(c => ({
-    name: c.name.common,
-    code: c.cca2,
-  }));
-
-  const filteredCountries = countryList.filter(c =>
-      c.name.toLowerCase().includes(search.toLowerCase())
+  const filteredCountries = countryNames.filter((c) =>
+      c.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleNext = async () => {
@@ -89,7 +79,7 @@ export default function RegisterScreen() {
         email,
         password,
         password_hash: password,
-        nationality: nationality?.name || "",
+        nationality: nationality|| "",
         birthdate: birthdate || null,
       };
 
@@ -121,7 +111,7 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
-            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 18 }]}>Registrarse</Text>
+            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 18}]}>Registrarse</Text>
 
             <View style={[styles.inputBox, { height: inputHeight }]}>
               <TextInput
@@ -148,40 +138,31 @@ export default function RegisterScreen() {
             </View>
 
             {/* Input para abrir el dropdown */}
-            {!open ? (
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => setOpen(!open)}
-                    style={[styles.inputBox, { marginTop: 12, justifyContent: 'flex-start', flexDirection: "row"}]}
-                >
-                  <Text style={[styles.textInput, {color: nationality? "black" : "rgba(0,0,0,0.5)"}]}>
-                    {nationality ? nationality.name : "Seleccionar nacionalidad"}
-                  </Text>
-                  <Text style={[styles.textInput, { marginLeft: "auto", fontSize: 16 }]}> ▼ </Text>
-                </TouchableOpacity>
-            ) : (
-                <View style={styles.dropdown}>
-                  <View style={[styles.inputBox, { flexDirection: "row", alignItems: "center", borderColor: "black", backgroundColor: "white", borderWidth: 2 }]}>
+
+
+                  <View style={[styles.inputBox, { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0 }]}
+                  onFocus={()=>setOpen(true)}>
                     <TextInput
                         style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? "#252525" : "rgba(0,0,0,0.5)"}]}
-                        placeholder={nationality? nationality.name : "Seleccionar nacionalidad"}
+                        placeholder={nationality? nationality : "Seleccionar nacionalidad"}
                         value={search}
                         onChangeText={setSearch}
                     />
                     <Text
-                        style={{ fontSize: 16, marginLeft: "auto", margin: 12 }}
-                        onPress={() => setOpen(false)}
+                        style={{ fontSize: 16, marginLeft: "auto", margin: 12 , transform: [{ rotate: open ? "0deg" : "180deg" }]}}
+                        onPress={() => setOpen(!open)}
                     >
                       ▲
                     </Text>
                   </View>
-
+            {open && (
+                  <View style={styles.dropdown}>
                   <FlatList
                       data={filteredCountries}
-                      keyExtractor={(item) => item.code}
+                      keyExtractor={(item) => item}
                       keyboardShouldPersistTaps="handled"
                       renderItem={({ item }) => {
-                        const isSelected = nationality?.code === item.code;
+                        const isSelected = nationality === item;
                         return (
                             <TouchableOpacity
                                 style={[styles.item,
@@ -192,7 +173,7 @@ export default function RegisterScreen() {
                                   setOpen(false);
                                 }}
                             >
-                              <Text>{item.name}</Text>
+                              <Text>{item}</Text>
                             </TouchableOpacity>
                         );
                       }}
