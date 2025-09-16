@@ -1,110 +1,204 @@
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { Collapsible } from '@/components/Collapsible';
-import { ExternalLink } from '@/components/ExternalLink';
-import ParallaxScrollView from '@/components/ParallaxScrollView';
+import { useRouter } from 'expo-router';
+import { apiGet } from '@/helpers/api'; // assumes you have apiGet similar to apiPost
 import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 
-export default function TabTwoScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+type Trip = {
+  id: number;
+  destination: string; // e.g. "Lima, Peru"
+  start_date: string; // ISO date
+  end_date: string; // ISO date
+  flag_url?: string | null; // optional URL for the flag or image
+  notes?: string | null;
+  budget?: number | null;
+  created_at?: string | null;
+};
+
+export default function TripsScreen() {
+  const { width } = useWindowDimensions();
+  const router = useRouter();
+
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cardWidth = Math.min(340, Math.round(width - 40));
+
+  const fetchTrips = useCallback(async () => {
+    setError(null);
+    try {
+      const res = await apiGet('/trips'); 
+      const data = res?.data ?? res;
+      if (Array.isArray(data)) {
+        setTrips(data);
+      } else {
+        // if the endpoint returns an object { data: [...] }
+        setTrips(Array.isArray(data?.data) ? data.data : []);
+      }
+    } catch (err: any) {
+      console.error('Error fetching trips', err);
+      setError((err && err.message) || 'Failed to load trips');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchTrips();
+  }, [fetchTrips]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchTrips();
+  }, [fetchTrips]);
+
+  const renderDateRange = (start?: string, end?: string) => {
+    if (!start || !end) return '';
+    try {
+      const s = new Date(start);
+      const e = new Date(end);
+      const sStr = s.toLocaleDateString();
+      const eStr = e.toLocaleDateString();
+      return `${sStr} - ${eStr}`;
+    } catch {
+      return `${start} - ${end}`;
+    }
+  };
+
+  const isUpcoming = (start?: string) => {
+    if (!start) return false;
+    const now = new Date();
+    const s = new Date(start);
+    return s >= new Date(now.getFullYear(), now.getMonth(), now.getDate()); // later or today
+  };
+
+  const renderItem = ({ item }: { item: Trip }) => {
+    const upcoming = isUpcoming(item.start_date);
+    const bgColor = upcoming ? '#F8F1EF' : '#F1F1F1';
+    const accent = upcoming ? '#FFD8D8' : '#FFFFFF';
+
+    // Try to guess a fallback flag image: if trip has flag_url use it, else placeholder
+    const imageSource = item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7'; // small flag placeholder
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
+        onPress={() => {
+          // navigate to detail route: /trips/:id (adjust to your route structure)
+          //router.push(`/trips/${item.id}`);
+        }}>
+        <Image
+          source={imageSource}
+          style={styles.flag}
+          contentFit="cover"
+          placeholder={require("../../assets/images/icon.png")} // optional local placeholder if you have one
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Explore</ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes eample code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image source={require('@/assets/images/react-logo.png')} style={{ alignSelf: 'center' }} />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Custom fonts">
-        <ThemedText>
-          Open <ThemedText type="defaultSemiBold">app/_layout.tsx</ThemedText> to see how to load{' '}
-          <ThemedText style={{ fontFamily: 'SpaceMono' }}>
-            custom fonts such as this one.
-          </ThemedText>
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/versions/latest/sdk/font">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful <ThemedText type="defaultSemiBold">react-native-reanimated</ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+        <View style={styles.cardContent}>
+          <Text style={styles.destination}>{item.destination}</Text>
+          <Text style={styles.dates}>{renderDateRange(item.start_date, item.end_date)}</Text>
+        </View>
+        <View style={[styles.badge, { backgroundColor: accent }]}>
+          <Text style={styles.badgeText}>{upcoming ? 'Próximo' : ''}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" />
+        <Text style={{ marginTop: 12 }}>Cargando viajes...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: '#B00020', marginBottom: 8 }}>Error: {error}</Text>
+        <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
+          <Text style={{ color: '#fff' }}>Reintentar</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.screen}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Mis Viajes</Text>
+      </View>
+
+      <FlatList
+        data={trips}
+        keyExtractor={(t) => String(t.id)}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        ListEmptyComponent={
+          <View style={styles.center}>
+            <Text style={{ color: '#777' }}>No hay viajes registrados.</Text>
+          </View>
+        }
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
-  titleContainer: {
+  screen: { flex: 1, backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 0, alignItems: 'center' },
+  header: { width: '100%', alignItems: 'center', marginTop: 28, marginBottom: 6 },
+  title: { color: '#252525', fontSize: 30, fontWeight: '800' },
+
+  list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 60 },
+
+  card: {
     flexDirection: 'row',
-    gap: 8,
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 20,
+    // shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
+  },
+
+  flag: {
+    width: 76,
+    height: 76,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: '#ddd',
+  },
+
+  cardContent: { flex: 1, justifyContent: 'center' },
+  destination: { fontSize: 20, color: '#000', fontWeight: '600' },
+  dates: { fontSize: 14, color: '#757575', marginTop: 4 },
+
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  badgeText: { fontSize: 12, color: '#333', fontWeight: '700' },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  retryBtn: {
+    backgroundColor: '#FF3951',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 8,
   },
 });

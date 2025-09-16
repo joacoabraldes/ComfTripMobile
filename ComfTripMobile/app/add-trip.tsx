@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from 'react-native';
 import countries from "world-countries";
 import {allCountries} from "country-region-data";
 import { Stack, useRouter } from 'expo-router';
+import { apiPost } from '@/helpers/api'; // <- uses your existing api helper
 
 interface CalendarDay {
   date: number;
@@ -15,6 +16,7 @@ export default function AddTrip() {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [currentMonth, setCurrentMonth] = useState(9);
   const [currentYear, setCurrentYear] = useState(2025);
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -89,6 +91,44 @@ export default function AddTrip() {
 
   const weekDays = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
 
+  const formatISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
+
+  // NEW: save trip to backend, then navigate to the same route as before
+  const handleSaveTrip = async () => {
+    if (saving) return;
+    if (!startDate || !endDate) {
+      Alert.alert('Selecciona fechas', 'Por favor selecciona una fecha de inicio y una fecha de fin.');
+      return;
+    }
+    if (!destination || destination.trim().length === 0) {
+      Alert.alert('Destino vacío', 'Por favor ingresa un destino.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        destination: destination.trim(),
+        start_date: formatISODate(startDate),
+        end_date: formatISODate(endDate),
+        budget: null,
+        notes: null,
+      };
+
+      // call your backend POST /trips
+      await apiPost('/trips', payload);
+
+      // preserve original navigation: go to /load-trip after saving
+      router.push('/load-trip');
+    } catch (err: any) {
+      console.error('Error saving trip:', err);
+      const message = (err && err.message) || 'No se pudo guardar el viaje';
+      Alert.alert('Error', message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ headerShown: false }} />
@@ -155,7 +195,8 @@ export default function AddTrip() {
 
       <TouchableOpacity
         style={styles.createTripButton}
-        onPress={() => router.push('/load-trip')} // Navigate to load-trip
+        onPress={handleSaveTrip}
+        disabled={saving}
       >
         <Text style={styles.createTripButtonText}>Armar Viaje</Text>
       </TouchableOpacity>
