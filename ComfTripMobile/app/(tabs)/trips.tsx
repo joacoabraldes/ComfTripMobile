@@ -111,9 +111,8 @@ export default function TripsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" />
-        <Text style={{ marginTop: 12 }}>Cargando viajes...</Text>
+      <View style={styles.screen}>
+        <Text style={{ marginTop: 40 }}>Cargando viajes...</Text>
       </View>
     );
   }

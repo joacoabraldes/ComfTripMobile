@@ -3,7 +3,6 @@ import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList} fr
 import countries from "world-countries";
 import {allCountries, countryNames} from "country-region-data";
 import { Stack, useRouter } from 'expo-router';
-import { apiPost } from '@/helpers/api'; // <- uses your existing api helper
 
 interface CalendarDay {
   date: number;
@@ -145,16 +144,16 @@ export default function AddTrip() {
         notes: null,
       };
 
-      // call your backend POST /trips
-      await apiPost('/trips', payload);
+      // Navegar a load-trip y pasar el payload como query param (url-encoded JSON)
+      const qs = encodeURIComponent(JSON.stringify(payload));
+      router.push(`/load-trip?payload=${qs}`);
 
-      // preserve original navigation: go to /load-trip after saving
-      router.push('/load-trip');
     } catch (err: any) {
-      console.error('Error saving trip:', err);
+      console.error('Error preparando payload:', err);
       const message = (err && err.message) || 'No se pudo guardar el viaje';
       Alert.alert('Error', message);
     } finally {
+      // liberamos el flag para evitar quedar "bloqueado" si algo falla en navigation
       setSaving(false);
     }
   };
