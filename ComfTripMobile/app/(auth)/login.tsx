@@ -20,7 +20,7 @@ export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -33,13 +33,14 @@ export default function LoginScreen() {
   const btnRadius = Math.round(btnHeight * 0.22);
 
   const handleNext = async () => {
-    if (!email || !password) {
+    if (!identifier || !password) {
       Alert.alert('Atención', 'Por favor complete los campos');
       return;
     }
     setLoading(true);
     try {
-      const res = await apiPost('/auth/login', { email, password });
+      // send identifier (can be username or email) per backend change
+      const res = await apiPost('/auth/login', { identifier, password });
       const data = res.data ?? res;
 
       const token =
@@ -75,11 +76,11 @@ export default function LoginScreen() {
 
           <View style={[styles.inputBox, { height: inputHeight }]}>
             <TextInput
-              placeholder="Ingrese su email"
+              placeholder="Email o nombre de usuario"
               placeholderTextColor="rgba(0,0,0,0.5)"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
+              value={identifier}
+              onChangeText={setIdentifier}
+              keyboardType="default"
               autoCapitalize="none"
               style={styles.textInput}
             />
@@ -101,7 +102,7 @@ export default function LoginScreen() {
           </View>
 
           <PrimaryButton
-            title= 'Ingresar'
+            title="Ingresar"
             onPress={handleNext}
             height={btnHeight}
             borderRadius={btnRadius}
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
   },
-  textInput: {fontSize: 14, color: '#252525', paddingHorizontal:22, paddingVertical: 18, borderRadius: 10,},
+  textInput: { fontSize: 14, color: '#252525', paddingHorizontal: 22, paddingVertical: 18, borderRadius: 10 },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgotText: { color: '#FF3951', fontSize: 13 },

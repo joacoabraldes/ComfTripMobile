@@ -1,5 +1,5 @@
-// MapScreen.tsx (fixed)
-import React, { useEffect, useRef, useState, useCallback } from "react";
+// MapScreen.tsx (fetch locations from backend)
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   SafeAreaView,
   View,
@@ -7,7 +7,6 @@ import {
   useWindowDimensions,
   ActivityIndicator,
   Text,
-  Platform,
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
@@ -22,6 +21,7 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { ArrowIcon } from "@/components/icons/ArrowIcon";
+import { apiGet } from "@/helpers/api"; // <-- use your api helper
 
 type Loc = {
   id: string;
@@ -36,287 +36,35 @@ type Loc = {
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoibWFuZHJhY2EiLCJhIjoiY21mZnE1dmI0MDlubjJpcG5rYmw3ZnRiZiJ9.RwdRSwXlP1PX_7j7cwUsMA";
 
+// helper that returns a fake placeholder image when needed
 const img = (id: string, n = 1) => `https://picsum.photos/seed/${id}-${n}/800/520`;
 
-const LOCATIONS: Loc[] = [
-  {
-    id: "mnb",
-    title: "Museo Nacional de Bellas Artes",
-    category: "Cultura",
-    latitude: -34.58398611,
-    longitude: -58.39297,
-    description:
-      "Colección extensa de arte argentino y europeo destacada por pinturas, esculturas y exposiciones temporales.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/c/c2/Museo_Nacional_de_Bellas_Artes_%28Buenos_Aires%29_10209.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/5/55/Museo_Nacional_de_Bellas_Artes_-_Buenos_Aires%2C_Argentina.jpg",
-      "https://picsum.photos/seed/mnb-3/800/520",
-    ],
-  },
-  {
-    id: "teatro_colon",
-    title: "Teatro Colón",
-    category: "Cultura",
-    latitude: -34.601131,
-    longitude: -58.383617,
-    description:
-      "Famoso teatro de ópera, reconocido por su acústica y arquitectura; sede de presentaciones clásicas y contemporáneas.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/3/3a/Teatro_Col%C3%B3n%2C_Buenos_Aires.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/9/9e/Teatro_Col%C3%B3n_-_Buenos_Aires.jpg",
-    ],
-  },
-  {
-    id: "malba",
-    title: "MALBA (Museo)",
-    category: "Cultura",
-    latitude: -34.5769334,
-    longitude: -58.403398,
-    description:
-      "Museo de arte latinoamericano con colecciones permanentes y exposiciones temporales de artistas contemporáneos.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/9/9a/Malba_-_Buenos_Aires.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/0/03/MALBA_%28Museo_de_Arte_Latinoamericano_de_Buenos_Aires%29.jpg",
-      "https://picsum.photos/seed/malba-3/800/520",
-    ],
-  },
-  {
-    id: "recoleta_cc",
-    title: "Centro Cultural Recoleta",
-    category: "Cultura",
-    latitude: -34.585164,
-    longitude: -58.388664,
-    description:
-      "Centro cultural con muestras de arte, ferias, talleres y actividades culturales en el corazón de Recoleta.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/f/f0/Centro_Cultural_Recoleta%2C_Buenos_Aires.jpg",
-      "https://picsum.photos/seed/recoleta-2/800/520",
-    ],
-  },
-  {
-    id: "museo_moderno",
-    title: "Museo de Arte Moderno (MAMBA)",
-    category: "Cultura",
-    latitude: -34.61765,
-    longitude: -58.36898,
-    description:
-      "Museo dedicado al arte moderno y contemporáneo con colecciones y exhibiciones temporales.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/1/13/Museo_de_Arte_Moderno_de_Buenos_Aires.jpg",
-      "https://picsum.photos/seed/museo_moderno-2/800/520",
-      "https://picsum.photos/seed/museo_moderno-3/800/520",
-    ],
-  },
-  {
-    id: "teatro_cervantes",
-    title: "Teatro Cervantes",
-    category: "Cultura",
-    latitude: -34.599333,
-    longitude: -58.384111,
-    description:
-      "Importante espacio teatral con una variada programación de música, teatro y danza.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/f/f4/Teatro_Cervantes.jpg",
-      "https://picsum.photos/seed/teatro_cervantes-2/800/520",
-    ],
-  },
-  {
-    id: "tres_febrero",
-    title: "Parque Tres de Febrero (Bosques de Palermo)",
-    category: "Naturaleza",
-    latitude: -34.57071422,
-    longitude: -58.42070191,
-    description:
-      "Amplios jardines, lagos y rosedales: un clásico para paseos, picnics y actividades al aire libre.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/1/10/Parque_Tres_de_Febrero.jpg",
-      "https://picsum.photos/seed/tres_febrero-2/800/520",
-    ],
-  },
-  {
-    id: "reserva",
-    title: "Reserva Ecológica Costanera Sur",
-    category: "Naturaleza",
-    latitude: -34.607521,
-    longitude: -58.352325,
-    description:
-      "Área protegida junto al río con senderos, observación de aves y naturaleza urbana preservada.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/2/22/Costanera_Sur_-_Buenos_Aires.jpg",
-      "https://picsum.photos/seed/reserva-2/800/520",
-      "https://picsum.photos/seed/reserva-3/800/520",
-    ],
-  },
-  {
-    id: "jardin_botanico",
-    title: "Jardín Botánico Carlos Thays",
-    category: "Naturaleza",
-    latitude: -34.58247,
-    longitude: -58.418598,
-    description:
-      "Colección botánica y invernáculos con especies locales y exóticas para visitar todo el año.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/4/49/Jardin_Botanico_Carlos_Thays_01.jpg",
-      "https://picsum.photos/seed/jardin_botanico-2/800/520",
-    ],
-  },
-  {
-    id: "parque_lezama",
-    title: "Parque Lezama",
-    category: "Naturaleza",
-    latitude: -34.62659642,
-    longitude: -58.369556,
-    description:
-      "Espacio histórico y arbolado con esculturas, ideal para pasear y ver la arquitectura vecina.",
-    images: ["https://picsum.photos/seed/parque_lezama-1/800/520"],
-  },
-  {
-    id: "parque_centenario",
-    title: "Parque Centenario",
-    category: "Naturaleza",
-    latitude: -34.60654373,
-    longitude: -58.4356338,
-    description:
-      "Gran parque con laguna, espacios deportivos y actividades familiares durante los fines de semana.",
-    images: [
-      "https://turismo.buenosaires.gob.ar/sites/turismo/files/parque-centenario-2023-1500x610.jpg",
-      "https://turismo.buenosaires.gob.ar/sites/turismo/files/parque-centenario-2023-1500x610.jpg",
-    ],
-  },
-  {
-    id: "cafe_tortoni",
-    title: "Café Tortoni",
-    category: "Gastronomia",
-    latitude: -34.608917,
-    longitude: -58.378333,
-    description:
-      "Café histórico famoso por su ambiente porteño y eventos culturales. Clásico para tomar algo y ver la arquitectura.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/3/32/Cafe_Tortoni_Buenos_Aires.jpg",
-      "https://picsum.photos/seed/cafe_tortoni-2/800/520",
-    ],
-  },
-  {
-    id: "don_julio",
-    title: "Parrilla Don Julio",
-    category: "Gastronomia",
-    latitude: -34.58634,
-    longitude: -58.42423,
-    description:
-      "Parrilla reconocida por su excelente carne y ambiente acogedor; reserva recomendada en horas pico.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/2/2b/Parrilla_Don_Julio.jpg",
-      "https://upload.wikimedia.org/wikipedia/commons/5/5c/Don_Julio_01_%28interior%29.jpg",
-      "https://picsum.photos/seed/don_julio-3/800/520",
-    ],
-  },
-  {
-    id: "la_cabrera",
-    title: "La Cabrera",
-    category: "Gastronomia",
-    latitude: -34.589358,
-    longitude: -58.432898,
-    description:
-      "Otra parrilla clásica de Palermo, con porciones abundantes y menú tradicional argentino.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/0/0d/Parrila_La_Cabrera.jpg",
-      "https://picsum.photos/seed/la_cabrera-2/800/520",
-    ],
-  },
-  {
-    id: "el_preferido",
-    title: "El Preferido de Palermo",
-    category: "Gastronomia",
-    latitude: -34.59125,
-    longitude: -58.41865,
-    description:
-      "Bar/restaurante con una mezcla de clásicos porteños y propuestas modernas; buen brunch.",
-    images: [
-      "https://picsum.photos/seed/el_preferido-1/800/520",
-      "https://picsum.photos/seed/el_preferido-2/800/520",
-    ],
-  },
-  {
-    id: "bar_galgos",
-    title: "Bar Los Galgos",
-    category: "Gastronomia",
-    latitude: -34.606256,
-    longitude: -58.379568,
-    description:
-      "Bar tradicional con historia gastronómica porteña y platos típicos en un ambiente relajado.",
-    images: ["https://picsum.photos/seed/bar_galgos-1/800/520"],
-  },
-  {
-    id: "mercado_santelmo",
-    title: "Mercado de San Telmo",
-    category: "Gastronomia",
-    latitude: -34.619268,
-    longitude: -58.372592,
-    description:
-      "Mercado y feria con comidas típicas, antigüedades y artesanías; un paseo cultural y gastronómico.",
-    images: [
-      "https://picsum.photos/seed/mercado_santelmo-1/800/520",
-      "https://picsum.photos/seed/mercado_santelmo-2/800/520",
-    ],
-  },
-  {
-    id: "museo_hist",
-    title: "Museo Histórico Nacional",
-    category: "Cultura",
-    latitude: -34.62704012,
-    longitude: -58.3705892,
-    description:
-      "Museo con piezas históricas que cuentan la historia argentina; visitas guiadas disponibles.",
-    images: [
-      "https://picsum.photos/seed/museo_hist-1/800/520",
-      "https://picsum.photos/seed/museo_hist-2/800/520",
-    ],
-  },
-  {
-    id: "plaza_houssay",
-    title: "Plaza Houssay",
-    category: "Naturaleza",
-    latitude: -34.587524,
-    longitude: -58.402085,
-    description:
-      "Pequeña plaza urbana con espacios para descansar cerca de la zona universitaria.",
-    images: ["https://picsum.photos/seed/plaza_houssay-1/800/520"],
-  },
-  {
-    id: "puerto_madero",
-    title: "Costanera / Puerto Madero (waterfront)",
-    category: "Naturaleza",
-    latitude: -34.608938,
-    longitude: -58.364617,
-    description:
-      "Zona moderna junto al río con paseos, restaurantes y arquitectura contemporánea frente al agua.",
-    images: [
-      "https://upload.wikimedia.org/wikipedia/commons/6/66/Puerto_Madero%2C_Buenos_Aires.jpg",
-      "https://picsum.photos/seed/puerto_madero-2/800/520",
-      "https://picsum.photos/seed/puerto_madero-3/800/520",
-    ],
-  },
-];
+/**
+ * Colors keyed by the display category used in the webview HTML (capitalized).
+ * HTML expects keys like CATEGORY_COLOR.Cultura etc, so keep these keys capitalized.
+ */
 const CATEGORY_COLOR: Record<string, string> = {
   Cultura: "#D9534F",
   Naturaleza: "#28A745",
   Gastronomia: "#F0AD4E",
 };
 
-// Simplified URI normalization
 function normalizeUri(uri?: string | null): string | undefined {
   if (!uri) return undefined;
-
   try {
-    // Only decode once to handle encoded URLs properly
     const decoded = decodeURIComponent(uri);
-    // Re-encode to ensure it's a valid URI
     return encodeURI(decoded);
   } catch (e) {
     console.warn("Failed to normalize URI:", uri, e);
     return uri ?? undefined;
   }
 }
+
+// Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
+const displayCategoryFromFk = (fk?: string | null) => {
+  if (!fk) return "Otros";
+  return String(fk).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+};
 
 export default function MapScreen() {
   const { height, width } = useWindowDimensions();
@@ -339,6 +87,87 @@ export default function MapScreen() {
     coords?: [number, number];
   } | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
+
+  // New: locations from API
+  const [locations, setLocations] = useState<Loc[]>([]);
+  const [loadingLocations, setLoadingLocations] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      setLoadingLocations(true);
+      try {
+        const res = await apiGet("/locations");
+        const data = res?.data ?? res;
+        if (Array.isArray(data) && mounted) {
+          const normalized = data
+            .map((r: any): Loc | null => {
+              // parse imagenes: could be JSON string or already an array
+              let imgs: any = [];
+              if (r.imagenes) {
+                if (typeof r.imagenes === "string") {
+                  try {
+                    imgs = JSON.parse(r.imagenes);
+                  } catch (err) {
+                    // if parsing fails, treat as single-string uri
+                    imgs = [r.imagenes];
+                  }
+                } else if (Array.isArray(r.imagenes)) {
+                  imgs = r.imagenes;
+                } else if (r.imagenes.url || r.imagenes.uri) {
+                  imgs = [r.imagenes.url ?? r.imagenes.uri];
+                } else {
+                  imgs = [];
+                }
+              }
+
+              const lat =
+                r.latitude !== undefined && r.latitude !== null
+                  ? Number(r.latitude)
+                  : r.latitud !== undefined && r.latitud !== null
+                  ? Number(r.latitud)
+                  : null;
+              const lng =
+                r.longitude !== undefined && r.longitude !== null
+                  ? Number(r.longitude)
+                  : r.longitud !== undefined && r.longitud !== null
+                  ? Number(r.longitud)
+                  : null;
+
+              if (lat === null || lng === null) {
+                // skip rows without coordinates
+                return null;
+              }
+
+              return {
+                id: String(r.id),
+                title: r.titulo ?? "",
+                category: displayCategoryFromFk(r.fk_interest),
+                latitude: lat,
+                longitude: lng,
+                description: r.descripcion ?? "",
+                images: Array.isArray(imgs)
+                  ? imgs.map((it: any) => (typeof it === "string" ? it : it?.url ?? it?.uri ?? String(it)))
+                  : [],
+              } as Loc;
+            })
+            .filter((x): x is Loc => x !== null); // <-- type predicate so TS knows this is Loc[]
+
+          setLocations(normalized);
+        } else if (mounted) {
+          setLocations([]);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch locations:", err);
+        if (mounted) setLocations([]);
+      } finally {
+        if (mounted) setLoadingLocations(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -391,7 +220,20 @@ export default function MapScreen() {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
     if (cityName) postMessageToWeb({ type: "setInfo", payload: `Ciudad: ${cityName}` });
-  }, [webReady, userCoords, cityName]);
+    // send updated locations to webview
+    postMessageToWeb({ type: "locations", payload: geojsonForWeb() });
+  }, [webReady, userCoords, cityName, locations]);
+
+  function geojsonForWeb() {
+    return {
+      type: "FeatureCollection",
+      features: locations.map((l) => ({
+        type: "Feature",
+        properties: { id: l.id, title: l.title, category: l.category, description: l.description, images: l.images },
+        geometry: { type: "Point", coordinates: [l.longitude, l.latitude] },
+      })),
+    };
+  }
 
   function handleOnMessage(e: any) {
     try {
@@ -450,8 +292,13 @@ export default function MapScreen() {
       });
   }, [selected]);
 
-  const html = `
-    <!doctype html>
+  // Build HTML for WebView. We embed CATEGORY_COLOR and MAPBOX token; locations are embedded as an initial dataset.
+  const html = useMemo(() => {
+    const initialGeo = JSON.stringify(geojsonForWeb());
+
+    // The embedded HTML now renders DOM markers with inline SVG matching the web app.
+    // It keeps CATEGORY_COLOR, but falls back to a hashed HSL color when needed.
+    return `<!doctype html>
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -461,6 +308,7 @@ export default function MapScreen() {
           #info { position:absolute; z-index:999; left:10px; top:10px; background: rgba(255,255,255,0.95); padding:8px 10px; border-radius:10px; font-family: sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
           .marker-popup { font-family: sans-serif; font-size: 14px; color: #222; }
           .marker-title { font-weight:700; margin-bottom:6px; }
+          .rn-marker { display:inline-block; line-height:0; }
         </style>
       </head>
       <body>
@@ -500,17 +348,17 @@ export default function MapScreen() {
 
           send({ type: 'log', payload: 'HTML loaded' });
 
-          const LOCATIONS = ${JSON.stringify(LOCATIONS)};
           const CATEGORY_COLOR = ${JSON.stringify(CATEGORY_COLOR)};
+          let geojson = ${initialGeo};
 
-          const geojson = {
-            type: 'FeatureCollection',
-            features: LOCATIONS.map(l => ({
-              type: 'Feature',
-              properties: { id: l.id, title: l.title, category: l.category, description: l.description, images: l.images },
-              geometry: { type: 'Point', coordinates: [l.longitude, l.latitude] }
-            }))
-          };
+          // fallback color function (hash a string to HSL) if CATEGORY_COLOR doesn't have the key
+          function colorFromString(s) {
+            if (!s) return '#007bff';
+            let h = 0;
+            for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+            const hue = Math.abs(h) % 360;
+            return 'hsl(' + hue + ' 70% 45%)';
+          }
 
           try {
             if (!mapboxgl.supported()) {
@@ -523,75 +371,98 @@ export default function MapScreen() {
 
           let map;
           try {
+            const center = (geojson.features && geojson.features[0]) ? geojson.features[0].geometry.coordinates : [0,0];
             map = new mapboxgl.Map({
               container: 'map',
               style: 'mapbox://styles/mapbox/streets-v11',
-              center: [${LOCATIONS[0]?.longitude ?? 0}, ${LOCATIONS[0]?.latitude ?? 0}],
+              center: center,
               zoom: 12
             });
           } catch (err) {
             send({ type: 'log', payload: 'Map constructor failed: ' + (err && err.message ? err.message : String(err)) });
           }
 
+          // DOM markers (we keep references here so we can remove them on updates)
+          let domMarkers = [];
+
+          function clearDomMarkers() {
+            try {
+              domMarkers.forEach(m => {
+                try { m.remove(); } catch(e){}
+              });
+            } catch(e){}
+            domMarkers = [];
+          }
+
+          function createSvgPin(color) {
+            // returns an SVG string for the pin with a white center, matching web style
+            return '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" style="transform:translate(-14px,-28px);"><path d="M12 2C8.1 2 5 5.1 5 9c0 5 7 12 7 12s7-7 7-12c0-3.9-3.1-7-7-7z" fill="' + color + '" /><circle cx="12" cy="9" r="2.3" fill="#fff" /></svg>';
+          }
+
+          function renderDomMarkers(geo) {
+            try {
+              clearDomMarkers();
+              if (!geo || !geo.features) return;
+              geo.features.forEach(f => {
+                try {
+                  const coords = f.geometry && f.geometry.coordinates;
+                  const props = f.properties || {};
+                  const cat = props.category || '';
+                  const color = CATEGORY_COLOR[cat] || colorFromString(cat || (props.title || ''));
+
+                  // create wrapper element and set innerSVG
+                  const el = document.createElement('div');
+                  el.className = 'rn-marker';
+                  el.innerHTML = createSvgPin(color);
+
+                  const marker = new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
+                  domMarkers.push(marker);
+
+                  // click handler: send message and show popup
+                  el.addEventListener('click', (evt) => {
+                    try {
+                      evt.stopPropagation && evt.stopPropagation();
+                      const payload = {
+                        id: props.id,
+                        title: props.title,
+                        category: props.category,
+                        description: props.description,
+                        images: props.images,
+                        coords: coords
+                      };
+                      send({ type: 'markerClick', payload });
+
+                      const popupHtml = '<div class="marker-popup"><div class="marker-title">' + (props.title || '') + '</div><div>' + (props.category || '') + '</div></div>';
+                      new mapboxgl.Popup({ offset: 10 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
+                    } catch (err) {
+                      send({ type: 'log', payload: 'marker click handler failed: ' + (err && err.message) });
+                    }
+                  });
+
+                } catch (err) {
+                  send({ type: 'log', payload: 'renderDomMarkers feature failed: ' + (err && err.message) });
+                }
+              });
+
+              // fit bounds if features exist
+              if (geo.features.length) {
+                try {
+                  const bounds = geo.features.reduce((b, f) => b.extend(f.geometry.coordinates), new mapboxgl.LngLatBounds(geo.features[0].geometry.coordinates, geo.features[0].geometry.coordinates));
+                  map.fitBounds(bounds.pad(0.25), { animate: false });
+                } catch (e) {}
+              }
+            } catch(e) {
+              send({ type: 'log', payload: 'renderDomMarkers failed: ' + (e && e.message) });
+            }
+          }
+
           if (map) {
             map.on('load', () => {
               try {
-                map.addSource('places', { type: 'geojson', data: geojson });
-
-                map.addLayer({
-                  id: 'places-layer',
-                  type: 'circle',
-                  source: 'places',
-                  paint: {
-                    'circle-radius': 8,
-                    'circle-color': ['match', ['get', 'category'],
-                      'Cultura', '${CATEGORY_COLOR.Cultura}',
-                      'Naturaleza', '${CATEGORY_COLOR.Naturaleza}',
-                      'Gastronomia', '${CATEGORY_COLOR.Gastronomia}',
-                      '#007bff'
-                    ],
-                    'circle-stroke-color': '#ffffff',
-                    'circle-stroke-width': 1
-                  }
-                });
-
-                map.on('click', 'places-layer', (e) => {
-                  try {
-                    if (!e.features || !e.features.length) return;
-                    const f = e.features[0];
-                    const props = f.properties || {};
-                    let images = [];
-                    try { images = (typeof props.images === 'string') ? JSON.parse(props.images) : props.images; } catch (err) { images = props.images || []; }
-
-                    const payload = {
-                      id: props.id,
-                      title: props.title,
-                      category: props.category,
-                      description: props.description,
-                      images: images,
-                      coords: f.geometry.coordinates
-                    };
-                    send({ type: 'markerClick', payload });
-                    const coords = f.geometry.coordinates.slice();
-                    const popupHtml = '<div class="marker-popup"><div class="marker-title">' + (props.title || '') + '</div><div>' + (props.category || '') + '</div></div>';
-                    new mapboxgl.Popup({ offset: 10 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
-                  } catch (err) {
-                    send({ type: 'log', payload: 'click handler error: ' + (err && err.message) });
-                  }
-                });
-
-                map.on('mouseenter', 'places-layer', () => map.getCanvas().style.cursor = 'pointer');
-                map.on('mouseleave', 'places-layer', () => map.getCanvas().style.cursor = '');
-
-                if (geojson.features.length) {
-                  try {
-                    const bounds = geojson.features.reduce((b, f) => b.extend(f.geometry.coordinates), new mapboxgl.LngLatBounds(geojson.features[0].geometry.coordinates, geojson.features[0].geometry.coordinates));
-                    map.fitBounds(bounds.pad(0.25), { animate: false });
-                  } catch(e){}
-                }
-
+                // render initial DOM markers from embedded geojson
+                renderDomMarkers(geojson);
                 send({ type: 'ready' });
-                send({ type: 'log', payload: 'map load event fired' });
+                send({ type: 'log', payload: 'map load event fired (dom markers)' });
               } catch (e) {
                 send({ type: 'log', payload: 'map.on(load) handler failed: ' + (e && e.message) });
               }
@@ -600,9 +471,8 @@ export default function MapScreen() {
             map.on('error', (e) => {
               try { send({ type: 'log', payload: 'map error: ' + JSON.stringify(e && e.error ? e.error.message : e) }); } catch(e){}
             });
-            map.on('style.load', () => { try { send({ type: 'log', payload: 'style.load fired' }); } catch(e){} });
-            map.on('styledata', () => { try { send({ type: 'log', payload: 'styledata fired' }); } catch(e){} });
 
+            // user location shape handled by messages from RN
             let userMarker = null;
             function updateUserLocation(lat, lng) {
               const lngLat = [lng, lat];
@@ -613,11 +483,13 @@ export default function MapScreen() {
                   userMarker = new mapboxgl.Marker({ color: '#007bff' }).setLngLat(lngLat).setPopup(new mapboxgl.Popup().setText('You are here')).addTo(map);
                 }
 
-                const allCoords = geojson.features.map(f => f.geometry.coordinates).concat([lngLat]);
-                const bounds = allCoords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(allCoords[0], allCoords[0]));
-                try {
-                  map.fitBounds(bounds.pad(0.25));
-                } catch (e) {}
+                const allCoords = (geojson.features || []).map(f => f.geometry.coordinates).concat([lngLat]);
+                if (allCoords.length) {
+                  const bounds = allCoords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(allCoords[0], allCoords[0]));
+                  try {
+                    map.fitBounds(bounds.pad(0.25));
+                  } catch (e) {}
+                }
                 document.getElementById('info').innerText = 'User located';
               } catch (e) {
                 send({ type: 'log', payload: 'updateUserLocation error: ' + (e && e.message) });
@@ -634,7 +506,13 @@ export default function MapScreen() {
                 } else if (data.type === 'setInfo') {
                   document.getElementById('info').innerText = data.payload || '';
                 } else if (data.type === 'locations') {
-                  try { map.getSource('places').setData(data.payload || geojson); } catch (e) { send({ type:'log', payload: 'setData failed: ' + (e && e.message) }); }
+                  try {
+                    // update geojson and re-render dom markers
+                    geojson = data.payload || geojson;
+                    renderDomMarkers(geojson);
+                  } catch (e) {
+                    send({ type:'log', payload: 'setData failed: ' + (e && e.message) });
+                  }
                 }
               } catch (e) {
                 send({ type: 'log', payload: 'onMessage parse error: ' + (e && e.message) });
@@ -648,6 +526,7 @@ export default function MapScreen() {
       </body>
     </html>
   `;
+  }, [locations]);
 
   const onViewRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length) {
