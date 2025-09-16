@@ -13,7 +13,7 @@ interface CalendarDay {
 export default function AddTrip() {
   const [destination, setDestination] =  useState<string | null>(null);
   const [country, setCountry]=useState<string | null>(null);
-  const [province, setProvince]=useState<string|null>(null);
+  const [province, setProvince]=useState<string | null>(null);
   const [openCountry, setOpenCountry] = useState(false);
   const [openProvince, setOpenProvince]= useState(false);
   const [search, setSearch] = useState("");
@@ -227,9 +227,10 @@ export default function AddTrip() {
                       <TouchableOpacity
                           style={[styles.item, province === item[0] && styles.itemSelected]}
                           onPress={() => {
-                            setProvince(item[0]);
+                            const selectedProv = item[0];
+                            setProvince(selectedProv);
                             setSearchProvince("");
-                            setDestination(`${province}, ${country}`);
+                            setDestination(`${selectedProv}${country ? ', ' + country : ''}`);
                             setOpenProvince(false);
                           }}
                       >
@@ -275,13 +276,13 @@ export default function AddTrip() {
                       styles.day,
                       isDateInRange(day.date) && styles.selectedDay,
                     ]}
-                    disabled={past} // 👈 no clickeable si es pasado
+                    disabled={past} // no clickeable si es pasado
                     onPress={() => handleDateSelect(day.date)}
                 >
                   <Text
                       style={[
                         styles.dayText,
-                        past && styles.pastDayText,         // 👈 gris si es pasado
+                        past && styles.pastDayText,         // gris si es pasado
                         isDateInRange(day.date) && styles.selectedDayText
                       ]}
                   >
