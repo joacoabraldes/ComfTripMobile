@@ -69,17 +69,22 @@ export default function TripsScreen() {
     }
   };
 
-  const isUpcoming = (start?: string) => {
-    if (!start) return false;
+  const isUpcoming = (start?: string, end?: string) => {
+    if (!start) return -1;
+    if (!end) return -1;
     const now = new Date();
     const s = new Date(start);
-    return s >= new Date(now.getFullYear(), now.getMonth(), now.getDate()); // later or today
+    const e = new Date(end);
+    if (s > now) return 2; // proximo
+    if (s <= now && e >= now) return 1; // actual
+    return 0; // pasado
   };
 
   const renderItem = ({ item }: { item: Trip }) => {
-    const upcoming = isUpcoming(item.start_date);
-    const bgColor = upcoming ? '#F8F1EF' : '#F1F1F1';
-    const accent = upcoming ? '#FFD8D8' : '#FFFFFF';
+    const upcoming = isUpcoming(item.start_date, item.end_date);
+    const bgColor = upcoming == 2 ? '#F8F1EF' : (upcoming == 1 ? '#FFFFFF' : '#F1F1F1');
+    const accent = upcoming == 2 ? '#FFD8D8' : (upcoming == 1 ? '#FF3951' : '#CACACA');
+    const badgeTextColor = upcoming == 1 ? '#FFFFFF' : '#333';
 
     // Try to guess a fallback flag image: if trip has flag_url use it, else placeholder
     const imageSource = item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7'; // small flag placeholder
@@ -103,7 +108,7 @@ export default function TripsScreen() {
           <Text style={styles.dates}>{renderDateRange(item.start_date, item.end_date)}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: accent }]}>
-          <Text style={styles.badgeText}>{upcoming ? 'Próximo' : ''}</Text>
+          <Text style={[styles.badgeText, { color: badgeTextColor }]}>{upcoming == 2 ? 'Próximo' : (upcoming == 1 ? 'Actual' : 'Pasado')}</Text>
         </View>
       </TouchableOpacity>
     );
