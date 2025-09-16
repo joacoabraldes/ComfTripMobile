@@ -1,4 +1,4 @@
-// MapScreen.tsx (fetch locations from backend)
+// MapScreen.tsx (fetch locations from backend) - map centered on user by default; markers rendered using SVG icons as Mapbox images
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   SafeAreaView,
@@ -14,6 +14,8 @@ import {
   FlatList,
   ScrollView,
   Linking,
+  Pressable,
+  Platform,
 } from "react-native";
 import type { ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
@@ -33,6 +35,12 @@ type Loc = {
   images?: string[];
 };
 
+type Interest = {
+  id?: number | string;
+  slug?: string;
+  title: string;
+};
+
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoibWFuZHJhY2EiLCJhIjoiY21mZnE1dmI0MDlubjJpcG5rYmw3ZnRiZiJ9.RwdRSwXlP1PX_7j7cwUsMA";
 
@@ -42,11 +50,13 @@ const img = (id: string, n = 1) => `https://picsum.photos/seed/${id}-${n}/800/52
 /**
  * Colors keyed by the display category used in the webview HTML (capitalized).
  * HTML expects keys like CATEGORY_COLOR.Cultura etc, so keep these keys capitalized.
+ * Added Compras color as requested.
  */
 const CATEGORY_COLOR: Record<string, string> = {
   Cultura: "#D9534F",
   Naturaleza: "#28A745",
   Gastronomia: "#F0AD4E",
+  Compras: "#8E44AD", // new color for Compras
 };
 
 function normalizeUri(uri?: string | null): string | undefined {
@@ -88,28 +98,62 @@ export default function MapScreen() {
   } | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
 
-  // New: locations from API
+  // New: locations & interests from API
   const [locations, setLocations] = useState<Loc[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
 
+  const [interests, setInterests] = useState<Interest[]>([]);
+  const [loadingInterests, setLoadingInterests] = useState(true);
+  const [selectedInterest, setSelectedInterest] = useState<string>(""); // slug; empty = Todos
+
+  // Fetch interests from /users/interests
   useEffect(() => {
     let mounted = true;
     (async () => {
-      setLoadingLocations(true);
+      setLoadingInterests(true);
       try {
-        const res = await apiGet("/locations");
+        const res = await apiGet("/users/interests");
         const data = res?.data ?? res;
         if (Array.isArray(data) && mounted) {
+          // normalize to { id, slug, title }
+          const normalized = data.map((it: any) => ({
+            id: it.id,
+            slug: it.slug ?? (it.title ? String(it.title).toLowerCase().replace(/\s+/g, "-") : undefined),
+            title: it.title ?? it.slug ?? String(it.id ?? ""),
+          })) as Interest[];
+          setInterests(normalized);
+        } else if (mounted) {
+          setInterests([]);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch interests:", err);
+        if (mounted) setInterests([]);
+      } finally {
+        if (mounted) setLoadingInterests(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Fetch locations (filtered by selectedInterest if set)
+  const fetchLocations = useCallback(
+    async (interestSlug?: string) => {
+      setLoadingLocations(true);
+      try {
+        const q = interestSlug ? `?interest=${encodeURIComponent(interestSlug)}` : "";
+        const res = await apiGet(`/locations${q}`);
+        const data = res?.data ?? res;
+        if (Array.isArray(data)) {
           const normalized = data
             .map((r: any): Loc | null => {
-              // parse imagenes: could be JSON string or already an array
               let imgs: any = [];
               if (r.imagenes) {
                 if (typeof r.imagenes === "string") {
                   try {
                     imgs = JSON.parse(r.imagenes);
                   } catch (err) {
-                    // if parsing fails, treat as single-string uri
                     imgs = [r.imagenes];
                   }
                 } else if (Array.isArray(r.imagenes)) {
@@ -134,10 +178,7 @@ export default function MapScreen() {
                   ? Number(r.longitud)
                   : null;
 
-              if (lat === null || lng === null) {
-                // skip rows without coordinates
-                return null;
-              }
+              if (lat === null || lng === null) return null;
 
               return {
                 id: String(r.id),
@@ -146,29 +187,31 @@ export default function MapScreen() {
                 latitude: lat,
                 longitude: lng,
                 description: r.descripcion ?? "",
-                images: Array.isArray(imgs)
-                  ? imgs.map((it: any) => (typeof it === "string" ? it : it?.url ?? it?.uri ?? String(it)))
-                  : [],
+                images: Array.isArray(imgs) ? imgs.map((it: any) => (typeof it === "string" ? it : it?.url ?? it?.uri ?? String(it))) : [],
               } as Loc;
             })
-            .filter((x): x is Loc => x !== null); // <-- type predicate so TS knows this is Loc[]
+            .filter((x): x is Loc => x !== null);
 
           setLocations(normalized);
-        } else if (mounted) {
+        } else {
           setLocations([]);
         }
       } catch (err) {
         console.warn("Failed to fetch locations:", err);
-        if (mounted) setLocations([]);
+        setLocations([]);
       } finally {
-        if (mounted) setLoadingLocations(false);
+        setLoadingLocations(false);
       }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    },
+    []
+  );
 
+  // initial fetch and when selectedInterest changes
+  useEffect(() => {
+    fetchLocations(selectedInterest || undefined);
+  }, [selectedInterest, fetchLocations]);
+
+  // location permission & reverse geocode
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -216,11 +259,355 @@ export default function MapScreen() {
     }
   }
 
+  // IMPORTANT: keep html static so WebView source doesn't change (prevents reloads).
+  // initialGeo starts empty; markers/user-location handled by postMessage later.
+  const html = useMemo(() => {
+    const initialGeo = JSON.stringify({ type: "FeatureCollection", features: [] });
+
+    return `<!doctype html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+        <style>
+          html,body,#map { height:100%; margin:0; padding:0; background: #f8f8f8; }
+          #info { display:none !important; }
+          .marker-popup { font-family: sans-serif; font-size: 14px; color: #222; }
+          .marker-title { font-weight:700; margin-bottom:6px; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <div id="info">Loading map...</div>
+        <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+        <script>
+          (function forwardConsole(){
+            const origLog = console.log.bind(console);
+            function sendLog(...args) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', payload: args.map(a => {
+                  try { return typeof a === 'string' ? a : JSON.stringify(a); } catch(e) { return String(a); }
+                }).join(' ') })); } catch(e){}
+            }
+            console.log = function(...args){ origLog(...args); sendLog(...args); };
+            window.onerror = function(message, source, lineno) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'window.onerror: ' + message + ' @' + source + ':' + lineno })); } catch(e){}
+            };
+            window.addEventListener('unhandledrejection', function(ev) {
+              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'unhandledrejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)) })); } catch(e){}
+            });
+          })();
+
+          const MAPBOX_TOKEN = "${MAPBOX_ACCESS_TOKEN}";
+          mapboxgl.accessToken = MAPBOX_TOKEN;
+
+          function send(msg) {
+            try {
+              if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+                window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+              }
+            } catch(e){}
+          }
+
+          send({ type: 'log', payload: 'HTML loaded' });
+
+          const CATEGORY_COLOR = ${JSON.stringify(CATEGORY_COLOR)};
+          let geojson = ${initialGeo};
+
+          function colorFromString(s) {
+            if (!s) return '#007bff';
+            let h = 0;
+            for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
+            const hue = Math.abs(h) % 360;
+            return 'hsl(' + hue + ' 70% 45%)';
+          }
+
+          // create SVG string for the pin; we do not apply transforms here — Mapbox symbol layout anchors the icon.
+          function createPinSvg(color) {
+            // Use the same SVG shape as before
+            return [
+              '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24">',
+              '<path d="M12 2C8.1 2 5 5.1 5 9c0 5 7 12 7 12s7-7 7-12c0-3.9-3.1-7-7-7z" fill="', color, '" />',
+              '<circle cx="12" cy="9" r="2.3" fill="#fff" />',
+              '</svg>'
+            ].join('');
+          }
+
+          // URL-encode SVG for data URL
+          function svgToDataUrl(svg) {
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+          }
+
+          try {
+            if (!mapboxgl.supported()) {
+              send({ type: 'log', payload: 'mapboxgl.supported() === false -> likely WebGL not available in this WebView / device.' });
+              const infoEl = document.getElementById('info');
+              if (infoEl) infoEl.innerText = 'WebGL not supported in this WebView/device.';
+            }
+          } catch (e) {
+            send({ type: 'log', payload: 'mapboxgl.supported() check failed: ' + (e && e.message) });
+          }
+
+          let map;
+          try {
+            map = new mapboxgl.Map({
+              container: 'map',
+              style: 'mapbox://styles/mapbox/streets-v11',
+              center: [0,0],
+              zoom: 12
+            });
+          } catch (err) {
+            send({ type: 'log', payload: 'Map constructor failed: ' + (err && err.message ? err.message : String(err)) });
+          }
+
+          // helper to enrich features with a color property
+          function enrichColors(gj) {
+            if (!gj || !gj.features) return gj;
+            gj.features.forEach(f => {
+              const cat = f.properties && f.properties.category ? f.properties.category : '';
+              f.properties.color = CATEGORY_COLOR[cat] || colorFromString(cat || (f.properties && f.properties.title ? f.properties.title : ''));
+            });
+            return gj;
+          }
+
+          if (map) {
+            map.on('load', () => {
+              try {
+                // add empty sources: places (features) and user
+                map.addSource('places', { type: 'geojson', data: geojson });
+                // symbol layer that references images named 'marker-<id>'
+                map.addLayer({
+                  id: 'places-symbol',
+                  type: 'symbol',
+                  source: 'places',
+                  layout: {
+                    // explicit, safer concat
+                    'icon-image': ['concat', ['literal', 'marker-'], ['to-string', ['get', 'id']]],
+                    'icon-size': 1,
+                    'icon-anchor': 'bottom',
+                    'icon-allow-overlap': true
+                  }
+                });
+
+                // user source/layer (small circle)
+                map.addSource('user', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+                map.addLayer({
+                  id: 'user-layer',
+                  type: 'circle',
+                  source: 'user',
+                  paint: {
+                    'circle-radius': 8,
+                    'circle-color': '#007bff',
+                    'circle-stroke-width': 2,
+                    'circle-stroke-color': '#fff'
+                  }
+                });
+
+                // click handling on places-symbol
+                map.on('click', 'places-symbol', function (e) {
+                  try {
+                    const feat = e.features && e.features[0];
+                    if (!feat) return;
+                    const coords = feat.geometry.coordinates.slice();
+                    const props = feat.properties || {};
+
+                    // send markerClick to react native (we still keep click -> RN modal)
+                    send({
+                      type: 'markerClick',
+                      payload: {
+                        id: props.id,
+                        title: props.title,
+                        category: props.category,
+                        description: props.description,
+                        images: props.images ? (typeof props.images === 'string' ? JSON.parse(props.images) : props.images) : [],
+                        coords: coords
+                      }
+                    });
+
+                    // NOTE: removed the default Mapbox popup so React Native modal controls the detail UI.
+                    // previously: new mapboxgl.Popup(...).setHTML(...).addTo(map);
+                  } catch (err) {
+                    send({ type: 'log', payload: 'places click handler failed: ' + (err && err.message) });
+                  }
+                });
+
+                map.on('mouseenter', 'places-symbol', () => map.getCanvas().style.cursor = 'pointer');
+                map.on('mouseleave', 'places-symbol', () => map.getCanvas().style.cursor = '');
+
+                send({ type: 'ready' });
+                send({ type: 'log', payload: 'map load event fired (symbol layer ready)' });
+              } catch (e) {
+                send({ type: 'log', payload: 'map.on(load) handler failed: ' + (e && e.message) });
+              }
+            });
+
+            map.on('error', (e) => {
+              try { send({ type: 'log', payload: 'map error: ' + JSON.stringify(e && e.error ? e.error.message : e) }); } catch(e){}
+            });
+
+            let initialCentered = false;
+
+            // Reliable image-adding via HTMLImageElement (works better inside WebView than map.loadImage for data: URLs)
+            function ensureMarkerImage(name, dataUrl) {
+              return new Promise((resolve) => {
+                try {
+                  if (map.hasImage(name)) { resolve(); return; }
+                  const imgEl = new Image();
+                  imgEl.onload = function() {
+                    try {
+                      map.addImage(name, imgEl);
+                    } catch (errAdd) {
+                      send({ type: 'log', payload: 'map.addImage failed: ' + String(errAdd) });
+                      // fallback canvas
+                      try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = 28; canvas.height = 28;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#007bff';
+                        ctx.beginPath(); ctx.arc(14, 10, 6, 0, Math.PI * 2); ctx.fill();
+                        map.addImage(name, canvas);
+                      } catch (cErr) {}
+                    }
+                    resolve();
+                  };
+                  imgEl.onerror = function(err) {
+                    send({ type: 'log', payload: 'Image element failed to load for ' + name + ': ' + String(err) });
+                    try {
+                      const canvas = document.createElement('canvas');
+                      canvas.width = 28; canvas.height = 28;
+                      const ctx = canvas.getContext('2d');
+                      ctx.fillStyle = '#007bff';
+                      ctx.beginPath(); ctx.arc(14, 10, 6, 0, Math.PI * 2); ctx.fill();
+                      map.addImage(name, canvas);
+                    } catch (cErr) {}
+                    resolve();
+                  };
+                  imgEl.src = dataUrl;
+                } catch (e) {
+                  resolve();
+                }
+              });
+            }
+
+            function updateUserLocation(lat, lng) {
+              try {
+                const pt = {
+                  type: 'FeatureCollection',
+                  features: [{
+                    type: 'Feature',
+                    geometry: { type: 'Point', coordinates: [lng, lat] },
+                    properties: {}
+                  }]
+                };
+                const src = map.getSource('user');
+                if (src && src.setData) {
+                  src.setData(pt);
+                } else {
+                  try {
+                    map.addSource('user', { type: 'geojson', data: pt });
+                  } catch(e){}
+                }
+
+                const infoEl = document.getElementById('info');
+                if (infoEl) infoEl.innerText = 'User located';
+
+                // center on user once at initial load
+                if (!initialCentered) {
+                  try {
+                    map.setCenter([lng, lat]);
+                    map.setZoom(13);
+                  } catch (err) {
+                    send({ type: 'log', payload: 'Failed to center map on initial user location: ' + String(err) });
+                  }
+                  initialCentered = true;
+                }
+              } catch (e) {
+                send({ type: 'log', payload: 'updateUserLocation error: ' + (e && e.message) });
+              }
+            }
+
+            function onMessage(event) {
+              try {
+                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+                if (!data || !data.type) return;
+
+                if (data.type === 'userLocation') {
+                  const { lat, lng } = data.payload || {};
+                  if (lat != null && lng != null) updateUserLocation(lat, lng);
+                } else if (data.type === 'centerOn') {
+                  // explicit center request from RN
+                  const { lat, lng } = data.payload || {};
+                  if (lat != null && lng != null) {
+                    try {
+                      map.flyTo({ center: [lng, lat], zoom: 13 });
+                    } catch (err) {
+                      send({ type: 'log', payload: 'centerOn flyTo failed: ' + String(err) });
+                    }
+                  }
+                } else if (data.type === 'setInfo') {
+                  const infoEl = document.getElementById('info');
+                  if (infoEl) infoEl.innerText = data.payload || '';
+                } else if (data.type === 'locations') {
+                  try {
+                    // we expect a FeatureCollection with features having geometry.coordinates = [lng, lat]
+                    geojson = data.payload || geojson;
+                    geojson = enrichColors(geojson);
+
+                    // prepare and add images for each feature (marker-<id>)
+                    const feats = Array.isArray(geojson.features) ? geojson.features : [];
+                    const addPromises = feats.map(f => {
+                      try {
+                        const id = f.properties && (f.properties.id !== undefined ? String(f.properties.id) : undefined);
+                        const color = f.properties && f.properties.color ? f.properties.color : '#007bff';
+                        if (!id) return Promise.resolve();
+                        const name = 'marker-' + id;
+                        // create svg and data url
+                        const svg = createPinSvg(color);
+                        const dataUrl = svgToDataUrl(svg);
+                        return ensureMarkerImage(name, dataUrl);
+                      } catch (e) { return Promise.resolve(); }
+                    });
+
+                    Promise.all(addPromises).then(() => {
+                      const src = map.getSource('places');
+                      if (src && src.setData) {
+                        src.setData(geojson);
+                      } else {
+                        try {
+                          map.addSource('places', { type: 'geojson', data: geojson });
+                        } catch(e){}
+                      }
+                      send({ type: 'log', payload: 'places source updated with ' + feats.length + ' features' });
+                    }).catch((err) => {
+                      send({ type: 'log', payload: 'Failed to add marker images: ' + String(err) });
+                      // still try to set data
+                      const src = map.getSource('places');
+                      if (src && src.setData) {
+                        src.setData(geojson);
+                      }
+                    });
+                  } catch (e) {
+                    send({ type:'log', payload: 'setData failed: ' + (e && e.message) });
+                  }
+                }
+              } catch (e) {
+                send({ type: 'log', payload: 'onMessage parse error: ' + (e && e.message) });
+              }
+            }
+
+            document.addEventListener('message', onMessage);
+            window.addEventListener('message', onMessage);
+          }
+        </script>
+      </body>
+    </html>
+  `;
+  }, []); // static — no locations dependency
+
   useEffect(() => {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
     if (cityName) postMessageToWeb({ type: "setInfo", payload: `Ciudad: ${cityName}` });
-    // send updated locations to webview
+    // send locations via postMessage — updates markers on the already-mounted map without reloading it
     postMessageToWeb({ type: "locations", payload: geojsonForWeb() });
   }, [webReady, userCoords, cityName, locations]);
 
@@ -291,242 +678,6 @@ export default function MapScreen() {
         Linking.openURL(gmaps);
       });
   }, [selected]);
-
-  // Build HTML for WebView. We embed CATEGORY_COLOR and MAPBOX token; locations are embedded as an initial dataset.
-  const html = useMemo(() => {
-    const initialGeo = JSON.stringify(geojsonForWeb());
-
-    // The embedded HTML now renders DOM markers with inline SVG matching the web app.
-    // It keeps CATEGORY_COLOR, but falls back to a hashed HSL color when needed.
-    return `<!doctype html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-        <style>
-          html,body,#map { height:100%; margin:0; padding:0; background: #f8f8f8; }
-          #info { position:absolute; z-index:999; left:10px; top:10px; background: rgba(255,255,255,0.95); padding:8px 10px; border-radius:10px; font-family: sans-serif; box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
-          .marker-popup { font-family: sans-serif; font-size: 14px; color: #222; }
-          .marker-title { font-weight:700; margin-bottom:6px; }
-          .rn-marker { display:inline-block; line-height:0; }
-        </style>
-      </head>
-      <body>
-        <div id="map"></div>
-        <div id="info">Loading map...</div>
-        <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-        <script>
-          (function forwardConsole(){
-            const origLog = console.log.bind(console);
-            const origError = console.error.bind(console);
-            function sendLog(...args) {
-              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', payload: args.map(a => {
-                  try { return typeof a === 'string' ? a : JSON.stringify(a); } catch(e) { return String(a); }
-                }).join(' ') })); } catch(e){}
-            }
-            console.log = function(...args){ origLog(...args); sendLog(...args); };
-            console.error = function(...args){ origError(...args); sendLog('ERROR: ', ...args); };
-
-            window.onerror = function(message, source, lineno, colno, err) {
-              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'window.onerror: ' + message + ' @' + source + ':' + lineno })); } catch(e){}
-            };
-            window.addEventListener('unhandledrejection', function(ev) {
-              try { window.ReactNativeWebView.postMessage(JSON.stringify({ type:'log', payload: 'unhandledrejection: ' + (ev.reason && ev.reason.message ? ev.reason.message : String(ev.reason)) })); } catch(e){}
-            });
-          })();
-
-          const MAPBOX_TOKEN = "${MAPBOX_ACCESS_TOKEN}";
-          mapboxgl.accessToken = MAPBOX_TOKEN;
-
-          function send(msg) {
-            try {
-              if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                window.ReactNativeWebView.postMessage(JSON.stringify(msg));
-              }
-            } catch(e){}
-          }
-
-          send({ type: 'log', payload: 'HTML loaded' });
-
-          const CATEGORY_COLOR = ${JSON.stringify(CATEGORY_COLOR)};
-          let geojson = ${initialGeo};
-
-          // fallback color function (hash a string to HSL) if CATEGORY_COLOR doesn't have the key
-          function colorFromString(s) {
-            if (!s) return '#007bff';
-            let h = 0;
-            for (let i = 0; i < s.length; i++) h = (h << 5) - h + s.charCodeAt(i);
-            const hue = Math.abs(h) % 360;
-            return 'hsl(' + hue + ' 70% 45%)';
-          }
-
-          try {
-            if (!mapboxgl.supported()) {
-              send({ type: 'log', payload: 'mapboxgl.supported() === false -> likely WebGL not available in this WebView / device.' });
-              document.getElementById('info').innerText = 'WebGL not supported in this WebView/device.';
-            }
-          } catch (e) {
-            send({ type: 'log', payload: 'mapboxgl.supported() check failed: ' + (e && e.message) });
-          }
-
-          let map;
-          try {
-            const center = (geojson.features && geojson.features[0]) ? geojson.features[0].geometry.coordinates : [0,0];
-            map = new mapboxgl.Map({
-              container: 'map',
-              style: 'mapbox://styles/mapbox/streets-v11',
-              center: center,
-              zoom: 12
-            });
-          } catch (err) {
-            send({ type: 'log', payload: 'Map constructor failed: ' + (err && err.message ? err.message : String(err)) });
-          }
-
-          // DOM markers (we keep references here so we can remove them on updates)
-          let domMarkers = [];
-
-          function clearDomMarkers() {
-            try {
-              domMarkers.forEach(m => {
-                try { m.remove(); } catch(e){}
-              });
-            } catch(e){}
-            domMarkers = [];
-          }
-
-          function createSvgPin(color) {
-            // returns an SVG string for the pin with a white center, matching web style
-            return '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" style="transform:translate(-14px,-28px);"><path d="M12 2C8.1 2 5 5.1 5 9c0 5 7 12 7 12s7-7 7-12c0-3.9-3.1-7-7-7z" fill="' + color + '" /><circle cx="12" cy="9" r="2.3" fill="#fff" /></svg>';
-          }
-
-          function renderDomMarkers(geo) {
-            try {
-              clearDomMarkers();
-              if (!geo || !geo.features) return;
-              geo.features.forEach(f => {
-                try {
-                  const coords = f.geometry && f.geometry.coordinates;
-                  const props = f.properties || {};
-                  const cat = props.category || '';
-                  const color = CATEGORY_COLOR[cat] || colorFromString(cat || (props.title || ''));
-
-                  // create wrapper element and set innerSVG
-                  const el = document.createElement('div');
-                  el.className = 'rn-marker';
-                  el.innerHTML = createSvgPin(color);
-
-                  const marker = new mapboxgl.Marker(el).setLngLat(coords).addTo(map);
-                  domMarkers.push(marker);
-
-                  // click handler: send message and show popup
-                  el.addEventListener('click', (evt) => {
-                    try {
-                      evt.stopPropagation && evt.stopPropagation();
-                      const payload = {
-                        id: props.id,
-                        title: props.title,
-                        category: props.category,
-                        description: props.description,
-                        images: props.images,
-                        coords: coords
-                      };
-                      send({ type: 'markerClick', payload });
-
-                      const popupHtml = '<div class="marker-popup"><div class="marker-title">' + (props.title || '') + '</div><div>' + (props.category || '') + '</div></div>';
-                      new mapboxgl.Popup({ offset: 10 }).setLngLat(coords).setHTML(popupHtml).addTo(map);
-                    } catch (err) {
-                      send({ type: 'log', payload: 'marker click handler failed: ' + (err && err.message) });
-                    }
-                  });
-
-                } catch (err) {
-                  send({ type: 'log', payload: 'renderDomMarkers feature failed: ' + (err && err.message) });
-                }
-              });
-
-              // fit bounds if features exist
-              if (geo.features.length) {
-                try {
-                  const bounds = geo.features.reduce((b, f) => b.extend(f.geometry.coordinates), new mapboxgl.LngLatBounds(geo.features[0].geometry.coordinates, geo.features[0].geometry.coordinates));
-                  map.fitBounds(bounds.pad(0.25), { animate: false });
-                } catch (e) {}
-              }
-            } catch(e) {
-              send({ type: 'log', payload: 'renderDomMarkers failed: ' + (e && e.message) });
-            }
-          }
-
-          if (map) {
-            map.on('load', () => {
-              try {
-                // render initial DOM markers from embedded geojson
-                renderDomMarkers(geojson);
-                send({ type: 'ready' });
-                send({ type: 'log', payload: 'map load event fired (dom markers)' });
-              } catch (e) {
-                send({ type: 'log', payload: 'map.on(load) handler failed: ' + (e && e.message) });
-              }
-            });
-
-            map.on('error', (e) => {
-              try { send({ type: 'log', payload: 'map error: ' + JSON.stringify(e && e.error ? e.error.message : e) }); } catch(e){}
-            });
-
-            // user location shape handled by messages from RN
-            let userMarker = null;
-            function updateUserLocation(lat, lng) {
-              const lngLat = [lng, lat];
-              try {
-                if (userMarker) {
-                  userMarker.setLngLat(lngLat);
-                } else {
-                  userMarker = new mapboxgl.Marker({ color: '#007bff' }).setLngLat(lngLat).setPopup(new mapboxgl.Popup().setText('You are here')).addTo(map);
-                }
-
-                const allCoords = (geojson.features || []).map(f => f.geometry.coordinates).concat([lngLat]);
-                if (allCoords.length) {
-                  const bounds = allCoords.reduce((b, c) => b.extend(c), new mapboxgl.LngLatBounds(allCoords[0], allCoords[0]));
-                  try {
-                    map.fitBounds(bounds.pad(0.25));
-                  } catch (e) {}
-                }
-                document.getElementById('info').innerText = 'User located';
-              } catch (e) {
-                send({ type: 'log', payload: 'updateUserLocation error: ' + (e && e.message) });
-              }
-            }
-
-            function onMessage(event) {
-              try {
-                const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                if (!data || !data.type) return;
-                if (data.type === 'userLocation') {
-                  const { lat, lng } = data.payload || {};
-                  if (lat && lng) updateUserLocation(lat, lng);
-                } else if (data.type === 'setInfo') {
-                  document.getElementById('info').innerText = data.payload || '';
-                } else if (data.type === 'locations') {
-                  try {
-                    // update geojson and re-render dom markers
-                    geojson = data.payload || geojson;
-                    renderDomMarkers(geojson);
-                  } catch (e) {
-                    send({ type:'log', payload: 'setData failed: ' + (e && e.message) });
-                  }
-                }
-              } catch (e) {
-                send({ type: 'log', payload: 'onMessage parse error: ' + (e && e.message) });
-              }
-            }
-
-            document.addEventListener('message', onMessage);
-            window.addEventListener('message', onMessage);
-          } // end if(map)
-        </script>
-      </body>
-    </html>
-  `;
-  }, [locations]);
 
   const onViewRef = useRef(({ viewableItems }: any) => {
     if (viewableItems && viewableItems.length) {
@@ -600,32 +751,61 @@ export default function MapScreen() {
     );
   }
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
-        <View style={styles.headerRow}>
-          <Text style={styles.headerText}>
-            {loadingPosition ? "Detecting location…" : cityName ? `Ciudad: ${cityName}` : "City: unknown"}
-          </Text>
-        </View>
+  // center map on user button handler
+  const handleCenterOnUser = useCallback(() => {
+    if (!userCoords) return;
+    // send an explicit center request to the webview (map.flyTo)
+    postMessageToWeb({ type: "centerOn", payload: userCoords });
+    // also update user marker if needed
+    postMessageToWeb({ type: "userLocation", payload: userCoords });
+  }, [userCoords]);
 
-        <View style={styles.legendRow}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLOR.Cultura }]} />
-            <Text style={styles.legendLabel}>Cultura</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLOR.Naturaleza }]} />
-            <Text style={styles.legendLabel}>Naturaleza</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: CATEGORY_COLOR.Gastronomia }]} />
-            <Text style={styles.legendLabel}>Gastronomía</Text>
-          </View>
+  // Render filter chips (native) matching the provided HTML layout
+  function RenderFilter() {
+    // build display list: Todos + interests
+    const chips: { key: string; label: string; slug: string }[] = [
+      { key: "all", label: "Todos", slug: "" },
+      ...interests.map((it) => ({
+        key: String(it.id ?? it.slug ?? it.title),
+        label: it.title ?? String(it.slug ?? it.id),
+        slug: it.slug ?? "",
+      })),
+    ];
+
+    return (
+      <View style={styles.filterWrap}>
+        <View style={styles.filterCard}>
+          <Text style={styles.filterTitle}>Filtrar por categoría</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+            {chips.map((c) => {
+              const active = selectedInterest === c.slug;
+              return (
+                <Pressable
+                  key={c.key}
+                  onPress={() => {
+                    setSelectedInterest(c.slug);
+                    // fetchLocations will be triggered by effect when selectedInterest changes
+                  }}
+                  style={[
+                    styles.chip,
+                    active ? styles.chipActive : styles.chipInactive,
+                  ]}
+                >
+                  <Text style={[styles.chipText, active ? styles.chipTextActive : styles.chipTextInactive]}>{c.label}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
         </View>
       </View>
+    );
+  }
 
-      <View style={[styles.container, { height: height - 120 - bottomInset }]}>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.container, { flex: 1 }]}>
+        {/* WebView (map) fills container */}
         <WebView
           ref={webRef}
           originWhitelist={["*"]}
@@ -638,7 +818,39 @@ export default function MapScreen() {
           onError={(e) => console.warn("WebView error", e)}
           androidLayerType="hardware"
         />
-        {(loadingPosition || !webReady) && (
+
+        {/* Overlayed filter: absolute position on top of map. */}
+        <View
+          style={[
+            styles.filterOverlay,
+            {
+              top: (insets.top ?? 12) + 8, // keep filter below status bar / notch
+              left: 16,
+            },
+          ]}
+        >
+          {RenderFilter()}
+        </View>
+
+        {/* center on user button: placed above tabbar using bottomInset */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleCenterOnUser}
+          style={[
+            styles.centerButton,
+            {
+              right: 16,
+              bottom: bottomInset + 74, // moved up so it isn't covered by tabbar (adjust if your tabbar is taller)
+            },
+          ]}
+        >
+          <View style={styles.centerOuter}>
+            <View style={styles.centerInner} />
+          </View>
+        </TouchableOpacity>
+
+        {/* loading overlay centered on top of map when loading */}
+        {(loadingPosition || !webReady || loadingLocations) && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" />
           </View>
@@ -758,20 +970,116 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
 
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 30,
-    paddingBottom: 8,
-    backgroundColor: "#fff",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: "#ddd",
+  // overlay wrapper (positioned dynamically)
+  filterOverlay: {
+    position: "absolute",
+    zIndex: 60,
   },
-  headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerText: { fontSize: 16, fontWeight: "600" },
-  legendRow: { flexDirection: "row", marginTop: 8, alignItems: "center" },
-  legendItem: { flexDirection: "row", alignItems: "center", marginRight: 12 },
-  legendDot: { width: 12, height: 12, borderRadius: 6, marginRight: 6 },
-  legendLabel: { fontSize: 13, color: "#333" },
+
+  // center button
+  centerButton: {
+    position: "absolute",
+    zIndex: 90,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    backgroundColor: "transparent",
+  },
+  centerOuter: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  centerInner: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#007bff",
+    borderWidth: 2,
+    borderColor: "#fff",
+  },
+
+  // FILTER styles (matches the provided HTML look)
+  filterWrap: {
+    width: "100%",
+  },
+  filterCard: {
+    // allow content size to adapt
+    maxWidth: 360,
+    minWidth: 140,
+    height: 74,
+    position: "relative",
+    overflow: "hidden",
+    alignSelf: "flex-start",
+    // card background
+    backgroundColor: "#fff",
+    borderRadius: 13,
+    paddingHorizontal: 8,
+    paddingTop: 6,
+    // shadow
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      android: { elevation: 2 },
+    }),
+  },
+  filterTitle: {
+    color: "#000",
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
+    letterSpacing: 0.14,
+    marginLeft: 0,
+    marginBottom: 4,
+  },
+  chipsRow: {
+    // space on left like HTML
+    paddingLeft: 5,
+    paddingRight: 8,
+    alignItems: "center",
+  },
+  chip: {
+    minWidth: 50,
+    height: 27,
+    borderRadius: 14,
+    marginRight: 8,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    // box-shadow
+    ...Platform.select({
+      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+      android: { elevation: 1 },
+    }),
+  },
+  chipActive: {
+    backgroundColor: "#007AFF",
+  },
+  chipInactive: {
+    backgroundColor: "#fff",
+  },
+  chipText: {
+    fontSize: 12,
+    lineHeight: 20,
+    letterSpacing: 0.12,
+  },
+  chipTextActive: {
+    color: "#fff",
+    fontWeight: "300",
+  },
+  chipTextInactive: {
+    color: "#000",
+    fontWeight: "300",
+  },
 
   container: { flex: 1, alignItems: "stretch", justifyContent: "flex-start" },
   loadingOverlay: {
@@ -783,6 +1091,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.6)",
+    zIndex: 70,
   },
 
   modalSafe: { flex: 1, backgroundColor: "#fff" },
