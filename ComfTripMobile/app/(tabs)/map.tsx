@@ -23,7 +23,7 @@ import * as Location from "expo-location";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { ArrowIcon } from "@/components/icons/ArrowIcon";
-import { apiGet } from "@/helpers/api"; // <-- use your api helper
+import { apiGet } from "@/helpers/api";
 
 type Loc = {
   id: string;
@@ -67,6 +67,25 @@ function normalizeUri(uri?: string | null): string | undefined {
   } catch (e) {
     console.warn("Failed to normalize URI:", uri, e);
     return uri ?? undefined;
+  }
+}
+
+// Proxy resolver: certain hosts (Wikimedia) block direct requests — route through images.weserv.nl
+function proxyImageUri(uri?: string | null): string | undefined {
+  if (!uri) return undefined;
+  try {
+    const trimmed = String(uri).trim();
+    // remove leading // or protocol to normalize
+    const withoutProto = trimmed.replace(/^https?:\/\//i, "").replace(/^\/\//, "");
+    // Hosts known to enforce referer policies that break RN Image on Android
+    if (withoutProto.startsWith("upload.wikimedia.org") || withoutProto.includes("commons.wikimedia.org")) {
+      // images.weserv.nl expects the url param without protocol
+      return `https://images.weserv.nl/?url=${encodeURIComponent(withoutProto)}`;
+    }
+    // If there are other domains you want proxied, add checks here.
+    return trimmed;
+  } catch (e) {
+    return uri;
   }
 }
 
@@ -701,6 +720,8 @@ export default function MapScreen() {
     const [loading, setLoading] = useState(true);
 
     const normalized = normalizeUri(uri);
+    // attempt to proxy problematic domains
+    const resolved = proxyImageUri(normalized);
     const flatStyle = StyleSheet.flatten(style) || {};
     const containerWidth = flatStyle.width ?? undefined;
     const containerHeight = flatStyle.height ?? undefined;
@@ -714,9 +735,29 @@ export default function MapScreen() {
       overflow: "hidden",
     };
 
-    const source = !failed && normalized
-      ? { uri: normalized, headers: { Referer: "https://commons.wikimedia.org/", "User-Agent": "Mozilla/5.0 (compatible)" } }
+    // On iOS we keep headers (iOS supports headers in Image source); on Android use proxied URL without headers.
+    const source = !failed && resolved
+      ? Platform.OS === "ios"
+        ? { uri: resolved, headers: { Referer: "https://commons.wikimedia.org/", "User-Agent": "Mozilla/5.0 (compatible)" }, cache: "force-cache" as any }
+        : { uri: resolved, cache: "force-cache" as any }
       : { uri: img(fallbackSeed || "placeholder", 1) };
+
+    // Try to prefetch when using a resolved URL (best-effort; prefetch may not accept headers on iOS)
+    useEffect(() => {
+      let mounted = true;
+      (async () => {
+        try {
+          if (resolved) {
+            // Prefetch is best-effort — it helps reduce flicker when successful.
+            // Note: Image.prefetch ignores headers so it helps only when proxy used.
+            Image.prefetch(resolved);
+          }
+        } catch (e) {
+          // ignore
+        }
+      })();
+      return () => { mounted = false; };
+    }, [resolved]);
 
     return (
       <View style={containerStyle}>
@@ -736,7 +777,8 @@ export default function MapScreen() {
           }}
           onLoadEnd={() => setLoading(false)}
           onError={(e) => {
-            console.warn("Image load failed:", normalized || uri, e?.nativeEvent || e);
+            console.warn("Image load failed:", resolved || normalized || uri, e?.nativeEvent || e);
+            // If we tried proxied URL and failed, fall back to placeholder (do not attempt infinite retries).
             setFailed(true);
             setLoading(false);
           }}
