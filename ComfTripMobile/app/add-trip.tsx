@@ -1,8 +1,6 @@
-import React, {use, useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList} from 'react-native';
-import countries from "world-countries";
-import {allCountries, countryNames} from "country-region-data";
-import { Stack, useRouter } from 'expo-router';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { useRouter } from 'expo-router';
 
 interface CalendarDay {
   date: number;
@@ -12,11 +10,15 @@ interface CalendarDay {
 export default function AddTrip() {
   const [destination, setDestination] =  useState<string | null>(null);
   const [country, setCountry]=useState<string | null>(null);
-  const [province, setProvince]=useState<string | null>(null);
-  const [openCountry, setOpenCountry] = useState(false);
-  const [openProvince, setOpenProvince]= useState(false);
-  const [search, setSearch] = useState("");
-  const [searchProvince, setSearchProvince] = useState("");
+  const [city, setCity]=useState<string | null>(null);
+
+  // búsqueda con Nominatim
+  const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [openSuggestions, setOpenSuggestions] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{lat:string, lon:string, display_name:string, address?:any} | null>(null);
+  const debounceRef = useRef<any>(null);
 
   const today = new Date();
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -25,21 +27,6 @@ export default function AddTrip() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [saving, setSaving] = useState(false);
   const router = useRouter();
-
-  // Lista filtrada de países
-  const filteredCountries = countryNames.filter((c) =>
-      c.toLowerCase().includes(search.toLowerCase())
-  );
-
-// Provincias disponibles del país seleccionado
-  const availableProvinces = country
-      ? allCountries.find((c) => c[0] === country)?.[2] || []
-      : [];
-
-// Lista filtrada de provincias
-  const filteredProvinces = availableProvinces.filter((p: [string, string]) =>
-      p[0].toLowerCase().includes(searchProvince.toLowerCase())
-  );
 
   const getDaysInMonth = (year: number, month: number) => {
     return new Date(year, month + 1, 0).getDate();
@@ -59,7 +46,7 @@ export default function AddTrip() {
   const isPastDate = (day: number) => {
     const currentDate = new Date(currentYear, currentMonth, day);
     const today = new Date();
-    today.setHours(0,0,0,0); // normalizar (ignorar horas)
+    today.setHours(0,0,0,0);
     return currentDate < today;
   };
 
@@ -67,7 +54,7 @@ export default function AddTrip() {
 
   const handleDateSelect = (day: number) => {
     const selectedDate = new Date(currentYear, currentMonth, day);
-    
+
     if (!startDate || (startDate && endDate)) {
       setStartDate(selectedDate);
       setEndDate(null);
@@ -84,7 +71,7 @@ export default function AddTrip() {
   const isDateInRange = (day: number) => {
     if (!startDate) return false;
     if (!endDate) return startDate.getDate() === day && startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear;
-    
+
     const currentDate = new Date(currentYear, currentMonth, day);
     return currentDate >= startDate && currentDate <= endDate;
   };
@@ -122,7 +109,69 @@ export default function AddTrip() {
 
   const formatISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // NEW: save trip to backend, then navigate to the same route as before
+  // ==== Nominatim: funciones ====
+  const fetchSuggestions = useCallback(async (text: string) => {
+    if (!text || text.length < 3) {
+      setSuggestions([]);
+      setOpenSuggestions(false);
+      return;
+    }
+    setLoadingSuggestions(true);
+    try {
+      const url =
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&accept-language=es`;
+      const res = await fetch(url, {
+        headers: {
+          'Referer': 'ConfTrip://', 
+        },
+      });
+      if (!res.ok) throw new Error('Error buscando ubicaciones');
+      const data = await res.json();
+      setSuggestions(Array.isArray(data) ? data : []);
+      setOpenSuggestions(true);
+    } catch (e) {
+      console.warn('Nominatim error', e);
+      setSuggestions([]);
+      setOpenSuggestions(false);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, []);
+
+  // Debounce: 400ms
+  const onChangeQuery = (text: string) => {
+    setQuery(text);
+    setSelectedLocation(null);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!text || text.length < 3) {
+      setSuggestions([]);
+      setOpenSuggestions(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => fetchSuggestions(text), 400);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  const handleSelectSuggestion = (item: any) => {
+    setDestination(item.display_name);
+    setQuery(item.display_name);
+    setSuggestions([]);
+    setOpenSuggestions(false);
+    setSelectedLocation({ lat: item.lat, lon: item.lon, display_name: item.display_name, address: item.address });
+    
+    if (item.address) {
+      setCountry(item.address.country || null);
+      const inferredCity = item.address.city || item.address.town || item.address.village || item.address.county || item.address.state || null;
+      setCity(inferredCity);
+    }
+  };
+
+  // save trip to backend, then navigate to load-trip screen
   const handleSaveTrip = async () => {
     if (saving) return;
     if (!startDate || !endDate) {
@@ -136,13 +185,18 @@ export default function AddTrip() {
 
     setSaving(true);
     try {
-      const payload = {
-        destination: destination.trim(),
+      const payload: any = {
+        destination: (city && country) ? `${city}, ${country}` : destination.trim(),
         start_date: formatISODate(startDate),
         end_date: formatISODate(endDate),
         budget: null,
         notes: null,
       };
+
+      if (selectedLocation) {
+        payload.lat = selectedLocation.lat;
+        payload.lon = selectedLocation.lon;
+      }
 
       // Navegar a load-trip y pasar el payload como query param (url-encoded JSON)
       const qs = encodeURIComponent(JSON.stringify(payload));
@@ -153,94 +207,49 @@ export default function AddTrip() {
       const message = (err && err.message) || 'No se pudo guardar el viaje';
       Alert.alert('Error', message);
     } finally {
-      // liberamos el flag para evitar quedar "bloqueado" si algo falla en navigation
       setSaving(false);
     }
   };
 
   return (
+    <View style={styles.container}>
+      <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
 
-      <View style={styles.container}>
-        <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
-      <View style={[styles.destinationInput, { marginBottom: openCountry ? 0 : 20, flexDirection: "row", backgroundColor: openCountry ? "white" : 'rgba(196,196,196,0.2)', borderWidth: openCountry ? 2 : 0 }]}
-            onFocus={()=>setOpenCountry(true)}>
+      {/* BARRA DE BÚSQUEDA (Nominatim) */}
+      <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
         <TextInput
-            style={[{ flex:1, borderWidth:0, outline:"none", color: country? "#252525" : "rgba(0,0,0,0.5)"}]}
-            placeholder={country ? country : "Seleccionar pais"}
-            value={search}
-            onChangeText={setSearch}
+          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? "#252525" : "rgba(0,0,0,0.5)"}]}
+          placeholder={"Buscar zona, calle o ciudad (ej. Roma, Italia)"}
+          value={query}
+          onChangeText={onChangeQuery}
+          onFocus={() => { if (suggestions.length > 0) setOpenSuggestions(true); }}
         />
-        <Text
-            style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: openCountry ? "0deg" : "180deg" }]}}
-            onPress={() => setOpenCountry(!openCountry)}
-        >
-          ▲
-        </Text>
+        {loadingSuggestions ? <ActivityIndicator /> : null}
       </View>
-        {openCountry && (
-            <View style={styles.dropdown}>
-              <FlatList
-                  data={filteredCountries}
-                  keyExtractor={(item) => item}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => (
-                      <TouchableOpacity
-                          style={[styles.item, country === item && styles.itemSelected]}
-                          onPress={() => {
-                            setCountry(item);
-                            setProvince(null); // limpiar provincia al cambiar país
-                            setDestination(null);
-                            setSearch("");
-                            setOpenCountry(false);
-                          }}
-                      >
-                        <Text>{item}</Text>
-                      </TouchableOpacity>
-                  )}
-              />
-            </View>
-        )}
 
-        <View style={[styles.destinationInput, { marginBottom: openProvince ? 0 : 20, flexDirection: "row", backgroundColor: openProvince ? "white" : 'rgba(196,196,196,0.2)', borderWidth: openProvince ? 2 : 0 }]}
-              onFocus={()=>setOpenProvince(true)}>
-          <TextInput
-              style={[{ flex:1, borderWidth:0, outline:"none", color: province? "#252525" : "rgba(0,0,0,0.5)"}]}
-              placeholder={province ? province: "Seleccionar provincia"}
-              value={searchProvince}
-              onChangeText={setSearchProvince}
+      {openSuggestions && suggestions.length > 0 && (
+        <View style={styles.dropdown}>
+          <FlatList
+            data={suggestions}
+            keyExtractor={(item) => item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
+            keyboardShouldPersistTaps="handled"
+            renderItem={({ item }) => (
+              <TouchableOpacity
+                style={styles.item}
+                onPress={() => handleSelectSuggestion(item)}
+              >
+                <Text>{item.display_name}</Text>
+              </TouchableOpacity>
+            )}
           />
-          <Text
-              style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: openProvince ? "0deg" : "180deg" }]}}
-              onPress={() => setOpenProvince(!openProvince)}
-          >
-            ▲
-          </Text>
         </View>
-        {openProvince && (
-            <View style={styles.dropdown}>
-              <FlatList
-                  data={filteredProvinces}
-                  keyExtractor={(item, idx) => idx.toString()}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => (
-                      <TouchableOpacity
-                          style={[styles.item, province === item[0] && styles.itemSelected]}
-                          onPress={() => {
-                            const selectedProv = item[0];
-                            setProvince(selectedProv);
-                            setSearchProvince("");
-                            setDestination(`${selectedProv}${country ? ', ' + country : ''}`);
-                            setOpenProvince(false);
-                          }}
-                      >
-                        <Text>{item[0]}</Text>
-                      </TouchableOpacity>
-                  )}
-              />
-            </View>
-        )}
+      )}
+
+      {country && <Text style={{ marginTop: 8, color: '#666' }}>País: {country}</Text>}
+      {city && <Text style={{ color: '#666' }}>Ciudad: {city}</Text>}
+
       <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
-      
+
       <View style={styles.calendarHeader}>
         <Text style={styles.monthYear}>{monthNames[currentMonth]} {currentYear}</Text>
         <View style={styles.arrows}>
@@ -275,13 +284,13 @@ export default function AddTrip() {
                       styles.day,
                       isDateInRange(day.date) && styles.selectedDay,
                     ]}
-                    disabled={past} // no clickeable si es pasado
+                    disabled={past}
                     onPress={() => handleDateSelect(day.date)}
                 >
                   <Text
                       style={[
                         styles.dayText,
-                        past && styles.pastDayText,         // gris si es pasado
+                        past && styles.pastDayText,
                         isDateInRange(day.date) && styles.selectedDayText
                       ]}
                   >
@@ -296,7 +305,7 @@ export default function AddTrip() {
 
       {startDate && endDate && (
         <Text style={styles.dateRange}>
-          Se armará un plan turístico para {destination} del {startDate.getDate()}/{startDate.getMonth() + 1}/{startDate.getFullYear()} al {endDate.getDate()}/{endDate.getMonth() + 1}/{endDate.getFullYear()}
+          Se armará un plan turístico para {city && country ? `${city}, ${country}` : (destination ?? '')} del {startDate.getDate()}/{startDate.getMonth() + 1}/{startDate.getFullYear()} al {endDate.getDate()}/{endDate.getMonth() + 1}/{endDate.getFullYear()}
         </Text>
       )}
 
@@ -306,10 +315,6 @@ export default function AddTrip() {
         disabled={saving}
       >
         <Text style={styles.createTripButtonText}>Armar Viaje</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.addDestinationButton}>
-        <Text style={styles.addDestinationButtonText}>+ Agregar otro destino</Text>
       </TouchableOpacity>
     </View>
   );
@@ -396,7 +401,7 @@ const styles = StyleSheet.create({
     color: '#FF3951',
   },
   pastDayText: {
-    color: '#CCC', // gris clarito
+    color: '#CCC',
   },
   dateRange: {
     textAlign: 'center',
@@ -412,18 +417,6 @@ const styles = StyleSheet.create({
   },
   createTripButtonText: {
     color: 'white',
-    fontSize: 16,
-  },
-  addDestinationButton: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    padding: 15,
-    borderRadius: 25,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  addDestinationButtonText: {
-    color: '#666',
     fontSize: 16,
   },
 
