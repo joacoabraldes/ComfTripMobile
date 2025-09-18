@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-
+import MapView, { Marker } from 'react-native-maps';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -11,6 +11,7 @@ export default function AddTrip() {
   const [destination, setDestination] =  useState<string | null>(null);
   const [country, setCountry]=useState<string | null>(null);
   const [city, setCity]=useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
 
   // búsqueda con Nominatim
   const [query, setQuery] = useState("");
@@ -171,6 +172,14 @@ export default function AddTrip() {
     }
   };
 
+  const openMap = () => {
+    if (!selectedLocation) {
+      Alert.alert('Ubicación no seleccionada', 'Por favor selecciona una sugerencia antes de ver en el mapa.');
+      return;
+    }
+    setShowMap(true);
+  };
+
   // save trip to backend, then navigate to load-trip screen
   const handleSaveTrip = async () => {
     if (saving) return;
@@ -213,13 +222,16 @@ export default function AddTrip() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
+      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} accessibilityLabel="Volver">
+        <Text style={styles.backBtnText}>‹</Text>
+      </TouchableOpacity>
+      <Text style={[styles.header, styles.headerTopSpacing]}>Selecciona a donde vas a viajar</Text>
 
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
         <TextInput
           style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? "#252525" : "rgba(0,0,0,0.5)"}]}
-          placeholder={"Buscar zona, calle o ciudad (ej. Roma, Italia)"}
+          placeholder={"Buscar zona, calle o ciudad"}
           value={query}
           onChangeText={onChangeQuery}
           onFocus={() => { if (suggestions.length > 0) setOpenSuggestions(true); }}
@@ -245,10 +257,38 @@ export default function AddTrip() {
         </View>
       )}
 
-      {country && <Text style={{ marginTop: 8, color: '#666' }}>País: {country}</Text>}
-      {city && <Text style={{ color: '#666' }}>Ciudad: {city}</Text>}
+      {!showMap && selectedLocation && (
+        <TouchableOpacity style={styles.mapButton} onPress={openMap}>
+          <Text style={styles.mapButtonText}>Ver en el mapa</Text>
+        </TouchableOpacity>
+      )}
 
-      <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
+      {showMap && selectedLocation && (
+        <View style={styles.mapContainer}>
+          <MapView
+            style={styles.map}
+            initialRegion={{
+              latitude: parseFloat(selectedLocation.lat),
+              longitude: parseFloat(selectedLocation.lon),
+              latitudeDelta: 0.05,
+              longitudeDelta: 0.05,
+            }}
+          >
+            <Marker
+              coordinate={{
+                latitude: parseFloat(selectedLocation.lat),
+                longitude: parseFloat(selectedLocation.lon),
+              }}
+              title={selectedLocation.display_name}
+            />
+          </MapView>
+          <TouchableOpacity style={styles.closeMapBtn} onPress={() => setShowMap(false)}>
+            <Text style={styles.closeMapBtnText}>Cerrar mapa</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <Text style={[styles.header, styles.headerTopSpacing]}>Selecciona las fechas que vas a estar</Text>
 
       <View style={styles.calendarHeader}>
         <Text style={styles.monthYear}>{monthNames[currentMonth]} {currentYear}</Text>
@@ -310,7 +350,7 @@ export default function AddTrip() {
       )}
 
       <TouchableOpacity
-        style={styles.createTripButton}
+        style={[styles.createTripButton, styles.headerTopSpacing]}
         onPress={handleSaveTrip}
         disabled={saving}
       >
@@ -326,6 +366,56 @@ const styles = StyleSheet.create({
     padding: 20,
     backgroundColor: 'white',
   },
+  backBtn: {
+    position: 'absolute',
+    top: 12,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 20,
+  },
+  backBtnText: {
+    fontSize: 28,
+    color: '#252525',
+    lineHeight: 28,
+  },
+  /* Espacios extra arriba de los títulos para desplazar el contenido hacia abajo */
+  headerTopSpacing: {
+    marginTop: 50,
+  },
+  mapButton: {
+    marginTop: 8,
+    alignSelf: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#000000',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  mapButtonText: { color: '#000000', fontWeight: '600' },
+  mapContainer: {
+    marginTop: 12,
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    overflow: 'hidden',
+    alignSelf: 'center',
+  },
+  map: { flex: 1 },
+  closeMapBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  closeMapBtnText: { color: '#fff' },
   header: {
     fontSize: 16,
     marginBottom: 10,

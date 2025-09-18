@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { apiGet } from '@/helpers/api'; // assumes you have apiGet similar to apiPost
-import { ThemedText } from '@/components/ThemedText';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Trip = {
   id: number;
@@ -19,6 +19,7 @@ type Trip = {
 export default function TripsScreen() {
   const { width } = useWindowDimensions();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -134,7 +135,7 @@ export default function TripsScreen() {
   }
 
   return (
-    <View style={styles.screen}>
+    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? 8 : 0 }]}>
       <View style={styles.header}>
         <Text style={styles.title}>Mis Viajes</Text>
       </View>
@@ -143,6 +144,8 @@ export default function TripsScreen() {
         data={trips}
         keyExtractor={(t) => String(t.id)}
         renderItem={renderItem}
+        // IMPORTANT: que el FlatList llene el contenedor y tenga ancho 100%
+        style={{ flex: 1, width: '100%' }}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -152,16 +155,29 @@ export default function TripsScreen() {
           </View>
         }
       />
+
+      <TouchableOpacity
+        style={[
+          styles.fab,
+          // ajustar bottom con safe area (evita quedar debajo de la barra de navegación)
+          { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
+        ]}
+        onPress={() => router.push('/add-trip')}
+        accessibilityLabel="Agregar viaje"
+        activeOpacity={0.85}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 0, alignItems: 'center' },
+  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 0, alignItems: 'center', position: 'relative', overflow: 'visible' },
   header: { width: '100%', alignItems: 'center', marginTop: 28, marginBottom: 6 },
   title: { color: '#252525', fontSize: 30, fontWeight: '800' },
 
-  list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 60 },
+  list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
 
   card: {
     flexDirection: 'row',
@@ -205,4 +221,22 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
+  fab: {
+    position: 'absolute',
+    right: 30,
+    // bottom se ajusta dinámicamente con insets
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: '#FF3951',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 14, // Android
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    zIndex: 9999, // iOS
+  },
+  fabText: { color: '#fff', fontSize: 32, lineHeight: 34, fontWeight: '600' },
 });
