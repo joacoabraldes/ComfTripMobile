@@ -95,8 +95,17 @@ export default function TripsScreen() {
         activeOpacity={0.8}
         style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
         onPress={() => {
-          // navigate to detail route: /trips/:id (adjust to your route structure)
-          //router.push(`/trips/${item.id}`);
+          // Navegar a detalles pasando los campos importantes como params
+          router.push({
+            pathname: '../trip-details',
+            params: {
+              id: String(item.id),
+              destination: item.destination,
+              start_date: item.start_date,
+              end_date: item.end_date,
+              flag_url: item.flag_url ?? '',
+            },
+          });
         }}>
         <Image
           source={imageSource}
