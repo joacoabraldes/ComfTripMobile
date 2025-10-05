@@ -14,6 +14,9 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  KeyboardAvoidingView,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 
 export default function LoginScreen() {
@@ -23,6 +26,8 @@ export default function LoginScreen() {
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const passwordRef = React.useRef<TextInput>(null);
 
   // measurements
   const horizontalPadding = Math.round(width * 0.06);
@@ -64,70 +69,95 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={[styles.container, { paddingHorizontal: horizontalPadding }]}>
-        <View style={[styles.topArea, { marginTop: 100 }]}>
-          <View style={{ alignItems: 'center', height: topIllustrationHeight }}>
-            <MapSvg width={Math.round(width * 2)} height={Math.round(topIllustrationHeight * 1.4)} />
-          </View>
-        </View>
-
-        <View style={styles.form}>
-          <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
-
-          <View style={[styles.inputBox, { height: inputHeight }]}>
-            <TextInput
-              placeholder="Email o nombre de usuario"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={identifier}
-              onChangeText={setIdentifier}
-              keyboardType="default"
-              autoCapitalize="none"
-              style={styles.textInput}
-            />
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.select({ ios: 80, android: 0 })}
+      >
+        <ScrollView
+          contentContainerStyle={[styles.container, { paddingHorizontal: horizontalPadding }]}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.topArea, { marginTop: 100 }]}>
+            <View style={{ alignItems: 'center', height: topIllustrationHeight }}>
+              <MapSvg width={Math.round(width * 2)} height={Math.round(topIllustrationHeight * 1.4)} />
+            </View>
           </View>
 
-          <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
-            <TextInput
-              placeholder="Contraseña"
-              placeholderTextColor="rgba(0,0,0,0.5)"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              style={styles.textInput}
-            />
-          </View>
+          <View style={styles.form}>
+            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
 
-          <View style={styles.forgotWrap}>
-            <Text style={styles.forgotText}>¿Olvidó su contraseña?</Text>
-          </View>
+            <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
+              <TextInput
+                placeholder="Email"
+                placeholderTextColor="rgba(0,0,0,0.5)"
+                value={identifier}
+                onChangeText={setIdentifier}
+                keyboardType="default"
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                style={styles.textInput}
+              />
+            </View>
 
-          <PrimaryButton
-            title="Ingresar"
-            onPress={handleNext}
-            height={btnHeight}
-            borderRadius={btnRadius}
-            rightIcon={<ArrowIcon color="#FFFFFF" />}
-            style={{ marginTop: 24 }}
-          >
-            {loading && <ActivityIndicator />}
-          </PrimaryButton>
+            <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
+              <TextInput
+                ref={passwordRef}
+                placeholder="Contraseña"
+                placeholderTextColor="rgba(0,0,0,0.5)"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="go"
+                onSubmitEditing={handleNext}
+                style={[styles.textInput, { paddingRight: 60 }]}
+              />
+              <TouchableOpacity
+                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                onPress={() => setShowPassword((v) => !v)}
+                style={styles.eyeButton}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={styles.eyeText}>{showPassword ? 'Ocultar' : 'Mostrar'}</Text>
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.registerRow}>
-            <Text style={styles.already}>¿No eres miembro? </Text>
-            <Text style={styles.registerLink} onPress={() => router.push('/register')}>
-              Regístrate ahora
-            </Text>
+            <View style={styles.forgotWrap}>
+              <Text style={styles.forgotText}>¿Olvidó su contraseña?</Text>
+            </View>
+
+            <PrimaryButton
+              title="Ingresar"
+              onPress={handleNext}
+              height={btnHeight}
+              borderRadius={btnRadius}
+              rightIcon={<ArrowIcon color="#FFFFFF" />}
+              style={{ marginTop: 24 }}
+            >
+              {loading && <ActivityIndicator />}
+            </PrimaryButton>
+
+            <View style={styles.registerRow}>
+              <Text style={styles.already}>¿No eres miembro? </Text>
+              <Text style={styles.registerLink} onPress={() => router.push('/register')}>
+                Regístrate ahora
+              </Text>
+            </View>
           </View>
-        </View>
-      </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
-  container: { flex: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
-
+  container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
   topArea: { alignItems: 'center' },
   title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
 
@@ -138,8 +168,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(196,196,196,0.2)',
     borderRadius: 10,
     justifyContent: 'center',
+    overflow: 'hidden',
   },
-  textInput: { fontSize: 14, color: '#252525', paddingHorizontal: 22, paddingVertical: 18, borderRadius: 10 },
+  textInput: {
+    fontSize: 16,
+    lineHeight: 20,
+    color: '#252525',
+    paddingHorizontal: 22,
+    paddingVertical: 0,
+    height: '100%',
+    textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
+  },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgotText: { color: '#FF3951', fontSize: 13 },
@@ -147,4 +186,7 @@ const styles = StyleSheet.create({
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
   already: { color: '#252525', fontSize: 13, fontWeight: '500' },
   registerLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
+
+  eyeButton: { position: 'absolute', right: 12, height: '100%', justifyContent: 'center' },
+  eyeText: { color: '#FF3951', fontSize: 13, fontWeight: '700' },
 });
