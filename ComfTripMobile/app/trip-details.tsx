@@ -1,10 +1,11 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import { apiGet } from '@/helpers/api';
 
 type Params = {
   id?: string;
@@ -18,27 +19,28 @@ type Activity = {
   key: string;
   title: string;
   img?: string | null;
-  dateStr: string;
+  dateStr: string; // formatted date + time for display
+  sortTs?: number; // for sorting
 };
 
-const HARD_CODED_ACTIVITIES = [
-  { title: 'Sagrada Familia', img: 'https://upload.wikimedia.org/wikipedia/commons/5/5c/%CE%A3%CE%B1%CE%B3%CF%81%CE%AC%CE%B4%CE%B1_%CE%A6%CE%B1%CE%BC%CE%AF%CE%BB%CE%B9%CE%B1_2941_%28cropped%29.jpg' },
-  { title: 'Parque Guell', img: 'https://upload.wikimedia.org/wikipedia/commons/f/f8/G%C3%BCell_BCN_edited.jpg' },
-  { title: 'Monasterio Montserrat', img: 'https://www.historyhit.com/app/uploads/2021/06/Montserrat-Monastery_shutterstock.jpg' },
-  { title: 'Costa Brava', img: 'https://nuriainwonderland.com/wp-content/uploads/cala-sa-tuna-begur.jpg' },
-  { title: 'Torre Glòries', img: 'https://www.merlinproperties.com/wp-content/uploads/2023/06/22062023-2F8A0006-Torre-Glories-Barcelona-7-scaled.jpg' },
-  { title: 'Casa Batlló', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTemwZhndBqu_royqmPrHbAjUtL0zXiWGlrdQ&s' },
-  { title: 'Casa Milà', img: 'https://upload.wikimedia.org/wikipedia/commons/d/de/Casa_Mil%C3%A0%2C_general_view.jpg' },
-  { title: 'Plaza Cataluña', img: 'https://dynamic-media-cdn.tripadvisor.com/media/photo-o/14/ca/ee/ab/fb-img-1537875790852.jpg?w=900&h=500&s=1' },
-  { title: 'La Rambla', img: 'https://www.barcelo.com/guia-turismo/wp-content/uploads/2019/05/la-rambla.jpg' },
-  { title: 'Barrio Gótico', img: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSd7z_ViClK7GTon2DWc-4UJJcvCR1YTxlWMA&s' },
-  { title: 'Montjuïc', img: 'https://www.barcelona-tourist-guide.com/images/int/attractions/mnac/L550/mnac-barcelona-0809.jpg' },
-  { title: 'Camp Nou', img: 'https://www.fcbarcelona.com/photo-resources/2021/08/09/276ad270-e5c6-453d-8d9f-212417ad7cb3/Camp-Nou-3.jpg?width=1200&height=750' },
-  { title: 'Paseo de Gracia', img: 'https://bcnmagica.com/imagenes/passeig-de-gracia.jpg' },
-  { title: 'Playa de la Barceloneta', img: 'https://www.santjordihostels.com/wp-content/uploads/Barceloneta-8.jpg' },
-  { title: 'Parque de la Ciutadella', img: 'https://www.locabarcelona.com/wp-content/uploads/2024/10/Parque-de-la-ciudadela-Barcelona.jpg' },
-];
+// Web-like formatters
+function fmtDate(d?: string) {
+  if (!d) return '-';
+  const onlyDate = d.includes('T') ? d.split('T')[0] : d;
+  const parts = onlyDate.split('-');
+  if (parts.length !== 3) return d;
+  const [yy, mm, dd] = parts;
+  return `${dd}/${mm}/${yy}`;
+}
 
+function fmtHour(t?: string) {
+  if (!t) return '-';
+  const parts = t.split(':');
+  const [hh, mm] = parts;
+  return `${hh}:${mm ?? '00'}`;
+}
+
+// Helpers for header date range
 function parseDateSafe(s?: string) {
   if (!s) return new Date();
   const d = new Date(s);
@@ -46,45 +48,80 @@ function parseDateSafe(s?: string) {
   return d;
 }
 
-function daysBetweenInclusive(start: Date, end: Date) {
-  const s = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const e = new Date(end.getFullYear(), end.getMonth(), end.getDate());
-  const diff = Math.round((e.getTime() - s.getTime()) / 86400000);
-  return diff >= 0 ? diff + 1 : 0;
-}
-
 export default function TripDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
 
+  // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? 'Destino';
   const startDate = parseDateSafe(params.start_date);
   const endDate = parseDateSafe(params.end_date);
-
   const dateRangeStr = `${startDate.toLocaleDateString('es-ES')} - ${endDate.toLocaleDateString('es-ES')}`;
 
-  const createActivities = (): Activity[] => {
-    const days = daysBetweenInclusive(startDate, endDate);
-    const arr: Activity[] = [];
-    for (let i = 0; i < days; i++) {
-      const d = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + i);
-      const activity = HARD_CODED_ACTIVITIES[i % HARD_CODED_ACTIVITIES.length];
-      arr.push({
-        key: `${i}`,
-        title: activity.title,
-        img: activity.img,
-        dateStr: d.toLocaleDateString('es-ES'),
-      });
-    }
-    return arr;
-  };
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [activities, setActivities] = useState<Activity[]>(() => createActivities());
-
+  // Fetch trip and derive activities from trip.places (web parity)
   useEffect(() => {
-    setActivities(createActivities());
-  }, [params.start_date, params.end_date]);
+    let mounted = true;
+    (async () => {
+      const id = params.id ? Number(params.id) : NaN;
+      if (!Number.isFinite(id) || id <= 0) {
+        setError('ID de viaje inválido.');
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await apiGet(`/trips/${id}`);
+        const data = res?.data ?? res;
 
+        // Expecting trip object with places array, like the web
+        const places: any[] = Array.isArray(data?.places) ? data.places : Array.isArray(data?.data?.places) ? data.data.places : [];
+
+        const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
+          const loc = p.location || {};
+          const title = loc?.titulo ?? `Lugar #${p.fk_location ?? p.id ?? idx + 1}`;
+          const firstImg = Array.isArray(loc?.imagenes) && loc.imagenes.length > 0 ? loc.imagenes[0] : null;
+
+          // Build sortable timestamp from date + start_hour
+          let ts = Number.NaN;
+          if (p.date) {
+            const base = (typeof p.date === 'string' && p.date.includes('T')) ? p.date : `${p.date}T00:00:00`;
+            const start = p.start_hour ? `${base.split('T')[0]}T${p.start_hour}:00` : base;
+            const d = new Date(start);
+            ts = d.getTime();
+          }
+
+          const dateStr = `${fmtDate(p.date)} ${fmtHour(p.start_hour)}${p.end_hour ? ` - ${fmtHour(p.end_hour)}` : ''}`.trim();
+
+          return {
+            key: String(p.id ?? idx),
+            title,
+            img: firstImg,
+            dateStr,
+            sortTs: isNaN(ts) ? undefined : ts,
+          };
+        });
+
+        const sorted = mapped.slice().sort((a, b) => {
+          const aa = a.sortTs ?? Number.MAX_SAFE_INTEGER;
+          const bb = b.sortTs ?? Number.MAX_SAFE_INTEGER;
+          return aa - bb;
+        });
+
+        if (mounted) setActivities(sorted);
+      } catch (err: any) {
+        if (mounted) setError(err?.message || 'No se pudo cargar el viaje.');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [params.id]);
+
+  // Preserve local edit sync (if any)
   useFocusEffect(
     React.useCallback(() => {
       let mounted = true;
@@ -93,8 +130,7 @@ export default function TripDetails() {
           const raw = await AsyncStorage.getItem('updatedActivity');
           if (!raw) return;
           const parsed = JSON.parse(raw) as { key: string; newTitle?: string; imageUri?: string } | null;
-          if (!parsed) return;
-          if (!mounted) return;
+          if (!parsed || !mounted) return;
 
           setActivities((prev) =>
             prev.map((a) =>
@@ -102,17 +138,14 @@ export default function TripDetails() {
                 ? {
                     ...a,
                     title: parsed.newTitle ?? a.title,
-                    // Si viene imageUri la usamos; si no, dejamos null para mostrar fondo gris
-                    img: parsed.imageUri !== undefined ? parsed.imageUri : null,
+                    img: parsed.imageUri !== undefined ? parsed.imageUri : a.img ?? null,
                   }
                 : a
             )
           );
 
           await AsyncStorage.removeItem('updatedActivity');
-        } catch (e) {
-          // no hacemos nada en caso de error
-        }
+        } catch {}
       };
 
       checkUpdates();
@@ -140,24 +173,38 @@ export default function TripDetails() {
 
         <View style={{ height: 8 }} />
 
-        {activities.map((a) => (
-          <View key={a.key} style={styles.activityCard}>
-            {a.img ? (
-              <Image source={a.img} style={styles.activityImage} contentFit="cover" />
-            ) : (
-              <View style={[styles.activityImage, { backgroundColor: '#CFCFCF' }]} />
-            )}
-
-            <View style={styles.activityContent}>
-              <Text style={styles.activityTitle}>{a.title}</Text>
-              <Text style={styles.activityDate}>{a.dateStr}</Text>
-            </View>
-            <TouchableOpacity style={styles.pencil} onPress={() => onEdit(a)}>
-              <MaterialIcons name="edit" size={20} color="#555" />
-            </TouchableOpacity>
+        {loading ? (
+          <View style={{ width: '100%', alignItems: 'center', paddingVertical: 20 }}>
+            <ActivityIndicator size="small" color="#FF3951" />
+            <Text style={{ marginTop: 8, color: '#777' }}>Cargando actividades...</Text>
           </View>
-        ))}
+        ) : error ? (
+          <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
+            <Text style={{ color: '#B00020' }}>{error}</Text>
+          </View>
+        ) : activities.length === 0 ? (
+          <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
+            <Text style={{ color: '#777' }}>Aún no hay puntos en el itinerario.</Text>
+          </View>
+        ) : (
+          activities.map((a) => (
+            <View key={a.key} style={styles.activityCard}>
+              {a.img ? (
+                <Image source={a.img} style={styles.activityImage} contentFit="cover" />
+              ) : (
+                <View style={[styles.activityImage, { backgroundColor: '#CFCFCF' }]} />
+              )}
 
+              <View style={styles.activityContent}>
+                <Text style={styles.activityTitle}>{a.title}</Text>
+                <Text style={styles.activityDate}>{a.dateStr}</Text>
+              </View>
+              <TouchableOpacity style={styles.pencil} onPress={() => onEdit(a)}>
+                <MaterialIcons name="edit" size={20} color="#555" />
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
