@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { apiGet } from '@/helpers/api';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { apiGet } from '@/helpers/api'; // assumes you have apiGet similar to apiPost
+import React, { useCallback, useEffect, useState } from 'react';
+import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Trip = {
@@ -33,12 +33,17 @@ export default function TripsScreen() {
     try {
       const res = await apiGet('/trips'); 
       const data = res?.data ?? res;
-      if (Array.isArray(data)) {
-        setTrips(data);
-      } else {
-        // if the endpoint returns an object { data: [...] }
-        setTrips(Array.isArray(data?.data) ? data.data : []);
-      }
+      let tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+      
+      tripsData.sort((a: Trip, b: Trip) => {
+        const aStatus = isUpcoming(a.start_date, a.end_date);
+        const bStatus = isUpcoming(b.start_date, b.end_date);
+        
+        // Sort order: upcoming (2) > current (1) > past (0)
+        return bStatus - aStatus;
+      });
+      
+      setTrips(tripsData);
     } catch (err: any) {
       console.error('Error fetching trips', err);
       setError((err && err.message) || 'Failed to load trips');
