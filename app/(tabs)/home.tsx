@@ -269,6 +269,10 @@ export default function HomeScreen() {
     const currTime = currentActivity ? `${fmtHour(currentActivity.start_hour)}${currentActivity.end_hour ? ` - ${fmtHour(currentActivity.end_hour)}` : ''}` : '-';
     const nextTime = nextActivity ? `${fmtHour(nextActivity.start_hour)}${nextActivity.end_hour ? ` - ${fmtHour(nextActivity.end_hour)}` : ''}` : '-';
 
+    // Get current activity image and description
+    const currImage = currentActivity?.location?.imagenes?.[0];
+    const currDescription = currentActivity?.location?.descripcion;
+    
     // Get next activity image and description
     const nextImage = nextActivity?.location?.imagenes?.[0];
     const nextDescription = nextActivity?.location?.descripcion;
@@ -278,11 +282,54 @@ export default function HomeScreen() {
         <Text style={styles.ongoingHeader}>{trip.destination}</Text>
         <Text style={styles.ongoingDates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
 
-        <View style={styles.activityRow}>
-          <Text style={styles.activityRowLabel}>En curso:</Text>
-          <Text style={styles.activityRowText}>{currTitle ?? '-'}</Text>
-          <Text style={styles.activityRowTime}>{currTime}</Text>
-        </View>
+        {/* Current Activity Image and Description */}
+        {currentActivity && (currImage || currDescription) && (
+          <View style={styles.currentActivityPreview}>
+            <Text style={styles.currentActivityLabel}>Actividad actual:</Text>
+            <View style={styles.currentActivityContent}>
+              {currImage && (
+                <Image
+                  source={currImage}
+                  style={styles.currentActivityImage}
+                  contentFit="cover"
+                />
+              )}
+              <View style={styles.currentActivityInfo}>
+                <Text style={styles.currentActivityTitle}>{currTitle}</Text>
+                <Text style={styles.currentActivityTime}>{currTime}</Text>
+                {currDescription && (
+                  <Text style={styles.currentActivityDescription} numberOfLines={3}>
+                    {currDescription}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
+
+        {nextActivity && nextActivity.start_hour && nextActivity.date && (() => {
+          // Calculate time remaining to next activity
+          const now = new Date();
+          const nextDate = toDateSafe(nextActivity.date, nextActivity.start_hour);
+          if (nextDate && nextDate > now) {
+            const diffMs = nextDate.getTime() - now.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const hours = Math.floor(diffMins / 60) + 3;
+            const mins = diffMins % 60;
+            return (
+              <Text style={{ marginTop: 10, color: '#2E7D32', fontWeight: '600', fontSize: 15 }}>
+                Faltan
+                {hours > 0 && (
+                  <>
+                    {' '}{hours} {hours === 1 ? 'hora' : 'horas'} y
+                  </>
+                )}
+                {' '}{mins} {mins === 1 ? 'minuto' : 'minutos'} para la próxima actividad
+              </Text>
+            );
+          }
+          return null;
+        })()}
 
         {/* Next Activity Image and Description */}
         {nextActivity && (nextImage || nextDescription) && (
@@ -298,6 +345,7 @@ export default function HomeScreen() {
               )}
               <View style={styles.nextActivityInfo}>
                 <Text style={styles.nextActivityTitle}>{nextTitle}</Text>
+                <Text style={styles.nextActivityTime}>{nextTime}</Text>
                 {nextDescription && (
                   <Text style={styles.nextActivityDescription} numberOfLines={3}>
                     {nextDescription}
@@ -501,6 +549,53 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 
+  currentActivityPreview: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#E8F5E8', // Slightly different background to distinguish from next
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D4E6D4',
+  },
+  currentActivityLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2E7D32', // Green color for current activity
+    marginBottom: 8,
+  },
+  currentActivityContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  currentActivityImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#E9ECEF',
+  },
+  currentActivityInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  currentActivityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 2,
+  },
+  currentActivityTime: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  currentActivityDescription: {
+    fontSize: 13,
+    color: '#6C757D',
+    lineHeight: 18,
+  },
+
   // Next Activity Preview Styles
   nextActivityPreview: {
     marginTop: 16,
@@ -535,6 +630,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#212529',
+    marginBottom: 2,
+  },
+  nextActivityTime: {
+    fontSize: 12,
+    color: '#495057',
+    fontWeight: '500',
     marginBottom: 4,
   },
   nextActivityDescription: {
