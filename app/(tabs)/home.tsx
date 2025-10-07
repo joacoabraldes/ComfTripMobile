@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import {
-  SafeAreaView,
-  View,
-  StyleSheet,
-  useWindowDimensions,
-  Text,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import MapSvg from '@/components/icons/MapSvg';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
-import { Image } from 'expo-image';
+import MapSvg from '@/components/icons/MapSvg';
 import { apiGet } from '@/helpers/api';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import {
+  Platform,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Trip = {
   id: number;
@@ -37,6 +37,7 @@ type Place = {
   location?: {
     titulo?: string;
     imagenes?: string[];
+    descripcion?: string; // Added description field
     latitude?: number | string;
     longitude?: number | string;
     latitud?: number | string;
@@ -71,6 +72,19 @@ function toDateSafe(date?: string, time?: string) {
   const iso = time ? `${baseDate}T${time}:00` : `${baseDate}T00:00:00`;
   const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtHour(t?: string) {
+  if (!t) return '';
+  try {
+    // Handle both "HH:mm" and "HH:mm:ss+00" formats
+    const timeOnly = t.includes('+') ? t.split('+')[0] : t;
+    const parts = timeOnly.split(':');
+    const [hh, mm] = parts;
+    return `${hh}:${mm ?? '00'}`;
+  } catch {
+    return t;
+  }
 }
 
 export default function HomeScreen() {
@@ -252,11 +266,15 @@ export default function HomeScreen() {
   const renderOngoingSummary = (trip: Trip) => {
     const currTitle = currentActivity?.location?.titulo;
     const nextTitle = nextActivity?.location?.titulo;
-    const currTime = currentActivity ? `${currentActivity.start_hour ?? ''}${currentActivity.end_hour ? ` - ${currentActivity.end_hour}` : ''}` : '-';
-    const nextTime = nextActivity ? `${nextActivity.start_hour ?? ''}${nextActivity.end_hour ? ` - ${nextActivity.end_hour}` : ''}` : '-';
+    const currTime = currentActivity ? `${fmtHour(currentActivity.start_hour)}${currentActivity.end_hour ? ` - ${fmtHour(currentActivity.end_hour)}` : ''}` : '-';
+    const nextTime = nextActivity ? `${fmtHour(nextActivity.start_hour)}${nextActivity.end_hour ? ` - ${fmtHour(nextActivity.end_hour)}` : ''}` : '-';
+
+    // Get next activity image and description
+    const nextImage = nextActivity?.location?.imagenes?.[0];
+    const nextDescription = nextActivity?.location?.descripcion;
 
     return (
-      <View style={styles.ongoingWrap}>
+      <>
         <Text style={styles.ongoingHeader}>{trip.destination}</Text>
         <Text style={styles.ongoingDates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
 
@@ -266,11 +284,29 @@ export default function HomeScreen() {
           <Text style={styles.activityRowTime}>{currTime}</Text>
         </View>
 
-        <View style={styles.activityRow}>
-          <Text style={styles.activityRowLabel}>Siguiente:</Text>
-          <Text style={styles.activityRowText}>{nextTitle ?? '-'}</Text>
-          <Text style={styles.activityRowTime}>{nextTime}</Text>
-        </View>
+        {/* Next Activity Image and Description */}
+        {nextActivity && (nextImage || nextDescription) && (
+          <View style={styles.nextActivityPreview}>
+            <Text style={styles.nextActivityLabel}>Próxima actividad:</Text>
+            <View style={styles.nextActivityContent}>
+              {nextImage && (
+                <Image
+                  source={nextImage}
+                  style={styles.nextActivityImage}
+                  contentFit="cover"
+                />
+              )}
+              <View style={styles.nextActivityInfo}>
+                <Text style={styles.nextActivityTitle}>{nextTitle}</Text>
+                {nextDescription && (
+                  <Text style={styles.nextActivityDescription} numberOfLines={3}>
+                    {nextDescription}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        )}
 
         <TouchableOpacity
           style={styles.viewDetailsBtn}
@@ -290,7 +326,7 @@ export default function HomeScreen() {
         >
           <Text style={{ color: '#fff', fontWeight: '700' }}>Ver detalles</Text>
         </TouchableOpacity>
-      </View>
+      </>
     );
   };
 
@@ -315,8 +351,6 @@ export default function HomeScreen() {
                 {ongoingTrip ? renderOngoingSummary(ongoingTrip) : (upcomingTrip ? renderUpcomingCard(upcomingTrip) : null)}
               </View>
             )}
-
-
 
             {!showHeaderSection && (
               <>
@@ -465,5 +499,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
+  },
+
+  // Next Activity Preview Styles
+  nextActivityPreview: {
+    marginTop: 16,
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  nextActivityLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#495057',
+    marginBottom: 8,
+  },
+  nextActivityContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  nextActivityImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#E9ECEF',
+  },
+  nextActivityInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  nextActivityTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 4,
+  },
+  nextActivityDescription: {
+    fontSize: 13,
+    color: '#6C757D',
+    lineHeight: 18,
   },
 });
