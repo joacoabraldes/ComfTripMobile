@@ -1,14 +1,14 @@
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
+  GestureResponderEvent,
   Platform,
   Pressable,
-  GestureResponderEvent,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
-import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type IconProps = React.ComponentProps<typeof IconSymbol>;
@@ -19,8 +19,7 @@ const iconMap: Record<string, IconName> = {
   explore: 'paperplane.fill' as IconName,
   trips: 'airplane' as IconName,
   map: 'map.fill' as IconName,
-  perfil: 'person.fill' as IconName,
-  profile: 'person.fill' as IconName,
+  community: 'person.2.fill' as IconName,
 };
 
 function getIconName(routeName: string): IconName {

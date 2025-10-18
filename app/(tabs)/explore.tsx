@@ -3,16 +3,16 @@ import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -263,7 +263,7 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Explorar por categorías</Text>
+        <Text style={styles.title}>Explorar por Categoría</Text>
 
         {/* Categories */}
         <ScrollView
@@ -386,7 +386,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000',
     marginBottom: 20,
-    marginTop: 30,
+    marginTop: 38,
+    textAlign: 'center',
   },
   loadingContainer: {
     flex: 1,

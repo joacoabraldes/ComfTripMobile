@@ -1,6 +1,7 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import MapSvg from '@/components/icons/MapSvg';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { apiGet } from '@/helpers/api';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -383,6 +384,15 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
+        {/* Profile button in top right corner */}
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => router.push('/profile')}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+
         <View
           style={[
             styles.centerArea,
@@ -482,6 +492,30 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
+  },
+
+  profileButton: {
+    position: 'absolute',
+    top: 30,
+    right: 25,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#cfcfcf',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
 
   // Reuse card styles similar to trips.tsx

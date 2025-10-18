@@ -25,6 +25,7 @@ const MAPPING = {
   'airplane': 'flight',      // trips
   'map.fill': 'map',         // map
   'person.fill': 'person',   // profile
+  'person.2.fill': 'group',  // community
 } as const satisfies IconMapping;
 
 /**
