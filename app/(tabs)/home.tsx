@@ -5,7 +5,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { apiGet } from '@/helpers/api';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Platform,
   SafeAreaView,
@@ -15,6 +15,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Trip = {
@@ -88,6 +89,23 @@ function fmtHour(t?: string) {
   }
 }
 
+function toNumber(n: any): number | null {
+  const v = Number(n);
+  return Number.isFinite(v) ? v : null;
+}
+
+function extractCoords(p?: Place): { lat: number; lng: number } | null {
+  const loc = p?.location as any;
+  if (!loc) return null;
+
+  const lat = toNumber(loc.latitude ?? loc.latitud ?? loc.lat);
+  const lng = toNumber(loc.longitude ?? loc.longitud ?? loc.lng);
+
+  if (lat == null || lng == null) return null;
+  return { lat, lng };
+}
+
+
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -124,6 +142,9 @@ export default function HomeScreen() {
 
   const copyFontSize = Math.round(Math.max(14, Math.min(20, width * 0.048)));
   const contentPaddingBottom = btnHeight + bottomInset + TABBAR_HEIGHT + 32;
+
+  const [ongoingPlaces, setOngoingPlaces] = useState<Place[]>([]);
+  const mapRef = useRef<MapView | null>(null);
 
   // New state for trips and activities
   const [trips, setTrips] = useState<Trip[] | null>(null);
@@ -214,6 +235,7 @@ export default function HomeScreen() {
         if (mounted) {
           setCurrentActivity(current);
           setNextActivity(next);
+          setOngoingPlaces(places);
         }
       } catch {
         if (mounted) {
@@ -356,6 +378,67 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
+
+        {/* --- Mapa con todas las ubicaciones del itinerario --- */}
+        {(() => {
+          const coords = (ongoingPlaces ?? [])
+            .map(extractCoords)
+            .filter((c): c is {lat:number; lng:number} => !!c);
+
+          if (!coords.length) return null;
+
+          // Región inicial fallback (centra en el primer punto)
+          const first = coords[0];
+          const initialRegion = {
+            latitude: first.lat,
+            longitude: first.lng,
+            latitudeDelta: 0.06,
+            longitudeDelta: 0.06,
+          };
+
+          // Para ajustar cámara a todos los pines luego del layout
+          const fitAll = () => {
+            if (!mapRef.current || coords.length < 2) return;
+            mapRef.current.fitToCoordinates(
+              coords.map(c => ({ latitude: c.lat, longitude: c.lng })),
+              {
+                edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+                animated: true,
+              }
+            );
+          };
+
+          return (
+            <View style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
+              <MapView
+                ref={mapRef}
+                provider={PROVIDER_GOOGLE}
+                style={{ width: '100%', height: 220 }}
+                initialRegion={initialRegion}
+                onMapReady={fitAll}
+                onLayout={fitAll}
+              >
+                {coords.map((c, idx) => (
+                  <Marker
+                    key={`${c.lat}-${c.lng}-${idx}`}
+                    coordinate={{ latitude: c.lat, longitude: c.lng }}
+                    title={ongoingPlaces[idx]?.location?.titulo ?? `Lugar ${idx + 1}`}
+                    description={
+                      (() => {
+                        const p = ongoingPlaces[idx];
+                        const hour =
+                          (p?.start_hour ? ` ${fmtHour(p.start_hour)}` : '') +
+                          (p?.end_hour ? ` - ${fmtHour(p.end_hour)}` : '');
+                        const date = p?.date ? fmtDate(p.date) : '';
+                        return [date, hour.trim()].filter(Boolean).join(' · ');
+                      })()
+                    }
+                  />
+                ))}
+              </MapView>
+            </View>
+          );
+        })()}
 
         <TouchableOpacity
           style={styles.viewDetailsBtn}
