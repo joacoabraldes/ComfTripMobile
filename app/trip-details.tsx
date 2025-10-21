@@ -1,11 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { apiDelete, apiGet } from '@/helpers/api';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { apiGet } from '@/helpers/api';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 type Params = {
   id?: string;
@@ -61,6 +60,8 @@ export default function TripDetails() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [deleting, setDeleting] = useState<boolean>(false);
 
   // Fetch trip and derive activities from trip.places (web parity)
   useEffect(() => {
@@ -161,6 +162,40 @@ export default function TripDetails() {
     router.push(`/add-activity?mode=edit&title=${encodedTitle}&key=${a.key}`);
   };
 
+  const confirmAndDelete = () => {
+    const id = params.id ? Number(params.id) : NaN;
+    if (!Number.isFinite(id) || id <= 0) {
+      Alert.alert('Error', 'ID de viaje inválido.');
+      return;
+    }
+
+    Alert.alert(
+      'Eliminar viaje',
+      '¿Seguro querés eliminar este viaje? Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            if (deleting) return;
+            setDeleting(true);
+            try {
+              await apiDelete(`/trips/${id}`);
+              Alert.alert('Eliminado', 'El viaje fue eliminado correctamente.');
+              router.back();
+            } catch (e: any) {
+              const msg = e?.message || 'No se pudo eliminar el viaje.';
+              Alert.alert('Error', msg);
+            } finally {
+              setDeleting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -190,7 +225,7 @@ export default function TripDetails() {
           activities.map((a) => (
             <View key={a.key} style={styles.activityCard}>
               {a.img ? (
-                <Image source={a.img} style={styles.activityImage} contentFit="cover" />
+                <Image source={{ uri: a.img }} style={styles.activityImage} resizeMode="cover" />
               ) : (
                 <View style={[styles.activityImage, { backgroundColor: '#CFCFCF' }]} />
               )}
@@ -211,6 +246,15 @@ export default function TripDetails() {
 
       <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
         <Text style={{ color: '#fff' }}>Atrás</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+        onPress={confirmAndDelete}
+        disabled={deleting}
+        accessibilityRole="button"
+        accessibilityLabel="Eliminar viaje"
+      >
+        <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
       </TouchableOpacity>
     </View>
   );
@@ -267,6 +311,17 @@ const styles = StyleSheet.create({
     left: 18,
     top: 36,
     backgroundColor: '#FF3951',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    elevation: 6,
+  },
+
+  deleteBtn: {
+    position: 'absolute',
+    right: 18,
+    top: 36,
+    backgroundColor: '#edededff',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
