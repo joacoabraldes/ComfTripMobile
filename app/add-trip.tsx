@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
+import BackButton from '@/components/BackButton';
+import { CommonStyles } from '@/constants/Styles';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -221,11 +224,11 @@ export default function AddTrip() {
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} accessibilityLabel="Volver">
-        <Text style={styles.backBtnText}>‹</Text>
-      </TouchableOpacity>
-      <Text style={[styles.header, styles.headerTopSpacing]}>Selecciona a donde vas a viajar</Text>
+    <SafeAreaView style={styles.container}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
+      <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
 
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
@@ -288,7 +291,7 @@ export default function AddTrip() {
         </View>
       )}
 
-      <Text style={[styles.header, styles.headerTopSpacing]}>Selecciona las fechas que vas a estar</Text>
+      <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
 
       <View style={styles.calendarHeader}>
         <Text style={styles.monthYear}>{monthNames[currentMonth]} {currentYear}</Text>
@@ -350,13 +353,13 @@ export default function AddTrip() {
       )}
 
       <TouchableOpacity
-        style={[styles.createTripButton, styles.headerTopSpacing]}
+        style={styles.createTripButton}
         onPress={handleSaveTrip}
         disabled={saving}
       >
         <Text style={styles.createTripButtonText}>Armar Viaje</Text>
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -364,27 +367,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
     backgroundColor: 'white',
-  },
-  backBtn: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 20,
-  },
-  backBtnText: {
-    fontSize: 28,
-    color: '#252525',
-    lineHeight: 28,
-  },
-  /* Espacios extra arriba de los títulos para desplazar el contenido hacia abajo */
-  headerTopSpacing: {
-    marginTop: 50,
   },
   mapButton: {
     marginTop: 8,

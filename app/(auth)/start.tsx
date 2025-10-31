@@ -1,11 +1,12 @@
 import React from 'react';
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonStyles } from '@/constants/Styles';
 import { useRouter } from 'expo-router';
 import { LogoSvg } from '@/components/icons/LogoSvg';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
@@ -33,7 +34,7 @@ export default function StartScreen() {
   const topAreaMargin = Math.round(height * 0.2);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={CommonStyles.safeArea}>
       <View
         style={[
           styles.container,
@@ -81,10 +82,6 @@ export default function StartScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#FCFCFC',
-  },
   container: {
     flex: 1,
     width: '100%',

@@ -1,7 +1,6 @@
 // app/(auth)/interests.tsx
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  SafeAreaView,
   View,
   Text,
   StyleSheet,
@@ -12,6 +11,8 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonStyles } from '@/constants/Styles';
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
@@ -308,7 +309,7 @@ export default function InterestsScreen() {
   const showLoadingList = fetching || !assetsReady;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={CommonStyles.safeArea}>
       <View style={styles.container}>
         <Text style={styles.title}>Seleccione sus intereses</Text>
 
@@ -359,7 +360,6 @@ export default function InterestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
   container: { flex: 1, padding: 20 },
   title: { fontSize: 22, fontWeight: "700", marginBottom: 12, color: "#252525" },
   card: {

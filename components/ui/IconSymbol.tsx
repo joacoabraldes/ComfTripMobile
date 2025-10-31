@@ -26,6 +26,11 @@ const MAPPING = {
   'map.fill': 'map',         // map
   'person.fill': 'person',   // profile
   'person.2.fill': 'group',  // community
+  'mail.fill': 'email',      // email
+  'phone': 'phone',          // phone
+  'calendar': 'calendar-today', // date/birthdate
+  'birthday.cake.fill': 'cake', // birthday
+  'flag.fill': 'flag', // nationality/flag
 } as const satisfies IconMapping;
 
 /**

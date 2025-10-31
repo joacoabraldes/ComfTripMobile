@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -18,6 +17,8 @@ import {
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonStyles } from '@/constants/Styles';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -68,7 +69,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={CommonStyles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -156,10 +157,9 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
-  topArea: { alignItems: 'center' },
-  title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 100 },
+  topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
+  title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 40 },
 
   form: { paddingBottom: 60 },
 

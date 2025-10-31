@@ -1,7 +1,6 @@
 // MapScreen.tsx (fetch locations from backend) - map centered on user by default; markers rendered using SVG icons as Mapbox images
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
-  SafeAreaView,
   View,
   StyleSheet,
   useWindowDimensions,
@@ -17,6 +16,7 @@ import {
   Pressable,
   Platform,
 } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";

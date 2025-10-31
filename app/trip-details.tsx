@@ -4,7 +4,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import BackButton from '@/components/BackButton';
+import { CommonStyles } from '@/constants/Styles';
 
 type Params = {
   id?: string;
@@ -197,7 +200,10 @@ export default function TripDetails() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
@@ -243,10 +249,6 @@ export default function TripDetails() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Text style={{ color: '#fff' }}>Atrás</Text>
-      </TouchableOpacity>
       <TouchableOpacity
         style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
         onPress={confirmAndDelete}
@@ -256,15 +258,15 @@ export default function TripDetails() {
       >
         <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FCFCFC' },
-  scroll: { paddingHorizontal: 20, paddingTop: 28, alignItems: 'center' },
+  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 80 : 60, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: '800', color: '#000', paddingTop: 60 },
+  title: { fontSize: 26, fontWeight: '800', color: '#000' },
   subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },
 
   sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: '#111' },
@@ -305,17 +307,6 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   addBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-
-  backBtn: {
-    position: 'absolute',
-    left: 18,
-    top: 36,
-    backgroundColor: '#FF3951',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    elevation: 6,
-  },
 
   deleteBtn: {
     position: 'absolute',

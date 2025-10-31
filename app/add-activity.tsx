@@ -9,9 +9,12 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
+import BackButton from '@/components/BackButton';
+import { CommonStyles } from '@/constants/Styles';
 
 export default function AddActivity() {
   const router = useRouter();
@@ -99,7 +102,10 @@ export default function AddActivity() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
       <Text style={styles.header}>{isEdit ? 'Editar actividad' : 'Nueva actividad'}</Text>
 
       <View style={{ height: 18 }} />
@@ -137,17 +143,13 @@ export default function AddActivity() {
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveBtnText}>Guardar</Text>
       </TouchableOpacity>
-
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Text style={{ color: '#fff' }}>Atrás</Text>
-      </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, backgroundColor: '#FFF' },
-  header: { fontSize: 22, fontWeight: '800', marginTop: 40, textAlign: 'center' },
+  container: { flex: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 80 : 60, backgroundColor: '#FFF' },
+  header: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
 
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },
 
@@ -182,15 +184,4 @@ const styles = StyleSheet.create({
 
   saveBtn: { width: '100%', backgroundColor: '#FF3951', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-
-  backBtn: {
-    position: 'absolute',
-    left: 18,
-    top: 36,
-    backgroundColor: '#FF3951',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    elevation: 6,
-  },
 });

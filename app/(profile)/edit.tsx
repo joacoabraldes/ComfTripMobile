@@ -1,13 +1,13 @@
 // moved from EditProfileScreen.tsx
 import DateTimePicker from "@react-native-community/datetimepicker";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import BackButton from "@/components/BackButton";
 import { apiGet, apiPut, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +15,9 @@ import {
   TouchableOpacity,
   Platform, FlatList,
 } from "react-native";
-import {countryNames} from "country-region-data";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import countryRegionData from "country-region-data";
+import { CommonStyles } from '@/constants/Styles';
 
 export const options = {
   headerShown: false,
@@ -79,8 +81,26 @@ export default function EditProfileScreen() {
   // DateTimePicker visibility (for Android modal / iOS inline)
   const [showPicker, setShowPicker] = useState(false);
 
+  // Safe country names extraction with fallback
+  const countryNames = React.useMemo(() => {
+    try {
+      if (!countryRegionData || !Array.isArray(countryRegionData)) {
+        console.warn('countryRegionData not available, using fallback');
+        return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos', 'Francia', 'Italia', 'Alemania', 'Reino Unido'];
+      }
+      // countryRegionData is an array of [countryName, countryShortCode, regions]
+      return countryRegionData
+        .map(countryArr => Array.isArray(countryArr) ? countryArr[0] : countryArr)
+        .filter(Boolean)
+        .sort();
+    } catch (error) {
+      console.error('Error processing country data:', error);
+      return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos'];
+    }
+  }, []);
+
   const filteredCountries = countryNames.filter((c) =>
-      c.toLowerCase().includes(search.toLowerCase())
+      typeof c === 'string' && c.toLowerCase().includes(search.toLowerCase())
   );
 
   useEffect(() => {
@@ -166,8 +186,8 @@ export default function EditProfileScreen() {
 
   if (initialLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
+      <SafeAreaView style={CommonStyles.safeArea}>
+        <View style={CommonStyles.containerWithBackButton}>
           <ActivityIndicator size="large" />
         </View>
       </SafeAreaView>
@@ -175,13 +195,16 @@ export default function EditProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Editar Perfil</Text>
+    <SafeAreaView style={CommonStyles.safeArea}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
+      <View style={[CommonStyles.containerWithBackButton, { padding: 24, paddingTop: Platform.OS === 'ios' ? 80 : 60 }]}>
+        <Text style={CommonStyles.pageTitle}>Editar Perfil</Text>
 
-        <TextInput style={styles.input} placeholder="Nombre" value={name} onChangeText={setName} />
-        <TextInput style={styles.input} placeholder="Correo" value={email} onChangeText={setEmail} />
-        <TextInput style={styles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} />
+        <TextInput style={CommonStyles.input} placeholder="Nombre" value={name} onChangeText={setName} />
+        <TextInput style={CommonStyles.input} placeholder="Correo" value={email} onChangeText={setEmail} />
+        <TextInput style={CommonStyles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} />
 
 
         {/* Input para abrir el dropdown */}
@@ -230,7 +253,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setShowPicker(true)}
-          style={[styles.input, styles.dateInput]}
+          style={[CommonStyles.input, styles.dateInput]}
         >
           <Text style={[styles.dateText, !birthdateDisplay && styles.placeholderText]}>
             {birthdateDisplay || "Fecha de nacimiento"}
@@ -255,16 +278,6 @@ export default function EditProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
-  container: { flex: 1, padding: 24 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 18 },
-  input: {
-    backgroundColor: "#F2F2F2",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
-  },
 
   inputBox: {
     backgroundColor: 'rgba(196,196,196,0.2)',

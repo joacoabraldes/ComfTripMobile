@@ -12,7 +12,6 @@ import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -21,6 +20,8 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonStyles } from '@/constants/Styles';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -126,7 +127,7 @@ export default function RegisterScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={CommonStyles.safeArea}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -305,9 +306,8 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
-  topArea: { alignItems: 'center' },
+  topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
   title: { color: '#252525', fontWeight: '800' },
   form: { paddingBottom: 60 },
 

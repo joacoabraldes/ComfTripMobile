@@ -16,6 +16,43 @@ const API_BASE =
   process.env.REACT_APP_API_URL ||
   'https://comf-trip-backend.vercel.app/api';
 
+// Token storage utilities
+export const tokenStorage = {
+  getToken: async () => {
+    if (AsyncStorage) {
+      try {
+        return await AsyncStorage.getItem('token');
+      } catch (e) {
+        return null;
+      }
+    } else if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('token');
+    }
+    return null;
+  },
+  setToken: async (token) => {
+    if (AsyncStorage) {
+      try {
+        await AsyncStorage.setItem('token', token);
+        return;
+      } catch (e) {}
+    } else if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('token', token);
+    }
+  },
+  removeToken: async () => {
+    if (AsyncStorage) {
+      try {
+        await AsyncStorage.removeItem('token');
+        return;
+      } catch (e) {}
+    } else if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('token');
+    }
+  },
+  AsyncStorageAvailable: !!AsyncStorage
+};
+
 // Generic request
 async function request(path, options = {}) {
   const token = await tokenStorage.getToken();
@@ -60,40 +97,4 @@ export const apiGet = (path) => request(path, { method: 'GET' });
 export const apiPut = (path, body) => request(path, { method: 'PUT', body });
 export const apiDelete = (path) => request(path, { method: 'DELETE' });
 
-// optional export to directly set/get token
-export const tokenStorage = {
-  getToken: async () => {
-    if (AsyncStorage) {
-      try {
-        return await AsyncStorage.getItem('token');
-      } catch (e) {
-        return null;
-      }
-    } else if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem('token');
-    }
-    return null;
-  },
-  setToken: async (token) => {
-    if (AsyncStorage) {
-      try {
-        await AsyncStorage.setItem('token', token);
-        return;
-      } catch (e) {}
-    } else if (typeof localStorage !== 'undefined') {
-      localStorage.setItem('token', token);
-    }
-  },
-  removeToken: async () => {
-    if (AsyncStorage) {
-      try {
-        await AsyncStorage.removeItem('token');
-        return;
-      } catch (e) {}
-    } else if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('token');
-    }
-  },
-  AsyncStorageAvailable: !!AsyncStorage
-};
 export default { apiPost, apiGet, apiPut, apiDelete };

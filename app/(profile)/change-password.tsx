@@ -1,9 +1,12 @@
 // ChangePasswordScreen.tsx
 import PrimaryButton from "@/components/buttons/PrimaryButton";
+import BackButton from "@/components/BackButton";
 import { apiPut, tokenStorage } from "@/helpers/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ActivityIndicator, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { CommonStyles } from '@/constants/Styles';
 
 function base64UrlDecode(input: string) {
   try {
@@ -108,8 +111,8 @@ export default function ChangePasswordScreen() {
 
   if (initChecking) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
+      <SafeAreaView style={CommonStyles.safeArea}>
+        <View style={CommonStyles.containerWithBackButton}>
           <ActivityIndicator size="large" />
         </View>
       </SafeAreaView>
@@ -117,11 +120,14 @@ export default function ChangePasswordScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Cambiar Contraseña</Text>
+    <SafeAreaView style={CommonStyles.safeArea}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
+      <View style={CommonStyles.containerWithBackButton}>
+        <Text style={CommonStyles.pageTitle}>Cambiar Contraseña</Text>
         <TextInput
-          style={styles.input}
+          style={CommonStyles.input}
           placeholder="Contraseña actual"
           value={oldPassword}
           onChangeText={setOldPassword}
@@ -129,7 +135,7 @@ export default function ChangePasswordScreen() {
           autoCapitalize="none"
         />
         <TextInput
-          style={styles.input}
+          style={CommonStyles.input}
           placeholder="Nueva contraseña"
           value={newPassword}
           onChangeText={setNewPassword}
@@ -143,14 +149,4 @@ export default function ChangePasswordScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
-  container: { flex: 1, padding: 24 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 18 },
-  input: {
-    backgroundColor: "#F2F2F2",
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    fontSize: 16,
-  },
 });
