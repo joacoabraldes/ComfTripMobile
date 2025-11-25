@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from "@react-navigation/native";
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from "@/i18n";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -61,6 +62,7 @@ type Profile = {
 export default function ProfileScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+  const { t, language, setLanguage } = useTranslation();
   
   // Tamaños relativos basados en el tamaño de pantalla
   const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.14)));
@@ -216,9 +218,9 @@ export default function ProfileScreen() {
   }
 
   function handleLogout() {
-    Alert.alert("Cerrar sesión", "¿Estás seguro que quieres cerrar sesión?", [
-      { text: "Cancelar", style: "cancel" },
-      { text: "Cerrar sesión", style: "destructive", onPress: performLogout },
+    Alert.alert(t('profile.logoutTitle'), t('profile.logoutMessage'), [
+      { text: t('profile.logoutCancel'), style: "cancel" },
+      { text: t('profile.logout'), style: "destructive", onPress: performLogout },
     ]);
   }
 
@@ -311,11 +313,53 @@ export default function ProfileScreen() {
           paddingHorizontal: paddingMedium,
           marginTop: Math.round(height * 0.008)
         }]}>
-          <InfoRow label="Usuario" value={displayName} iconName="person.fill" iconSize={iconSize} />
-          <InfoRow label="Correo" value={displayEmail} iconName="mail.fill" iconSize={iconSize} />
-          <InfoRow label="Teléfono" value={displayPhone} iconName="phone" iconSize={iconSize} />
-          <InfoRow label="Nacionalidad" value={displayNationality} iconName="flag.fill" iconSize={iconSize} />
-          <InfoRow label="Fecha de nacimiento" value={displayBirthdate} iconName="birthday.cake.fill" iconSize={iconSize} />
+          <InfoRow label={t('profile.user')} value={displayName} iconName="person.fill" iconSize={iconSize} />
+          <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail.fill" iconSize={iconSize} />
+          <InfoRow label={t('profile.phone')} value={displayPhone} iconName="phone" iconSize={iconSize} />
+          <InfoRow label={t('profile.nationality')} value={displayNationality} iconName="flag.fill" iconSize={iconSize} />
+          <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="birthday.cake.fill" iconSize={iconSize} />
+          
+          {/* Language Selector */}
+          <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
+            <View style={styles.infoLeft}>
+              <IconSymbol name="globe" size={iconSize} color="#666" />
+              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>
+                {t('profile.language')}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setLanguage('es')}
+                style={[
+                  styles.languageButton,
+                  language === 'es' && styles.languageButtonActive,
+                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
+                ]}
+              >
+                <Text style={[
+                  { fontSize: fontSizeSmall, fontWeight: '600' },
+                  language === 'es' ? { color: '#fff' } : { color: '#666' }
+                ]}>
+                  {t('profile.spanish')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setLanguage('en')}
+                style={[
+                  styles.languageButton,
+                  language === 'en' && styles.languageButtonActive,
+                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
+                ]}
+              >
+                <Text style={[
+                  { fontSize: fontSizeSmall, fontWeight: '600' },
+                  language === 'en' ? { color: '#fff' } : { color: '#666' }
+                ]}>
+                  {t('profile.english')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
 
         <View style={[styles.actions, { 
@@ -324,7 +368,7 @@ export default function ProfileScreen() {
         }]}>
           <View style={styles.buttonRow}>
             <PrimaryButton
-              title="Editar perfil"
+              title={t('profile.editProfile')}
               onPress={handleEdit}
               height={btnHeight}
               borderRadius={btnRadius}
@@ -334,7 +378,7 @@ export default function ProfileScreen() {
 
           <View style={[styles.buttonRow, { marginTop: Math.round(height * 0.018) }]}>
             <PrimaryButton
-              title="Cambiar contraseña"
+              title={t('profile.changePassword')}
               onPress={handleChangePassword}
               height={btnHeight}
               borderRadius={btnRadius}
@@ -345,7 +389,7 @@ export default function ProfileScreen() {
 
         <View style={[styles.logoutWrap, { bottom: Math.round(height * 0.18) }]}>
           <PrimaryButton
-            title="Cerrar Sesión"
+            title={t('profile.logout')}
             onPress={handleLogout}
             height={Math.round(btnHeight * 1.1)}
             borderRadius={Math.round(btnRadius * 1.5)}
@@ -405,6 +449,15 @@ const styles = StyleSheet.create({
   infoLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   infoLabel: { color: "#888", fontWeight: "500" },
   infoValue: { color: "#111", fontWeight: "600" },
+  languageButton: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    backgroundColor: "#f5f5f5",
+  },
+  languageButtonActive: {
+    backgroundColor: RED,
+    borderColor: RED,
+  },
 
   sectionTitle: {
     fontSize: 14,

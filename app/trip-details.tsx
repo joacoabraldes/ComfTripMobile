@@ -1,4 +1,7 @@
 import { apiDelete, apiGet } from '@/helpers/api';
+import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
+import { getTripStatus, isTripCompleted } from '@/helpers/tripUtils';
+import { Activity, Trip, TripReview } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -8,6 +11,9 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, Touchabl
 import { SafeAreaView } from 'react-native-safe-area-context';
 import BackButton from '@/components/BackButton';
 import { CommonStyles } from '@/constants/Styles';
+import TripSummary from '@/components/trip/TripSummary';
+import ReviewForm from '@/components/trip/ReviewForm';
+import ShareTripButton from '@/components/trip/ShareTripButton';
 
 type Params = {
   id?: string;
@@ -17,72 +23,64 @@ type Params = {
   flag_url?: string;
 };
 
-type Activity = {
-  key: string;
-  title: string;
-  img?: string | null;
-  dateStr: string; // formatted date + time for display
-  sortTs?: number; // for sorting
-};
-
-// Web-like formatters
-function fmtDate(d?: string) {
-  if (!d) return '-';
-  const onlyDate = d.includes('T') ? d.split('T')[0] : d;
-  const parts = onlyDate.split('-');
-  if (parts.length !== 3) return d;
-  const [yy, mm, dd] = parts;
-  return `${dd}/${mm}/${yy}`;
-}
-
-function fmtHour(t?: string) {
-  if (!t) return '-';
-  const parts = t.split(':');
-  const [hh, mm] = parts;
-  return `${hh}:${mm ?? '00'}`;
-}
-
-// Helpers for header date range
-function parseDateSafe(s?: string) {
-  if (!s) return new Date();
-  const d = new Date(s);
-  if (isNaN(d.getTime())) return new Date();
-  return d;
-}
-
 export default function TripDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? 'Destino';
-  const startDate = parseDateSafe(params.start_date);
-  const endDate = parseDateSafe(params.end_date);
-  const dateRangeStr = `${startDate.toLocaleDateString('es-ES')} - ${endDate.toLocaleDateString('es-ES')}`;
+  const dateRangeStr = formatDateRange(params.start_date, params.end_date);
 
+  const [trip, setTrip] = useState<Trip | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [review, setReview] = useState<TripReview | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-
   const [deleting, setDeleting] = useState<boolean>(false);
+  const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
+
+  const tripId = params.id ? Number(params.id) : NaN;
+  // Check if trip is completed based on dates (use params if trip not loaded yet)
+  const isCompleted = trip
+    ? isTripCompleted(trip)
+    : params.start_date && params.end_date
+    ? getTripStatus(params.start_date, params.end_date) === 'past'
+    : false;
 
   // Fetch trip and derive activities from trip.places (web parity)
   useEffect(() => {
     let mounted = true;
     (async () => {
-      const id = params.id ? Number(params.id) : NaN;
-      if (!Number.isFinite(id) || id <= 0) {
+      if (!Number.isFinite(tripId) || tripId <= 0) {
         setError('ID de viaje inválido.');
         return;
       }
       setLoading(true);
       setError(null);
       try {
-        const res = await apiGet(`/trips/${id}`);
+        const res = await apiGet(`/trips/${tripId}`);
         const data = res?.data ?? res;
 
+        // Store the full trip object
+        const tripData: Trip = {
+          id: data.id || tripId,
+          user_id: data.user_id || 0,
+          destination: data.destination || params.destination || 'Destino',
+          start_date: data.start_date || params.start_date || '',
+          end_date: data.end_date || params.end_date || '',
+          flag_url: data.flag_url || params.flag_url || null,
+          notes: data.notes || null,
+          budget: data.budget || null,
+          created_at: data.created_at || null,
+          places: Array.isArray(data?.places) ? data.places : (Array.isArray(data?.data?.places) ? data.data.places : []),
+        };
+
+        if (mounted) {
+          setTrip(tripData);
+        }
+
         // Expecting trip object with places array, like the web
-        const places: any[] = Array.isArray(data?.places) ? data.places : Array.isArray(data?.data?.places) ? data.data.places : [];
+        const places: any[] = tripData.places || [];
 
         const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
           const loc = p.location || {};
@@ -98,7 +96,7 @@ export default function TripDetails() {
             ts = d.getTime();
           }
 
-          const dateStr = `${fmtDate(p.date)} ${fmtHour(p.start_hour)}${p.end_hour ? ` - ${fmtHour(p.end_hour)}` : ''}`.trim();
+          const dateStr = `${formatDate(p.date)} ${formatTime(p.start_hour)}${p.end_hour ? ` - ${formatTime(p.end_hour)}` : ''}`.trim();
 
           return {
             key: String(p.id ?? idx),
@@ -115,7 +113,25 @@ export default function TripDetails() {
           return aa - bb;
         });
 
-        if (mounted) setActivities(sorted);
+        if (mounted) {
+          setActivities(sorted);
+        }
+
+        // Load review for completed trips
+        if (mounted && isTripCompleted(tripData)) {
+          try {
+            const reviewRes = await apiGet(`/trips/${tripId}/review`);
+            const reviewData = reviewRes?.data || reviewRes;
+            if (reviewData && reviewData.id) {
+              setReview(reviewData);
+            }
+          } catch (err: any) {
+            // Review doesn't exist yet, that's okay
+            if (err?.status !== 404) {
+              console.error('Error loading review:', err);
+            }
+          }
+        }
       } catch (err: any) {
         if (mounted) setError(err?.message || 'No se pudo cargar el viaje.');
       } finally {
@@ -123,7 +139,7 @@ export default function TripDetails() {
       }
     })();
     return () => { mounted = false; };
-  }, [params.id]);
+  }, [params.id, tripId]);
 
   // Preserve local edit sync (if any)
   useFocusEffect(
@@ -166,8 +182,7 @@ export default function TripDetails() {
   };
 
   const confirmAndDelete = () => {
-    const id = params.id ? Number(params.id) : NaN;
-    if (!Number.isFinite(id) || id <= 0) {
+    if (!Number.isFinite(tripId) || tripId <= 0) {
       Alert.alert('Error', 'ID de viaje inválido.');
       return;
     }
@@ -184,7 +199,7 @@ export default function TripDetails() {
             if (deleting) return;
             setDeleting(true);
             try {
-              await apiDelete(`/trips/${id}`);
+              await apiDelete(`/trips/${tripId}`);
               Alert.alert('Eliminado', 'El viaje fue eliminado correctamente.');
               router.back();
             } catch (e: any) {
@@ -199,6 +214,21 @@ export default function TripDetails() {
     );
   };
 
+  const handleReviewSaved = async () => {
+    setShowReviewForm(false);
+    // Reload review
+    try {
+      const reviewRes = await apiGet(`/trips/${tripId}/review`);
+      const reviewData = reviewRes?.data || reviewRes;
+      if (reviewData && reviewData.id) {
+        setReview(reviewData);
+      }
+    } catch (err: any) {
+      // Review doesn't exist, ignore
+      console.error('Error reloading review:', err);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={CommonStyles.backButtonContainer}>
@@ -208,7 +238,77 @@ export default function TripDetails() {
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
           <Text style={styles.subtitle}>{dateRangeStr}</Text>
+          {isCompleted && (
+            <View style={styles.completedBadge}>
+              <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+              <Text style={styles.completedBadgeText}>Viaje Completado</Text>
+            </View>
+          )}
         </View>
+
+        {/* Trip Summary for completed trips */}
+        {isCompleted && trip && (
+          <TripSummary trip={trip} />
+        )}
+
+        {/* Review Section for completed trips */}
+        {isCompleted && Number.isFinite(tripId) && (
+          <>
+            {!showReviewForm ? (
+              <View style={styles.reviewSection}>
+                <View style={styles.reviewSectionHeader}>
+                  <Text style={styles.sectionTitle}>Tu Reseña</Text>
+                  <TouchableOpacity
+                    style={styles.editReviewButton}
+                    onPress={() => setShowReviewForm(true)}
+                  >
+                    <MaterialIcons
+                      name={review ? 'edit' : 'add-circle-outline'}
+                      size={20}
+                      color="#FF3951"
+                    />
+                    <Text style={styles.editReviewButtonText}>
+                      {review ? 'Editar' : 'Agregar'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                {review ? (
+                  <View style={styles.reviewDisplay}>
+                    <View style={styles.reviewRating}>
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <MaterialIcons
+                          key={star}
+                          name={star <= (review.rating || 0) ? 'star' : 'star-border'}
+                          size={20}
+                          color={star <= (review.rating || 0) ? '#FFD700' : '#CCC'}
+                        />
+                      ))}
+                      <Text style={styles.reviewRatingText}>
+                        {review.rating || 0}/5
+                      </Text>
+                    </View>
+                    {review.title && (
+                      <Text style={styles.reviewTitle}>{review.title}</Text>
+                    )}
+                    {review.comment && (
+                      <Text style={styles.reviewComment}>{review.comment}</Text>
+                    )}
+                  </View>
+                ) : (
+                  <Text style={styles.noReviewText}>
+                    Aún no has agregado una reseña para este viaje.
+                  </Text>
+                )}
+              </View>
+            ) : (
+              <ReviewForm
+                tripId={tripId}
+                existingReview={review}
+                onSaved={handleReviewSaved}
+              />
+            )}
+          </>
+        )}
 
         <Text style={styles.sectionTitle}>Itinerario</Text>
 
@@ -249,15 +349,20 @@ export default function TripDetails() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-      <TouchableOpacity
-        style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-        onPress={confirmAndDelete}
-        disabled={deleting}
-        accessibilityRole="button"
-        accessibilityLabel="Eliminar viaje"
-      >
-        <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
-      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        {isCompleted && Number.isFinite(tripId) && (
+          <ShareTripButton tripId={tripId} tripDestination={destination} />
+        )}
+        <TouchableOpacity
+          style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
+          onPress={confirmAndDelete}
+          disabled={deleting}
+          accessibilityRole="button"
+          accessibilityLabel="Eliminar viaje"
+        >
+          <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
+        </TouchableOpacity>
+      </View>
     </SafeAreaView>
   );
 }
@@ -268,8 +373,93 @@ const styles = StyleSheet.create({
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
   title: { fontSize: 26, fontWeight: '800', color: '#000' },
   subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },
-
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    gap: 6,
+  },
+  completedBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#4CAF50',
+  },
   sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: '#111' },
+  reviewSection: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 3,
+  },
+  reviewSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  editReviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  editReviewButtonText: {
+    color: '#FF3951',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  reviewDisplay: {
+    marginTop: 8,
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 8,
+  },
+  reviewRatingText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+  },
+  reviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111',
+    marginBottom: 8,
+  },
+  reviewComment: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 22,
+  },
+  noReviewText: {
+    fontSize: 14,
+    color: '#999',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'absolute',
+    right: 18,
+    top: 36,
+    gap: 8,
+  },
 
   activityCard: {
     width: '100%',
@@ -309,9 +499,6 @@ const styles = StyleSheet.create({
   addBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
 
   deleteBtn: {
-    position: 'absolute',
-    right: 18,
-    top: 36,
     backgroundColor: '#edededff',
     paddingHorizontal: 12,
     paddingVertical: 8,

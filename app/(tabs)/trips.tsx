@@ -1,22 +1,16 @@
 import { apiGet } from '@/helpers/api';
+import { formatDateRange } from '@/helpers/dateUtils';
+import { sortTripsByStatus, getTripStatus, getTripStatusValue } from '@/helpers/tripUtils';
+import { useTranslation } from '@/i18n';
+import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type Trip = {
-  id: number;
-  destination: string; // e.g. "Lima, Peru"
-  start_date: string; // ISO date
-  end_date: string; // ISO date
-  flag_url?: string | null; // optional URL for the flag or image
-  notes?: string | null;
-  budget?: number | null;
-  created_at?: string | null;
-};
-
 export default function TripsScreen() {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -33,20 +27,14 @@ export default function TripsScreen() {
     try {
       const res = await apiGet('/trips'); 
       const data = res?.data ?? res;
-      let tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+      const tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []) as Trip[];
       
-      tripsData.sort((a: Trip, b: Trip) => {
-        const aStatus = isUpcoming(a.start_date, a.end_date);
-        const bStatus = isUpcoming(b.start_date, b.end_date);
-        
-        // Sort order: upcoming (2) > current (1) > past (0)
-        return bStatus - aStatus;
-      });
-      
-      setTrips(tripsData);
+      // Sort trips by status: upcoming > current > past
+      const sortedTrips = sortTripsByStatus(tripsData);
+      setTrips(sortedTrips);
     } catch (err: any) {
       console.error('Error fetching trips', err);
-      setError((err && err.message) || 'Failed to load trips');
+      setError(err?.message || t('trips.failedToLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,35 +50,20 @@ export default function TripsScreen() {
     fetchTrips();
   }, [fetchTrips]);
 
-  const renderDateRange = (start?: string, end?: string) => {
-    if (!start || !end) return '';
-    try {
-      const s = new Date(start);
-      const e = new Date(end);
-      const sStr = s.toLocaleDateString();
-      const eStr = e.toLocaleDateString();
-      return `${sStr} - ${eStr}`;
-    } catch {
-      return `${start} - ${end}`;
-    }
-  };
-
-  const isUpcoming = (start?: string, end?: string) => {
-    if (!start) return -1;
-    if (!end) return -1;
-    const now = new Date();
-    const s = new Date(start);
-    const e = new Date(end);
-    if (s > now) return 2; // proximo
-    if (s <= now && e >= now) return 1; // actual
-    return 0; // pasado
-  };
 
   const renderItem = ({ item }: { item: Trip }) => {
-    const upcoming = isUpcoming(item.start_date, item.end_date);
-    const bgColor = upcoming == 2 ? '#F8F1EF' : (upcoming == 1 ? '#FFFFFF' : '#F1F1F1');
-    const accent = upcoming == 2 ? '#FFD8D8' : (upcoming == 1 ? '#FF3951' : '#CACACA');
-    const badgeTextColor = upcoming == 1 ? '#FFFFFF' : '#333';
+    const status = getTripStatus(item.start_date, item.end_date);
+    const statusValue = getTripStatusValue(item.start_date, item.end_date);
+    
+    const bgColor = statusValue === 2 ? '#F8F1EF' : (statusValue === 1 ? '#FFFFFF' : '#F1F1F1');
+    const accent = statusValue === 2 ? '#FFD8D8' : (statusValue === 1 ? '#FF3951' : '#CACACA');
+    const badgeTextColor = statusValue === 1 ? '#FFFFFF' : '#333';
+    
+    const statusLabels: Record<'upcoming' | 'current' | 'past', string> = {
+      upcoming: t('trips.status.upcoming'),
+      current: t('trips.status.current'),
+      past: t('trips.status.past'),
+    };
 
     // Try to guess a fallback flag image: if trip has flag_url use it, else placeholder
     const imageSource = item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7'; // small flag placeholder
@@ -116,14 +89,14 @@ export default function TripsScreen() {
           source={imageSource}
           style={styles.flag}
           contentFit="cover"
-          placeholder={require("../../assets/images/icon.png")} // optional local placeholder if you have one
+          placeholder={require("../../assets/images/icon.png")}
         />
         <View style={styles.cardContent}>
           <Text style={styles.destination}>{item.destination}</Text>
-          <Text style={styles.dates}>{renderDateRange(item.start_date, item.end_date)}</Text>
+          <Text style={styles.dates}>{formatDateRange(item.start_date, item.end_date)}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: accent }]}>
-          <Text style={[styles.badgeText, { color: badgeTextColor }]}>{upcoming == 2 ? 'Próximo' : (upcoming == 1 ? 'Actual' : 'Pasado')}</Text>
+          <Text style={[styles.badgeText, { color: badgeTextColor }]}>{statusLabels[status]}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -132,7 +105,7 @@ export default function TripsScreen() {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Text style={{ marginTop: 40 }}>Cargando viajes...</Text>
+        <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
       </View>
     );
   }
@@ -140,9 +113,9 @@ export default function TripsScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={{ color: '#B00020', marginBottom: 8 }}>Error: {error}</Text>
+        <Text style={{ color: '#B00020', marginBottom: 8 }}>{t('common.error')}: {error}</Text>
         <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
-          <Text style={{ color: '#fff' }}>Reintentar</Text>
+          <Text style={{ color: '#fff' }}>{t('common.retry')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -151,21 +124,20 @@ export default function TripsScreen() {
   return (
     <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? 8 : 0 }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Mis Viajes</Text>
+        <Text style={styles.title}>{t('trips.title')}</Text>
       </View>
 
       <FlatList
         data={trips}
-        keyExtractor={(t) => String(t.id)}
+        keyExtractor={(trip) => String(trip.id)}
         renderItem={renderItem}
-        // IMPORTANT: que el FlatList llene el contenedor y tenga ancho 100%
         style={{ flex: 1, width: '100%' }}
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text style={{ color: '#777' }}>No hay viajes registrados.</Text>
+            <Text style={{ color: '#777' }}>{t('trips.empty')}</Text>
           </View>
         }
       />
@@ -173,11 +145,10 @@ export default function TripsScreen() {
       <TouchableOpacity
         style={[
           styles.fab,
-          // ajustar bottom con safe area (evita quedar debajo de la barra de navegación)
           { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
         ]}
         onPress={() => router.push('/add-trip')}
-        accessibilityLabel="Agregar viaje"
+        accessibilityLabel={t('trips.addTrip')}
         activeOpacity={0.85}
       >
         <Text style={styles.fabText}>+</Text>
@@ -238,19 +209,18 @@ const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 30,
-    // bottom se ajusta dinámicamente con insets
     width: 70,
     height: 70,
     borderRadius: 35,
     backgroundColor: '#FF3951',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 14, // Android
+    elevation: 14,
     shadowColor: '#000',
     shadowOpacity: 0.18,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },
-    zIndex: 9999, // iOS
+    zIndex: 9999,
   },
   fabText: { color: '#fff', fontSize: 32, lineHeight: 34, fontWeight: '600' },
 });

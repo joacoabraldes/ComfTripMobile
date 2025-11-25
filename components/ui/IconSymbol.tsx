@@ -31,7 +31,8 @@ const MAPPING = {
   'calendar': 'calendar-today', // date/birthdate
   'birthday.cake.fill': 'cake', // birthday
   'flag.fill': 'flag', // nationality/flag
-} as const satisfies IconMapping;
+  'globe': 'language', // language/globe
+} as const satisfies Record<string, ComponentProps<typeof MaterialIcons>['name']>;
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
