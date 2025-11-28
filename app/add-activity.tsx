@@ -15,10 +15,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import BackButton from '@/components/BackButton';
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 
 export default function AddActivity() {
   const router = useRouter();
   const params = useLocalSearchParams();
+  const { t } = useTranslation();
   const mode = (params.mode as string) ?? 'add';
   const isEdit = mode === 'edit';
   const [title, setTitle] = React.useState((params.title as string) ?? '');
@@ -35,8 +37,8 @@ export default function AddActivity() {
       const cam = await ImagePicker.requestCameraPermissionsAsync();
       if (cam.status !== 'granted') {
         Alert.alert(
-          'Permiso denegado',
-          'Necesitamos permiso para acceder a la cámara para tomar la foto.'
+          t('addActivity.permissionDenied'),
+          t('addActivity.permissionMessage')
         );
         return false;
       }
@@ -97,7 +99,7 @@ export default function AddActivity() {
       // si no es modo edit podrías implementar la creación normal
       router.back();
     } catch (e) {
-      Alert.alert('Error', 'No se pudo guardar la actividad.');
+      Alert.alert(t('common.error'), t('addActivity.saveError'));
     }
   };
 
@@ -106,7 +108,7 @@ export default function AddActivity() {
       <View style={CommonStyles.backButtonContainer}>
         <BackButton />
       </View>
-      <Text style={styles.header}>{isEdit ? 'Editar actividad' : 'Nueva actividad'}</Text>
+      <Text style={styles.header}>{isEdit ? t('addActivity.editTitle') : t('addActivity.newTitle')}</Text>
 
       <View style={{ height: 18 }} />
 
@@ -116,24 +118,24 @@ export default function AddActivity() {
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Text style={{ color: '#fff', fontWeight: '600' }}>Sin foto</Text>
+              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('addActivity.noPhoto')}</Text>
             </View>
           )}
 
           <TouchableOpacity style={styles.photoBtn} onPress={takePhoto} disabled={loadingPhoto}>
-            <Text style={styles.photoBtnText}>{loadingPhoto ? 'Abrir cámara...' : 'Tomar foto'}</Text>
+            <Text style={styles.photoBtnText}>{loadingPhoto ? t('addActivity.openCamera') : t('addActivity.takePhoto')}</Text>
           </TouchableOpacity>
         </View>
 
         <View style={{ width: 12 }} />
 
         <View style={{ flex: 1 }}>
-          <Text style={styles.label}>Título</Text>
+          <Text style={styles.label}>{t('addActivity.title')}</Text>
           <TextInput
             style={styles.input}
             value={title}
             onChangeText={setTitle}
-            placeholder="Nombre de la actividad"
+            placeholder={t('addActivity.titlePlaceholder')}
           />
         </View>
       </View>
@@ -141,7 +143,7 @@ export default function AddActivity() {
       <View style={{ height: 24 }} />
 
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-        <Text style={styles.saveBtnText}>Guardar</Text>
+        <Text style={styles.saveBtnText}>{t('addActivity.save')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

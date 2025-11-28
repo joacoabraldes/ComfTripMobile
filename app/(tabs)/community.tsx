@@ -14,6 +14,7 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from '@/i18n';
 
 type Friend = {
   id: number;
@@ -41,6 +42,7 @@ type Trip = {
 };
 
 export default function CommunityScreen() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
@@ -81,8 +83,8 @@ export default function CommunityScreen() {
       setOutgoing(cleanedOutgoing || []);
     } catch (err: any) {
       console.error('Error cargando comunidad:', err);
-      const msg = (err && err.message) ? err.message : 'No se pudo cargar la comunidad';
-      Alert.alert('Error', `No se pudo cargar la comunidad\n\n${msg}`);
+      const msg = (err && err.message) ? err.message : t('communityExtra.failedToLoad');
+      Alert.alert(t('common.error'), `${t('communityExtra.failedToLoad')}\n\n${msg}`);
       setFriends([]);
       setIncoming([]);
       setOutgoing([]);
@@ -97,7 +99,7 @@ export default function CommunityScreen() {
 
   async function sendRequest() {
     if (!emailOrId) {
-      Alert.alert('Error', 'Ingresa un email o id de usuario');
+      Alert.alert(t('common.error'), t('communityExtra.enterEmailOrId'));
       return;
     }
     setSending(true);
@@ -110,13 +112,13 @@ export default function CommunityScreen() {
       }
 
       await apiPost('/friends', body);
-      Alert.alert('Éxito', 'Solicitud enviada');
+      Alert.alert(t('common.success'), t('communityExtra.requestSent'));
       setEmailOrId('');
       await loadAll();
     } catch (err: any) {
       console.error('Error enviando solicitud:', err);
-      const msg = (err && err.message) ? err.message : 'No se pudo enviar la solicitud';
-      Alert.alert('Error', msg);
+      const msg = (err && err.message) ? err.message : t('communityExtra.failedToSend');
+      Alert.alert(t('common.error'), msg);
     } finally {
       setSending(false);
     }
@@ -128,7 +130,7 @@ export default function CommunityScreen() {
       await loadAll();
     } catch (err) {
       console.error('Error aceptando:', err);
-      Alert.alert('Error', 'No se pudo aceptar la solicitud');
+      Alert.alert(t('common.error'), t('communityExtra.failedToAccept'));
     }
   }
 
@@ -138,23 +140,23 @@ export default function CommunityScreen() {
       await loadAll();
     } catch (err) {
       console.error('Error rechazando:', err);
-      Alert.alert('Error', 'No se pudo rechazar la solicitud');
+      Alert.alert(t('common.error'), t('communityExtra.failedToReject'));
     }
   }
 
   async function removeFriend(userId: number) {
     Alert.alert(
-      'Eliminar amigo',
-      '¿Eliminar amigo?',
+      t('community.removeFriend'),
+      t('community.removeFriendConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.delete'), style: 'destructive', onPress: async () => {
           try {
             await apiDelete(`/friends/${userId}`);
             await loadAll();
           } catch (err) {
             console.error('Error eliminando amigo:', err);
-            Alert.alert('Error', 'No se pudo eliminar');
+            Alert.alert(t('common.error'), t('communityExtra.failedToRemove'));
           }
         }}
       ]
@@ -206,18 +208,18 @@ export default function CommunityScreen() {
 
       if (currentUserId == null) {
         setAvailableTrips([]);
-        Alert.alert('Error', 'No se pudo determinar tu usuario. Intenta recargar la página o iniciar sesión nuevamente.');
+        Alert.alert(t('common.error'), t('communityExtra.cannotDetermineUser'));
         return;
       }
 
       const ownedTrips = tripsArr.filter((t: Trip) => Number(t?.user_id) === Number(currentUserId));
       if (ownedTrips.length === 0) {
-        Alert.alert('Info', 'No se encontraron viajes propios para compartir. Solo puedes compartir viajes que posees.');
+        Alert.alert(t('common.success'), t('community.noOwnTrips'));
       }
       setAvailableTrips(ownedTrips);
     } catch (err) {
       console.error('Error fetching trips for sharing:', err);
-      Alert.alert('Error', 'No se pudieron cargar tus viajes para compartir.');
+      Alert.alert(t('common.error'), t('communityExtra.failedToLoadTrips'));
       setAvailableTrips([]);
     }
   }
@@ -236,11 +238,11 @@ export default function CommunityScreen() {
 
   async function submitShare() {
     if (!shareTargetFriend) {
-      Alert.alert('Error', 'No friend selected');
+      Alert.alert(t('common.error'), t('communityExtra.noFriendSelected'));
       return;
     }
     if (!selectedTripIds.size) {
-      Alert.alert('Error', 'Selecciona al menos un viaje para compartir');
+      Alert.alert(t('common.error'), t('communityExtra.selectAtLeastOne'));
       return;
     }
 
@@ -265,12 +267,16 @@ export default function CommunityScreen() {
 
     setSharing(false);
     let msg = '';
-    if (successes.length) msg += `Compartido correctamente ${successes.length} viaje(s).\n`;
+    if (successes.length) {
+      const friendWord = successes.length === 1 ? t('share.friend') : t('share.friends');
+      msg += t('community.shareSuccess', { count: successes.length }) + '\n';
+    }
     if (failures.length) {
-      msg += `Errores en ${failures.length} viaje(s):\n` + failures.map(f => ` - ${f.tripId}: ${f.message}`).join('\n');
+      const errorWord = failures.length === 1 ? t('share.errorSingular') : t('share.errorsPlural');
+      msg += t('community.shareErrors', { count: failures.length }) + failures.map(f => ` - ${f.tripId}: ${f.message}`).join('\n');
     }
 
-    Alert.alert('Resultado', msg || 'Operación completada');
+    Alert.alert(t('communityExtra.result'), msg || t('share.operationCompleted'));
     setShowShareModal(false);
     setShareTargetFriend(null);
     setSelectedTripIds(new Set());
@@ -287,7 +293,7 @@ export default function CommunityScreen() {
   }
 
   function renderListItem(item: any, actions: React.ReactNode, showAvatar = false) {
-    const title = item.requester_name || item.addressee_name || item.name || `Usuario ${item.requester_id || item.addressee_id || item.id}`;
+    const title = item.requester_name || item.addressee_name || item.name || t('communityExtra.userNumber', { number: item.requester_id || item.addressee_id || item.id });
     const subtitle = item.requester_email || item.addressee_email || item.email || '';
     const status = item.status;
 
@@ -298,7 +304,7 @@ export default function CommunityScreen() {
           <View style={[styles.itemText, !showAvatar && styles.itemTextNoAvatar]}>
             <Text style={styles.itemTitle}>{title}</Text>
             {subtitle ? <Text style={styles.itemSubtitle}>{subtitle}</Text> : null}
-            {status ? <Text style={styles.itemStatus}>Estado: {status}</Text> : null}
+            {status ? <Text style={styles.itemStatus}>{t('communityExtra.statusLabel', { status })}</Text> : null}
           </View>
         </View>
         <View style={styles.itemActions}>
@@ -312,11 +318,11 @@ export default function CommunityScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Comunidad</Text>
+          <Text style={styles.title}>{t('community.title')}</Text>
         </View>
         <View style={styles.center}>
           <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>Cargando…</Text>
+          <Text style={styles.loadingText}>{t('communityExtra.loading')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -326,16 +332,16 @@ export default function CommunityScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>Comunidad</Text>
+          <Text style={styles.title}>{t('community.title')}</Text>
         </View>
 
         {/* Send Request Section */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Enviar solicitud</Text>
+          <Text style={styles.cardTitle}>{t('community.sendRequest')}</Text>
           <View style={styles.sendRow}>
             <TextInput
               style={styles.input}
-              placeholder="Email o id de usuario"
+              placeholder={t('community.placeholder')}
               value={emailOrId}
               onChangeText={setEmailOrId}
               autoCapitalize="none"
@@ -346,17 +352,17 @@ export default function CommunityScreen() {
               onPress={sendRequest}
               disabled={sending}
             >
-              <Text style={styles.sendButtonText}>Enviar</Text>
+              <Text style={styles.sendButtonText}>{t('community.send')}</Text>
             </TouchableOpacity>
           </View>
-          <Text style={styles.hint}>Envía por email o por id de usuario.</Text>
+          <Text style={styles.hint}>{t('community.hint')}</Text>
         </View>
 
         {/* Incoming Requests */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Solicitudes entrantes</Text>
+          <Text style={styles.cardTitle}>{t('community.incomingRequests')}</Text>
           {incoming.length === 0 ? (
-            <Text style={styles.emptyText}>No hay solicitudes entrantes</Text>
+            <Text style={styles.emptyText}>{t('community.noIncoming')}</Text>
           ) : (
             <View>
               {incoming.map(req => renderListItem(
@@ -382,9 +388,9 @@ export default function CommunityScreen() {
 
         {/* Friends */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Amigos</Text>
+          <Text style={styles.cardTitle}>{t('community.friends')}</Text>
           {friends.length === 0 ? (
-            <Text style={styles.emptyText}>No tienes amigos aún</Text>
+            <Text style={styles.emptyText}>{t('community.noFriends')}</Text>
           ) : (
             <View>
               {friends.map(friend => renderListItem(
@@ -411,9 +417,9 @@ export default function CommunityScreen() {
 
         {/* Outgoing Requests */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Solicitudes enviadas (pendientes)</Text>
+          <Text style={styles.cardTitle}>{t('community.outgoingRequests')}</Text>
           {outgoing.length === 0 ? (
-            <Text style={styles.emptyText}>No hay solicitudes pendientes enviadas</Text>
+            <Text style={styles.emptyText}>{t('community.noOutgoing')}</Text>
           ) : (
             <View>
               {outgoing.map(req => renderListItem(req, <View />))}
@@ -439,15 +445,15 @@ export default function CommunityScreen() {
             </TouchableOpacity>
             
             <Text style={styles.modalTitle}>
-              Compartir viajes con {shareTargetFriend?.name || shareTargetFriend?.email || `Usuario ${shareTargetFriend?.id}`}
+              {t('community.shareTrips', { name: shareTargetFriend?.name || shareTargetFriend?.email || t('communityExtra.userNumber', { number: shareTargetFriend?.id }) })}
             </Text>
             <Text style={styles.modalHint}>
-              Selecciona los viajes que quieras compartir (puedes seleccionar varios).
+              {t('community.selectTrips')}
             </Text>
 
             <ScrollView style={styles.tripList} showsVerticalScrollIndicator={false}>
               {availableTrips.length === 0 ? (
-                <Text style={styles.emptyText}>No se encontraron viajes propios para compartir.</Text>
+                <Text style={styles.emptyText}>{t('communityExtra.noTripsToShare')}</Text>
               ) : (
                 <View>
                   {availableTrips.map(trip => {
@@ -463,11 +469,11 @@ export default function CommunityScreen() {
                         disabled={sharing}
                       >
                         <View style={styles.tripInfo}>
-                          <Text style={styles.tripTitle}>{trip.destination || `Viaje #${trip.id}`}</Text>
+                          <Text style={styles.tripTitle}>{trip.destination || `${t('trips.title')} #${trip.id}`}</Text>
                           <Text style={styles.tripDates}>
-                            {startDate && endDate ? `${startDate} — ${endDate}` : 'Fechas no especificadas'}
+                            {startDate && endDate ? `${startDate} — ${endDate}` : t('communityExtra.datesNotSpecified')}
                           </Text>
-                          <Text style={styles.tripOwner}>Owner id: {String(trip.user_id)}</Text>
+                          <Text style={styles.tripOwner}>{t('communityExtra.ownerId', { id: String(trip.user_id) })}</Text>
                         </View>
                         <View style={styles.checkbox}>
                           <View style={[styles.checkboxInner, isSelected && styles.checkboxSelected]}>
@@ -487,7 +493,7 @@ export default function CommunityScreen() {
                 onPress={() => setShowShareModal(false)}
                 disabled={sharing}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, styles.shareModalButton, selectedTripIds.size === 0 && styles.shareModalButtonDisabled]}
@@ -495,7 +501,7 @@ export default function CommunityScreen() {
                 disabled={sharing || selectedTripIds.size === 0}
               >
                 <Text style={styles.shareModalButtonText}>
-                  {sharing ? 'Compartiendo…' : `Compartir${selectedTripIds.size ? ` (${selectedTripIds.size})` : ''}`}
+                  {sharing ? t('community.sharing') : t('community.shareSelected', { count: selectedTripIds.size })}
                 </Text>
               </TouchableOpacity>
             </View>

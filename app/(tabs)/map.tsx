@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { ArrowIcon } from "@/components/icons/ArrowIcon";
 import { apiGet } from "@/helpers/api";
+import { useTranslation } from '@/i18n';
 
 type Loc = {
   id: string;
@@ -89,17 +90,18 @@ function proxyImageUri(uri?: string | null): string | undefined {
   }
 }
 
-// Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
-const displayCategoryFromFk = (fk?: string | null) => {
-  if (!fk) return "Otros";
-  return String(fk).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-};
-
 export default function MapScreen() {
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const bottomInset = insets?.bottom ?? 0;
   const webRef = useRef<WebView | null>(null);
+  const { t } = useTranslation();
+
+  // Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
+  const displayCategoryFromFk = (fk?: string | null) => {
+    if (!fk) return t('map.other');
+    return String(fk).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  };
 
   const [loadingPosition, setLoadingPosition] = useState(true);
   const [webReady, setWebReady] = useState(false);
@@ -222,7 +224,7 @@ export default function MapScreen() {
         setLoadingLocations(false);
       }
     },
-    []
+    [displayCategoryFromFk]
   );
 
   // initial fetch and when selectedInterest changes
@@ -250,14 +252,14 @@ export default function MapScreen() {
           const places = await Location.reverseGeocodeAsync({ latitude: coords.lat, longitude: coords.lng });
           if (places && places.length > 0) {
             const p = places[0];
-            const label = p.city ?? p.subregion ?? p.region ?? p.name ?? "Unknown";
+            const label = p.city ?? p.subregion ?? p.region ?? p.name ?? t('map.unknown');
             setCityName(label);
           } else {
-            setCityName("Unknown");
+            setCityName(t('map.unknown'));
           }
         } catch (rgErr) {
           console.warn("reverseGeocodeAsync failed", rgErr);
-          setCityName("Unknown");
+          setCityName(t('map.unknown'));
         }
       } catch (err) {
         console.warn("Error getting location", err);
@@ -282,6 +284,8 @@ export default function MapScreen() {
   // initialGeo starts empty; markers/user-location handled by postMessage later.
   const html = useMemo(() => {
     const initialGeo = JSON.stringify({ type: "FeatureCollection", features: [] });
+    const loadingMapText = t('map.loadingMap');
+    const userLocatedText = t('map.userLocated');
 
     return `<!doctype html>
     <html>
@@ -297,7 +301,7 @@ export default function MapScreen() {
       </head>
       <body>
         <div id="map"></div>
-        <div id="info">Loading map...</div>
+        <div id="info">${loadingMapText}</div>
         <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
         <script>
           (function forwardConsole(){
@@ -527,7 +531,7 @@ export default function MapScreen() {
                 }
 
                 const infoEl = document.getElementById('info');
-                if (infoEl) infoEl.innerText = 'User located';
+                if (infoEl) infoEl.innerText = '${userLocatedText}';
 
                 // center on user once at initial load
                 if (!initialCentered) {
@@ -620,7 +624,7 @@ export default function MapScreen() {
       </body>
     </html>
   `;
-  }, []); // static — no locations dependency
+  }, [t]); // include t as dependency to update on language change
 
   useEffect(() => {
     if (!webReady) return;
@@ -806,7 +810,7 @@ export default function MapScreen() {
   function RenderFilter() {
     // build display list: Todos + interests
     const chips: { key: string; label: string; slug: string }[] = [
-      { key: "all", label: "Todos", slug: "" },
+      { key: "all", label: t('map.all'), slug: "" },
       ...interests.map((it) => ({
         key: String(it.id ?? it.slug ?? it.title),
         label: it.title ?? String(it.slug ?? it.id),
@@ -817,7 +821,7 @@ export default function MapScreen() {
     return (
       <View style={styles.filterWrap}>
         <View style={styles.filterCard}>
-          <Text style={styles.filterTitle}>Filtrar por categoría</Text>
+          <Text style={styles.filterTitle}>{t('map.filterByCategory')}</Text>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
             {chips.map((c) => {
@@ -918,7 +922,7 @@ export default function MapScreen() {
           >
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeBtn}>
-                <Text style={styles.closeText}>Cerrar</Text>
+                <Text style={styles.closeText}>{t('map.close')}</Text>
               </TouchableOpacity>
 
               <View style={styles.headerTitles}>
@@ -971,7 +975,7 @@ export default function MapScreen() {
               </View>
             ) : (
               <View style={[styles.imagesWrap, { height: 120, alignItems: "center", justifyContent: "center" }]}>
-                <Text style={{ color: "rgba(0,0,0,0.5)" }}>No hay imágenes</Text>
+                <Text style={{ color: "rgba(0,0,0,0.5)" }}>{t('map.noImages')}</Text>
               </View>
             )}
 
@@ -987,7 +991,7 @@ export default function MapScreen() {
               <View style={styles.actionsRow}>
                 <View style={{ flex: 1 }}>
                   <PrimaryButton
-                    title="Cómo llegar"
+                    title={t('map.getDirections')}
                     onPress={openDirections}
                     height={52}
                     borderRadius={10}
@@ -998,7 +1002,7 @@ export default function MapScreen() {
                 </View>
 
                 <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.secondaryBtn}>
-                  <Text style={styles.secondaryTxt}>Cerrar</Text>
+                  <Text style={styles.secondaryTxt}>{t('map.close')}</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

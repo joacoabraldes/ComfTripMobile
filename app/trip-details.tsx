@@ -14,6 +14,7 @@ import { CommonStyles } from '@/constants/Styles';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewForm from '@/components/trip/ReviewForm';
 import ShareTripButton from '@/components/trip/ShareTripButton';
+import { useTranslation } from '@/i18n';
 
 type Params = {
   id?: string;
@@ -26,9 +27,10 @@ type Params = {
 export default function TripDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
+  const { t } = useTranslation();
 
   // Header uses params (as in trips.tsx navigation)
-  const destination = params.destination ?? 'Destino';
+  const destination = params.destination ?? t('tripSummary.destination');
   const dateRangeStr = formatDateRange(params.start_date, params.end_date);
 
   const [trip, setTrip] = useState<Trip | null>(null);
@@ -52,7 +54,7 @@ export default function TripDetails() {
     let mounted = true;
     (async () => {
       if (!Number.isFinite(tripId) || tripId <= 0) {
-        setError('ID de viaje inválido.');
+        setError(t('tripDetails.invalidId'));
         return;
       }
       setLoading(true);
@@ -65,7 +67,7 @@ export default function TripDetails() {
         const tripData: Trip = {
           id: data.id || tripId,
           user_id: data.user_id || 0,
-          destination: data.destination || params.destination || 'Destino',
+          destination: data.destination || params.destination || t('tripSummary.destination'),
           start_date: data.start_date || params.start_date || '',
           end_date: data.end_date || params.end_date || '',
           flag_url: data.flag_url || params.flag_url || null,
@@ -84,7 +86,7 @@ export default function TripDetails() {
 
         const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
           const loc = p.location || {};
-          const title = loc?.titulo ?? `Lugar #${p.fk_location ?? p.id ?? idx + 1}`;
+          const title = loc?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
           const firstImg = Array.isArray(loc?.imagenes) && loc.imagenes.length > 0 ? loc.imagenes[0] : null;
 
           // Build sortable timestamp from date + start_hour
@@ -133,7 +135,7 @@ export default function TripDetails() {
           }
         }
       } catch (err: any) {
-        if (mounted) setError(err?.message || 'No se pudo cargar el viaje.');
+        if (mounted) setError(err?.message || t('tripDetails.failedToLoad'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -183,28 +185,28 @@ export default function TripDetails() {
 
   const confirmAndDelete = () => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      Alert.alert('Error', 'ID de viaje inválido.');
+      Alert.alert(t('common.error'), t('tripDetails.invalidId'));
       return;
     }
 
     Alert.alert(
-      'Eliminar viaje',
-      '¿Seguro querés eliminar este viaje? Esta acción no se puede deshacer.',
+      t('tripDetails.deleteTitle'),
+      t('tripDetails.deleteMessage'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('common.delete'),
           style: 'destructive',
           onPress: async () => {
             if (deleting) return;
             setDeleting(true);
             try {
               await apiDelete(`/trips/${tripId}`);
-              Alert.alert('Eliminado', 'El viaje fue eliminado correctamente.');
+              Alert.alert(t('common.success'), t('tripDetails.deleteSuccess'));
               router.back();
             } catch (e: any) {
-              const msg = e?.message || 'No se pudo eliminar el viaje.';
-              Alert.alert('Error', msg);
+              const msg = e?.message || t('tripDetails.deleteError');
+              Alert.alert(t('common.error'), msg);
             } finally {
               setDeleting(false);
             }
@@ -241,7 +243,7 @@ export default function TripDetails() {
           {isCompleted && (
             <View style={styles.completedBadge}>
               <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
-              <Text style={styles.completedBadgeText}>Viaje Completado</Text>
+              <Text style={styles.completedBadgeText}>{t('tripDetails.completedBadge')}</Text>
             </View>
           )}
         </View>
@@ -257,7 +259,7 @@ export default function TripDetails() {
             {!showReviewForm ? (
               <View style={styles.reviewSection}>
                 <View style={styles.reviewSectionHeader}>
-                  <Text style={styles.sectionTitle}>Tu Reseña</Text>
+                  <Text style={styles.sectionTitle}>{t('review.title')}</Text>
                   <TouchableOpacity
                     style={styles.editReviewButton}
                     onPress={() => setShowReviewForm(true)}
@@ -268,7 +270,7 @@ export default function TripDetails() {
                       color="#FF3951"
                     />
                     <Text style={styles.editReviewButtonText}>
-                      {review ? 'Editar' : 'Agregar'}
+                      {review ? t('common.edit') : t('common.add')}
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -296,7 +298,7 @@ export default function TripDetails() {
                   </View>
                 ) : (
                   <Text style={styles.noReviewText}>
-                    Aún no has agregado una reseña para este viaje.
+                    {t('review.noReview')}
                   </Text>
                 )}
               </View>
@@ -310,14 +312,14 @@ export default function TripDetails() {
           </>
         )}
 
-        <Text style={styles.sectionTitle}>Itinerario</Text>
+        <Text style={styles.sectionTitle}>{t('tripDetails.itinerary')}</Text>
 
         <View style={{ height: 8 }} />
 
         {loading ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 20 }}>
             <ActivityIndicator size="small" color="#FF3951" />
-            <Text style={{ marginTop: 8, color: '#777' }}>Cargando actividades...</Text>
+            <Text style={{ marginTop: 8, color: '#777' }}>{t('tripDetails.loadingActivities')}</Text>
           </View>
         ) : error ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
@@ -325,7 +327,7 @@ export default function TripDetails() {
           </View>
         ) : activities.length === 0 ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
-            <Text style={{ color: '#777' }}>Aún no hay puntos en el itinerario.</Text>
+            <Text style={{ color: '#777' }}>{t('tripDetails.noActivities')}</Text>
           </View>
         ) : (
           activities.map((a) => (
@@ -358,7 +360,7 @@ export default function TripDetails() {
           onPress={confirmAndDelete}
           disabled={deleting}
           accessibilityRole="button"
-          accessibilityLabel="Eliminar viaje"
+          accessibilityLabel={t('tripDetails.deleteButton')}
         >
           <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
         </TouchableOpacity>

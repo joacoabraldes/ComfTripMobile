@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { apiPost } from '@/helpers/api';
+import { useTranslation } from '@/i18n';
 
 export default function LoadTrip() {
   const router = useRouter();
   const { payload } = useLocalSearchParams() as { payload?: string };
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     let mounted = true;
@@ -16,7 +18,7 @@ export default function LoadTrip() {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       if (mounted) {
-        setError('No pudimos armar tu viaje, inténtalo más tarde');
+        setError(t('loadTrip.error'));
         setLoading(false);
       }
     }, TIMEOUT);
@@ -25,7 +27,7 @@ export default function LoadTrip() {
       try {
         const parsed = payload ? JSON.parse(decodeURIComponent(payload)) : null;
         // Si no hay payload, informar error
-        if (!parsed) throw new Error('Payload inválido');
+        if (!parsed) throw new Error(t('loadTrip.invalidPayload'));
 
         const resp = await apiPost('/trips', parsed);
         if (!mounted) return;
@@ -38,7 +40,7 @@ export default function LoadTrip() {
         if (!mounted) return;
         clearTimeout(timeoutId);
         console.error('Error creando viaje:', err);
-        setError('No pudimos armar tu viaje, inténtalo más tarde');
+        setError(t('loadTrip.error'));
         setLoading(false);
       }
     })();
@@ -54,7 +56,7 @@ export default function LoadTrip() {
       <Stack.Screen options={{ headerShown: false }} />
       {loading && !error && (
         <>
-          <Text style={styles.text}>Estamos calculando los mejores lugares para visitar en tu viaje</Text>
+          <Text style={styles.text}>{t('loadTrip.calculating')}</Text>
           <Image source={require('../assets/images/loading.gif')} style={styles.loadingImage} />
           {/* <ActivityIndicator size="large" color="#FF3951" style={{ marginTop: 20 }} /> */}
         </>
@@ -64,7 +66,7 @@ export default function LoadTrip() {
         <>
           <Text style={styles.textError}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => router.push('/add-trip')}>
-            <Text style={styles.retryButtonText}>Volver</Text>
+            <Text style={styles.retryButtonText}>{t('loadTrip.back')}</Text>
           </TouchableOpacity>
         </>
       )}

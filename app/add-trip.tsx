@@ -5,12 +5,14 @@ import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
 import BackButton from '@/components/BackButton';
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 interface CalendarDay {
   date: number;
   selected: boolean;
 }
 
 export default function AddTrip() {
+  const { t } = useTranslation();
   const [destination, setDestination] =  useState<string | null>(null);
   const [country, setCountry]=useState<string | null>(null);
   const [city, setCity]=useState<string | null>(null);
@@ -105,11 +107,29 @@ export default function AddTrip() {
   };
 
   const monthNames = [
-    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    t('addTrip.months.january'),
+    t('addTrip.months.february'),
+    t('addTrip.months.march'),
+    t('addTrip.months.april'),
+    t('addTrip.months.may'),
+    t('addTrip.months.june'),
+    t('addTrip.months.july'),
+    t('addTrip.months.august'),
+    t('addTrip.months.september'),
+    t('addTrip.months.october'),
+    t('addTrip.months.november'),
+    t('addTrip.months.december'),
   ];
 
-  const weekDays = ['DOM', 'LUN', 'MAR', 'MIE', 'JUE', 'VIE', 'SAB'];
+  const weekDays = [
+    t('addTrip.weekDays.sun'),
+    t('addTrip.weekDays.mon'),
+    t('addTrip.weekDays.tue'),
+    t('addTrip.weekDays.wed'),
+    t('addTrip.weekDays.thu'),
+    t('addTrip.weekDays.fri'),
+    t('addTrip.weekDays.sat'),
+  ];
 
   const formatISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -129,7 +149,7 @@ export default function AddTrip() {
           'Referer': 'ConfTrip://', 
         },
       });
-      if (!res.ok) throw new Error('Error buscando ubicaciones');
+      if (!res.ok) throw new Error(t('addTrip.searchError'));
       const data = await res.json();
       setSuggestions(Array.isArray(data) ? data : []);
       setOpenSuggestions(true);
@@ -177,7 +197,7 @@ export default function AddTrip() {
 
   const openMap = () => {
     if (!selectedLocation) {
-      Alert.alert('Ubicación no seleccionada', 'Por favor selecciona una sugerencia antes de ver en el mapa.');
+      Alert.alert(t('addTrip.locationNotSelected'), t('addTrip.locationNotSelectedMessage'));
       return;
     }
     setShowMap(true);
@@ -187,11 +207,11 @@ export default function AddTrip() {
   const handleSaveTrip = async () => {
     if (saving) return;
     if (!startDate || !endDate) {
-      Alert.alert('Selecciona fechas', 'Por favor selecciona una fecha de inicio y una fecha de fin.');
+      Alert.alert(t('addTrip.selectDatesAlert'), t('addTrip.selectDatesMessage'));
       return;
     }
     if (!destination || destination.trim().length === 0) {
-      Alert.alert('Destino vacío', 'Por favor ingresa un destino.');
+      Alert.alert(t('addTrip.emptyDestination'), t('addTrip.emptyDestinationMessage'));
       return;
     }
 
@@ -216,8 +236,8 @@ export default function AddTrip() {
 
     } catch (err: any) {
       console.error('Error preparando payload:', err);
-      const message = (err && err.message) || 'No se pudo guardar el viaje';
-      Alert.alert('Error', message);
+      const message = (err && err.message) || t('addTrip.saveError');
+      Alert.alert(t('common.error'), message);
     } finally {
       setSaving(false);
     }
@@ -228,13 +248,13 @@ export default function AddTrip() {
       <View style={CommonStyles.backButtonContainer}>
         <BackButton />
       </View>
-      <Text style={styles.header}>Selecciona a donde vas a viajar</Text>
+      <Text style={styles.header}>{t('addTrip.selectDestination')}</Text>
 
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
         <TextInput
           style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? "#252525" : "rgba(0,0,0,0.5)"}]}
-          placeholder={"Buscar zona, calle o ciudad"}
+          placeholder={t('addTrip.searchPlaceholder')}
           value={query}
           onChangeText={onChangeQuery}
           onFocus={() => { if (suggestions.length > 0) setOpenSuggestions(true); }}
@@ -262,7 +282,7 @@ export default function AddTrip() {
 
       {!showMap && selectedLocation && (
         <TouchableOpacity style={styles.mapButton} onPress={openMap}>
-          <Text style={styles.mapButtonText}>Ver en el mapa</Text>
+          <Text style={styles.mapButtonText}>{t('addTrip.viewMap')}</Text>
         </TouchableOpacity>
       )}
 
@@ -286,12 +306,12 @@ export default function AddTrip() {
             />
           </MapView>
           <TouchableOpacity style={styles.closeMapBtn} onPress={() => setShowMap(false)}>
-            <Text style={styles.closeMapBtnText}>Cerrar mapa</Text>
+            <Text style={styles.closeMapBtnText}>{t('addTrip.closeMap')}</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      <Text style={styles.header}>Selecciona las fechas que vas a estar</Text>
+      <Text style={styles.header}>{t('addTrip.selectDates')}</Text>
 
       <View style={styles.calendarHeader}>
         <Text style={styles.monthYear}>{monthNames[currentMonth]} {currentYear}</Text>
@@ -348,7 +368,11 @@ export default function AddTrip() {
 
       {startDate && endDate && (
         <Text style={styles.dateRange}>
-          Se armará un plan turístico para {city && country ? `${city}, ${country}` : (destination ?? '')} del {startDate.getDate()}/{startDate.getMonth() + 1}/{startDate.getFullYear()} al {endDate.getDate()}/{endDate.getMonth() + 1}/{endDate.getFullYear()}
+          {t('addTrip.tripPlanMessage', {
+            destination: city && country ? `${city}, ${country}` : (destination ?? ''),
+            startDate: `${startDate.getDate()}/${startDate.getMonth() + 1}/${startDate.getFullYear()}`,
+            endDate: `${endDate.getDate()}/${endDate.getMonth() + 1}/${endDate.getFullYear()}`,
+          })}
         </Text>
       )}
 
@@ -357,7 +381,7 @@ export default function AddTrip() {
         onPress={handleSaveTrip}
         disabled={saving}
       >
-        <Text style={styles.createTripButtonText}>Armar Viaje</Text>
+        <Text style={styles.createTripButtonText}>{t('addTrip.createTrip')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

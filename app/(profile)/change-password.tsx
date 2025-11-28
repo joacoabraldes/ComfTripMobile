@@ -7,6 +7,7 @@ import React, { useEffect, useState } from "react";
 import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 
 function base64UrlDecode(input: string) {
   try {
@@ -39,6 +40,7 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const paramId = (params?.id as string | undefined) ?? undefined;
+  const { t } = useTranslation();
 
   const [userId, setUserId] = useState<string | number | undefined>(paramId);
   const [oldPassword, setOldPassword] = useState("");
@@ -58,14 +60,14 @@ export default function ChangePasswordScreen() {
         const token = await tokenStorage.getToken();
         if (!token) {
           // no token -> redirect to login
-          Alert.alert("No autorizado", "Debes iniciar sesión.");
+          Alert.alert(t('changePassword.unauthorized'), t('changePassword.mustLogin'));
           router.replace("/login");
           return;
         }
         const payload = parseJwt(token);
         const idFromToken = payload?.id ?? payload?.userId ?? payload?.sub ?? null;
         if (!idFromToken) {
-          Alert.alert("No autorizado", "Usuario inválido.");
+          Alert.alert(t('changePassword.unauthorized'), t('changePassword.invalidUser'));
           router.replace("/login");
           return;
         }
@@ -83,11 +85,11 @@ export default function ChangePasswordScreen() {
 
   async function handleChangePassword() {
     if (!userId) {
-      Alert.alert("Error", "Usuario no identificado. Intenta iniciar sesión de nuevo.");
+      Alert.alert(t('common.error'), t('changePassword.userNotIdentified'));
       return;
     }
     if (!oldPassword || !newPassword) {
-      Alert.alert("Error", "Por favor completa ambos campos de contraseña.");
+      Alert.alert(t('common.error'), t('changePassword.completeBothFields'));
       return;
     }
     setLoading(true);
@@ -98,12 +100,12 @@ export default function ChangePasswordScreen() {
         oldPassword,
         newPassword,
       });
-      Alert.alert("Contraseña actualizada", res.data?.message || "Se actualizó correctamente");
+      Alert.alert(t('changePassword.updated'), res.data?.message || t('changePassword.updatedMessage'));
       router.back();
     } catch (err: any) {
       // Show server message when available, otherwise generic
-      const msg = err?.response?.data?.message || err?.message || "No se pudo cambiar la contraseña";
-      Alert.alert("Error", msg);
+      const msg = err?.response?.data?.message || err?.message || t('changePassword.updateError');
+      Alert.alert(t('common.error'), msg);
     } finally {
       setLoading(false);
     }
@@ -125,10 +127,10 @@ export default function ChangePasswordScreen() {
         <BackButton />
       </View>
       <View style={CommonStyles.containerWithBackButton}>
-        <Text style={CommonStyles.pageTitle}>Cambiar Contraseña</Text>
+        <Text style={CommonStyles.pageTitle}>{t('changePassword.title')}</Text>
         <TextInput
           style={CommonStyles.input}
-          placeholder="Contraseña actual"
+          placeholder={t('changePassword.currentPassword')}
           value={oldPassword}
           onChangeText={setOldPassword}
           secureTextEntry
@@ -136,13 +138,13 @@ export default function ChangePasswordScreen() {
         />
         <TextInput
           style={CommonStyles.input}
-          placeholder="Nueva contraseña"
+          placeholder={t('changePassword.newPassword')}
           value={newPassword}
           onChangeText={setNewPassword}
           secureTextEntry
           autoCapitalize="none"
         />
-        <PrimaryButton title={loading ? "Cambiando..." : "Cambiar"} onPress={handleChangePassword} style={{ marginTop: 24 }} disabled={loading} />
+        <PrimaryButton title={loading ? t('changePassword.changing') : t('changePassword.change')} onPress={handleChangePassword} style={{ marginTop: 24 }} disabled={loading} />
       </View>
     </SafeAreaView>
   );

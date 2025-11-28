@@ -19,10 +19,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
@@ -40,7 +42,7 @@ export default function LoginScreen() {
 
   const handleNext = async () => {
     if (!identifier || !password) {
-      Alert.alert('Atención', 'Por favor complete los campos');
+      Alert.alert(t('auth.login.attention'), t('auth.login.completeFields'));
       return;
     }
     setLoading(true);
@@ -61,8 +63,8 @@ export default function LoginScreen() {
       router.replace('/home');
     } catch (err: any) {
       console.error('Login error', err);
-      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || 'Login failed';
-      Alert.alert('Login failed', msg);
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.login.loginFailed');
+      Alert.alert(t('auth.login.loginFailed'), msg);
     } finally {
       setLoading(false);
     }
@@ -86,11 +88,11 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>Iniciar Sesión</Text>
+            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>{t('auth.login.title')}</Text>
 
             <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
               <TextInput
-                placeholder="Email"
+                placeholder={t('auth.login.email')}
                 placeholderTextColor="rgba(0,0,0,0.5)"
                 value={identifier}
                 onChangeText={setIdentifier}
@@ -107,7 +109,7 @@ export default function LoginScreen() {
             <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
               <TextInput
                 ref={passwordRef}
-                placeholder="Contraseña"
+                placeholder={t('auth.login.password')}
                 placeholderTextColor="rgba(0,0,0,0.5)"
                 value={password}
                 onChangeText={setPassword}
@@ -119,21 +121,21 @@ export default function LoginScreen() {
                 style={[styles.textInput, { paddingRight: 60 }]}
               />
               <TouchableOpacity
-                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                accessibilityLabel={showPassword ? t('auth.login.hidePasswordLabel') : t('auth.login.showPasswordLabel')}
                 onPress={() => setShowPassword((v) => !v)}
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={styles.eyeText}>{showPassword ? 'Ocultar' : 'Mostrar'}</Text>
+                <Text style={styles.eyeText}>{showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.forgotWrap}>
-              <Text style={styles.forgotText}>¿Olvidó su contraseña?</Text>
+              <Text style={styles.forgotText}>{t('auth.login.forgotPassword')}</Text>
             </View>
 
             <PrimaryButton
-              title="Ingresar"
+              title={t('auth.login.loginButton')}
               onPress={handleNext}
               height={btnHeight}
               borderRadius={btnRadius}
@@ -144,9 +146,9 @@ export default function LoginScreen() {
             </PrimaryButton>
 
             <View style={styles.registerRow}>
-              <Text style={styles.already}>¿No eres miembro? </Text>
+              <Text style={styles.already}>{t('auth.login.notMember')}</Text>
               <Text style={styles.registerLink} onPress={() => router.push('/register')}>
-                Regístrate ahora
+                {t('auth.login.registerNow')}
               </Text>
             </View>
           </View>

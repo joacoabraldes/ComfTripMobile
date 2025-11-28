@@ -22,10 +22,12 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
+  const { t } = useTranslation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -89,11 +91,11 @@ export default function RegisterScreen() {
 
   const handleNext = async () => {
     if (!name || !email || !password) {
-      Alert.alert('Atención', 'Por favor complete los campos requeridos');
+      Alert.alert(t('auth.register.attention'), t('auth.register.completeFields'));
       return;
     }
     if (!accepted) {
-      Alert.alert('Atención', 'Debe aceptar los términos y condiciones');
+      Alert.alert(t('auth.register.attention'), t('auth.register.acceptTerms'));
       return;
     }
 
@@ -119,8 +121,8 @@ export default function RegisterScreen() {
       router.replace('/interests');
     } catch (err: any) {
       console.error('Register error', err);
-      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || 'Register failed';
-      Alert.alert('Registro fallido', msg);
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.register.registerFailed');
+      Alert.alert(t('auth.register.registerFailed'), msg);
     } finally {
       setLoading(false);
     }
@@ -145,12 +147,12 @@ export default function RegisterScreen() {
           </View>
 
           <View style={styles.form}>
-            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 18}]}>Registrarse</Text>
+            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 18}]}>{t('auth.register.title')}</Text>
 
             <View style={[styles.inputBox, { height: inputHeight }]}>
               <TextInput
                 ref={nameRef}
-                placeholder="Nombre"
+                placeholder={t('auth.register.name')}
                 placeholderTextColor="rgba(0,0,0,0.5)"
                 value={name}
                 onChangeText={setName}
@@ -165,7 +167,7 @@ export default function RegisterScreen() {
             <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
               <TextInput
                 ref={emailRef}
-                placeholder="Email"
+                placeholder={t('auth.register.email')}
                 placeholderTextColor="rgba(0,0,0,0.5)"
                 value={email}
                 onChangeText={setEmail}
@@ -183,7 +185,7 @@ export default function RegisterScreen() {
             <View style={[styles.inputBox, { height: inputHeight, marginTop: 12 }]}>
               <TextInput
                 ref={passwordRef}
-                placeholder="Contraseña"
+                placeholder={t('auth.register.password')}
                 placeholderTextColor="rgba(0,0,0,0.5)"
                 value={password}
                 onChangeText={setPassword}
@@ -202,7 +204,7 @@ export default function RegisterScreen() {
             <View style={[styles.inputBox, { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0, borderColor: '#FF3951' }]}>
               <TextInput
                 style={[styles.textInput, { flex: 1, borderWidth: 0, outline: "none", color: nationality ? "#252525" : "rgba(0,0,0,0.5)" }]}
-                placeholder={nationality ? nationality : "Seleccionar nacionalidad"}
+                placeholder={nationality ? nationality : t('auth.register.selectNationality')}
                 value={search}
                 onChangeText={setSearch}
                 onFocus={() => setOpen(true)}
@@ -251,7 +253,7 @@ export default function RegisterScreen() {
               style={[styles.inputBox, { height: inputHeight, marginTop: 12, justifyContent: 'center' }]}
             >
               <Text style={[styles.textInput, { color: birthdate ? "#252525" : "rgba(0,0,0,0.5)" }]}>
-                {birthdate || 'Seleccionar fecha de nacimiento'}
+                {birthdate || t('auth.register.selectBirthdate')}
               </Text>
             </TouchableOpacity>
 
@@ -275,14 +277,14 @@ export default function RegisterScreen() {
               </TouchableOpacity>
 
               <Text style={[styles.termsText, { fontSize: 14, lineHeight: 20 }]}>
-                <Text>Al marcar la casilla, acepta nuestros </Text>
-                <Text style={[styles.link, { fontSize: 14 }]}>Términos y condiciones</Text>
-                <Text>.</Text>
+                <Text>{t('auth.register.termsText')}</Text>
+                <Text style={[styles.link, { fontSize: 14 }]}>{t('auth.register.termsLink')}</Text>
+                <Text>{t('auth.register.termsEnd')}</Text>
               </Text>
             </View>
 
             <PrimaryButton
-              title={loading ? '' : 'Registrarme'}
+              title={loading ? '' : t('auth.register.registerButton')}
               onPress={handleNext}
               height={btnHeight}
               borderRadius={btnRadius}
@@ -293,9 +295,9 @@ export default function RegisterScreen() {
             </PrimaryButton>
 
             <View style={styles.loginRow}>
-              <Text style={styles.already}>¿Ya eres miembro? </Text>
+              <Text style={styles.already}>{t('auth.register.alreadyMember')}</Text>
               <Text style={styles.loginLink} onPress={() => router.push('/login')}>
-                Iniciar Sesión
+                {t('auth.register.loginLink')}
               </Text>
             </View>
           </View>

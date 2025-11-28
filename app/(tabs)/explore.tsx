@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTranslation } from '@/i18n';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -116,6 +117,7 @@ function sortByRelevanceDesc(arr?: Location[]) {
 
 export default function ExploreScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // server-driven
   const [categories, setCategories] = useState<Category[]>([]);
@@ -161,7 +163,7 @@ export default function ExploreScreen() {
           if (!mounted) return;
           setPopularLocations([]);
           setLocationsFiltered([]);
-          setError('No se pudieron cargar las localidades.');
+          setError(t('explore.loadError'));
         } finally {
           if (mounted) setLocationsLoading(false);
         }
@@ -169,7 +171,7 @@ export default function ExploreScreen() {
         console.error('Categories fetch error', catErr);
         if (!mounted) return;
         setCategories([]);
-        setError('No se pudieron cargar las categorías.');
+        setError(t('explore.categoriesError'));
         setLocationsLoading(false);
       } finally {
         if (mounted) setInitialLoading(false);
@@ -205,7 +207,7 @@ export default function ExploreScreen() {
         console.error('Error fetching filtered locations:', err);
         if (!mounted) return;
         setLocationsFiltered([]);
-        setError('No se pudieron cargar las localidades filtradas.');
+        setError(t('explore.filteredError'));
       } finally {
         if (mounted) setLocationsLoading(false);
       }
@@ -220,7 +222,7 @@ export default function ExploreScreen() {
     return locs.map((loc) => {
       const imgs = safeParseImages(loc.imagenes ?? loc.images);
       const thumb = pickBestImage(imgs);
-      const rawTitle = (loc.title ?? loc.titulo) || `Lugar #${loc.id}`;
+      const rawTitle = (loc.title ?? loc.titulo) || t('explore.placeNumber', { number: loc.id });
       const rawDesc = (loc.descripcion ?? '') as string;
       const truncated = rawDesc && rawDesc.length > 150 ? rawDesc.slice(0, 150) + '…' : rawDesc;
       return {
@@ -262,7 +264,7 @@ export default function ExploreScreen() {
 
   const handleShare = () => {
     if (!selectedExperience) return;
-    Alert.alert('Compartir', 'Función de compartir disponible próximamente');
+    Alert.alert(t('explore.share'), t('explore.shareSoon'));
   };
 
   // skeleton card for mobile while loading locations
@@ -285,10 +287,10 @@ export default function ExploreScreen() {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.container}>
-          <Text style={styles.title}>Explorar por categorías</Text>
+          <Text style={styles.title}>{t('explore.loadingTitle')}</Text>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FF3951" />
-            <Text style={styles.loadingText}>Cargando…</Text>
+            <Text style={styles.loadingText}>{t('explore.loading')}</Text>
           </View>
         </View>
       </SafeAreaView>
@@ -298,7 +300,7 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Explorar por Categoría</Text>
+        <Text style={styles.title}>{t('explore.title')}</Text>
 
         {/* categories */}
         <ScrollView
@@ -313,7 +315,7 @@ export default function ExploreScreen() {
             onPress={() => onCategoryClick(null)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.categoryChipText, selectedCategorySlug === 'todo' && styles.categoryChipTextSelected]}>Todo</Text>
+            <Text style={[styles.categoryChipText, selectedCategorySlug === 'todo' && styles.categoryChipTextSelected]}>{t('explore.all')}</Text>
           </TouchableOpacity>
 
           {categories.map((cat) => (
@@ -333,8 +335,8 @@ export default function ExploreScreen() {
         {/* Results */}
         <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{selectedCategorySlug === 'todo' ? 'Resultados' : `Resultados — ${selectedCategorySlug}`}</Text>
-            <Text style={styles.resultCount}>{filteredExperiences.length} resultados</Text>
+            <Text style={styles.sectionTitle}>{selectedCategorySlug === 'todo' ? t('explore.results') : t('explore.resultsWithCategory', { category: selectedCategorySlug })}</Text>
+            <Text style={styles.resultCount}>{t('explore.resultCount', { count: filteredExperiences.length })}</Text>
           </View>
 
           {locationsLoading ? (
@@ -344,7 +346,7 @@ export default function ExploreScreen() {
             </View>
           ) : filteredExperiences.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No se encontraron lugares para esta categoría.</Text>
+              <Text style={styles.emptyText}>{t('explore.noLocations')}</Text>
             </View>
           ) : (
             <View style={styles.experiencesList}>
@@ -359,7 +361,7 @@ export default function ExploreScreen() {
                       />
                     ) : (
                       <View style={styles.noImageContainer}>
-                        <Text style={styles.noImageText}>Sin imagen</Text>
+                        <Text style={styles.noImageText}>{t('explore.noImage')}</Text>
                       </View>
                     )}
                   </View>
@@ -380,7 +382,7 @@ export default function ExploreScreen() {
           {popularExperiences.length > 0 && (
             <>
               <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>Populares</Text>
+                <Text style={styles.sectionTitle}>{t('explore.popular')}</Text>
               </View>
 
               <View style={styles.experiencesList}>
@@ -391,7 +393,7 @@ export default function ExploreScreen() {
                         <ExpoImage source={{ uri: exp.image }} style={styles.cardImage} contentFit="cover" />
                       ) : (
                         <View style={styles.noImageContainer}>
-                          <Text style={styles.noImageText}>Sin imagen</Text>
+                          <Text style={styles.noImageText}>{t('explore.noImage')}</Text>
                         </View>
                       )}
                     </View>
@@ -435,10 +437,10 @@ export default function ExploreScreen() {
                 <Text style={styles.modalDescription}>{selectedExperience.description}</Text>
                 <View style={styles.modalActions}>
                   <TouchableOpacity style={styles.createTripButton} onPress={handleCreateTrip}>
-                    <Text style={styles.createTripButtonText}>Crear plan de viaje</Text>
+                    <Text style={styles.createTripButtonText}>{t('explore.createTripPlan')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                    <Text style={styles.shareButtonText}>Compartir</Text>
+                    <Text style={styles.shareButtonText}>{t('explore.share')}</Text>
                   </TouchableOpacity>
                 </View>
               </View>

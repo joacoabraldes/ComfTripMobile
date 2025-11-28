@@ -17,6 +17,7 @@ import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
+import { useTranslation } from '@/i18n';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -140,6 +141,7 @@ export default function InterestsScreen() {
   const [assetsReady, setAssetsReady] = useState(false);
 
   const router = useRouter();
+  const { t } = useTranslation();
 
   useEffect(() => {
     let mounted = true;
@@ -254,7 +256,7 @@ export default function InterestsScreen() {
     try {
       const token = await getTokenWithRetries(6, 250);
       if (!token) {
-        Alert.alert("Atención", "No se encontró sesión activa. Por favor inicia sesión nuevamente.");
+        Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
         router.replace("/login");
         return;
       }
@@ -290,16 +292,16 @@ export default function InterestsScreen() {
       const success = (postRes && postRes.status >= 200 && postRes.status < 300) || Boolean(postData && (postData.message || postData.success));
 
       if (success) {
-        Alert.alert("Listo", "Intereses guardados correctamente");
+        Alert.alert(t('auth.interests.saved'), t('auth.interests.savedSuccess'));
         router.replace("/home");
       } else {
         console.warn("Save interests unexpected response:", postRes);
-        Alert.alert("Error", "No se pudieron guardar los intereses. Revisa la consola para más detalles.");
+        Alert.alert(t('auth.interests.error'), t('auth.interests.saveError'));
       }
     } catch (err: any) {
       console.error("Error saving interests:", err);
-      const msg = (err && err.message) || JSON.stringify(err) || "Error al guardar intereses";
-      Alert.alert("Error", msg);
+      const msg = (err && err.message) || JSON.stringify(err) || t('auth.interests.saveErrorGeneric');
+      Alert.alert(t('auth.interests.error'), msg);
     } finally {
       setLoading(false);
     }
@@ -311,12 +313,12 @@ export default function InterestsScreen() {
   return (
     <SafeAreaView style={CommonStyles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>Seleccione sus intereses</Text>
+        <Text style={styles.title}>{t('auth.interests.title')}</Text>
 
         {showLoadingList ? (
           <View style={{ alignItems: "center", marginTop: 40 }}>
             <ActivityIndicator size="large" />
-            <Text style={{ color: "#6f6f6f", marginTop: 8 }}>Cargando recursos...</Text>
+            <Text style={{ color: "#6f6f6f", marginTop: 8 }}>{t('auth.interests.loading')}</Text>
           </View>
         ) : (
           <FlatList
@@ -327,7 +329,7 @@ export default function InterestsScreen() {
             contentContainerStyle={{ paddingBottom: 24 }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", marginTop: 24 }}>
-                <Text style={{ color: "#6f6f6f" }}>No hay intereses disponibles.</Text>
+                <Text style={{ color: "#6f6f6f" }}>{t('auth.interests.noInterests')}</Text>
               </View>
             }
             // performance tuning
@@ -339,7 +341,7 @@ export default function InterestsScreen() {
         )}
 
         <PrimaryButton
-          title={selected.length ? `Continuar (${selected.length})` : "Continuar"}
+          title={selected.length ? t('auth.interests.continueWithCount', { count: selected.length }) : t('auth.interests.continue')}
           onPress={handleSaveInterests}
           height={52}
           borderRadius={12}

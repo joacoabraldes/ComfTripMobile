@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from '@/i18n';
 
 type Trip = {
   id: number;
@@ -112,6 +113,7 @@ export default function HomeScreen() {
   const bottomInset = insets?.bottom ?? 0;
   const topInset = insets?.top ?? 0;
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Estimated tab bar height (adjust if your tab bar is taller)
   const TABBAR_HEIGHT = 64;
@@ -252,7 +254,7 @@ export default function HomeScreen() {
     const imageSource = trip.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7';
     return (
       <View style={styles.upcomingWrap}>
-        <Text style={styles.upcomingLabel}>Próximo Viaje:</Text>
+        <Text style={styles.upcomingLabel}>{t('home.upcomingTrip')}</Text>
         <TouchableOpacity
           activeOpacity={0.8}
           style={[styles.card, { backgroundColor: '#F8F1EF' }]}
@@ -279,7 +281,7 @@ export default function HomeScreen() {
             <Text style={styles.dates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: '#FFD8D8' }]}>
-            <Text style={[styles.badgeText, { color: '#333' }]}>Próximo</Text>
+            <Text style={[styles.badgeText, { color: '#333' }]}>{t('home.upcoming')}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -308,7 +310,7 @@ export default function HomeScreen() {
         {/* Current Activity Image and Description */}
         {currentActivity && (currImage || currDescription) && (
           <View style={styles.currentActivityPreview}>
-            <Text style={styles.currentActivityLabel}>Actividad actual:</Text>
+            <Text style={styles.currentActivityLabel}>{t('home.currentActivity')}</Text>
             <View style={styles.currentActivityContent}>
               {currImage && (
                 <Image
@@ -339,15 +341,19 @@ export default function HomeScreen() {
             const diffMins = Math.floor(diffMs / 60000);
             const hours = Math.floor(diffMins / 60) + 3;
             const mins = diffMins % 60;
+            const hoursText = hours === 1 ? t('home.hour') : t('home.hours');
+            const minutesText = mins === 1 ? t('home.minute') : t('home.minutes');
+            let timeRemainingText = '';
+            if (hours > 0 && mins > 0) {
+              timeRemainingText = t('home.timeRemainingBoth', { hours, hoursText, minutes: mins, minutesText });
+            } else if (hours > 0) {
+              timeRemainingText = t('home.timeRemainingHoursOnly', { hours, hoursText });
+            } else {
+              timeRemainingText = t('home.timeRemainingMinutesOnly', { minutes: mins, minutesText });
+            }
             return (
               <Text style={{ marginTop: 10, color: '#2E7D32', fontWeight: '600', fontSize: 15 }}>
-                Faltan
-                {hours > 0 && (
-                  <>
-                    {' '}{hours} {hours === 1 ? 'hora' : 'horas'} y
-                  </>
-                )}
-                {' '}{mins} {mins === 1 ? 'minuto' : 'minutos'} para la próxima actividad
+                {timeRemainingText}
               </Text>
             );
           }
@@ -357,7 +363,7 @@ export default function HomeScreen() {
         {/* Next Activity Image and Description */}
         {nextActivity && (nextImage || nextDescription) && (
           <View style={styles.nextActivityPreview}>
-            <Text style={styles.nextActivityLabel}>Próxima actividad:</Text>
+            <Text style={styles.nextActivityLabel}>{t('home.nextActivity')}</Text>
             <View style={styles.nextActivityContent}>
               {nextImage && (
                 <Image
@@ -422,7 +428,7 @@ export default function HomeScreen() {
                   <Marker
                     key={`${c.lat}-${c.lng}-${idx}`}
                     coordinate={{ latitude: c.lat, longitude: c.lng }}
-                    title={ongoingPlaces[idx]?.location?.titulo ?? `Lugar ${idx + 1}`}
+                    title={ongoingPlaces[idx]?.location?.titulo ?? t('home.placeNumber', { number: idx + 1 })}
                     description={
                       (() => {
                         const p = ongoingPlaces[idx];
@@ -456,7 +462,7 @@ export default function HomeScreen() {
           }}
           activeOpacity={0.9}
         >
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Ver detalles</Text>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>{t('home.viewDetails')}</Text>
         </TouchableOpacity>
       </>
     );
@@ -508,8 +514,8 @@ export default function HomeScreen() {
                       },
                     ]}
                   >
-                    No tienes ningún viaje activo actualmente{"\n"}
-                    ¡Planea tu siguiente viaje!
+                    {t('home.noActiveTrips')}{"\n"}
+                    {t('home.planNextTrip')}
                   </Text>
                 </View>
               </>
@@ -520,7 +526,7 @@ export default function HomeScreen() {
         {/* PrimaryButton positioned above tab bar and raised by RAISE_UP */}
         <View style={[styles.buttonWrapper, { bottom: ctaBottom }]}>
           <PrimaryButton
-            title="Nuevo Viaje"
+            title={t('home.newTrip')}
             onPress={() => router.push('/add-trip')}
             height={btnHeight}
             borderRadius={btnRadius}

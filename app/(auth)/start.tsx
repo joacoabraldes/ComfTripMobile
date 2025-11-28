@@ -11,10 +11,12 @@ import { useRouter } from 'expo-router';
 import { LogoSvg } from '@/components/icons/LogoSvg';
 import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
+import { useTranslation } from '@/i18n';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // measurements
   const btnHeight = Math.round(Math.max(40, Math.min(56, width * 0.14)));
@@ -52,7 +54,7 @@ export default function StartScreen() {
 
         <View style={[styles.actionsWrap, { marginBottom: bottomSpacing }]}>
           <PrimaryButton
-            title="Iniciar Sesión"
+            title={t('auth.start.loginButton')}
             onPress={() => router.push('/login')}
             height={btnHeight}
             borderRadius={btnRadius}
@@ -62,7 +64,7 @@ export default function StartScreen() {
           />
 
           <PrimaryButton
-            title="Registrarse"
+            title={t('auth.start.registerButton')}
             onPress={() => router.push('/register')}
             height={btnHeight}
             borderRadius={btnRadius}

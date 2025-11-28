@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import countryRegionData from "country-region-data";
 import { CommonStyles } from '@/constants/Styles';
+import { useTranslation } from '@/i18n';
 
 export const options = {
   headerShown: false,
@@ -63,6 +64,7 @@ function dateToISODate(d?: Date | null) {
 
 export default function EditProfileScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   // Get userId from token as in profile.tsx
   const [userId, setUserId] = useState<string | number | null>(null);
   const [name, setName] = useState("");
@@ -174,11 +176,11 @@ export default function EditProfileScreen() {
         // send ISO date (YYYY-MM-DD) if we have one, otherwise empty string
         birthdate: birthdateDate ? dateToISODate(birthdateDate) : birthdateDisplay || "",
       });
-      Alert.alert("Perfil actualizado", res.data?.message || "");
+      Alert.alert(t('profile.profileUpdated'), res.data?.message || "");
       // go back; profile screen listens for focus and will reload
       router.back();
     } catch (err: any) {
-      Alert.alert("Error", err?.message || "No se pudo actualizar el perfil");
+      Alert.alert(t('common.error'), err?.message || t('profile.updateError'));
     } finally {
       setLoading(false);
     }
@@ -200,11 +202,11 @@ export default function EditProfileScreen() {
         <BackButton />
       </View>
       <View style={[CommonStyles.containerWithBackButton, { padding: 24, paddingTop: Platform.OS === 'ios' ? 80 : 60 }]}>
-        <Text style={CommonStyles.pageTitle}>Editar Perfil</Text>
+        <Text style={CommonStyles.pageTitle}>{t('profile.editProfile')}</Text>
 
-        <TextInput style={CommonStyles.input} placeholder="Nombre" value={name} onChangeText={setName} />
-        <TextInput style={CommonStyles.input} placeholder="Correo" value={email} onChangeText={setEmail} />
-        <TextInput style={CommonStyles.input} placeholder="Teléfono" value={phone} onChangeText={setPhone} />
+        <TextInput style={CommonStyles.input} placeholder={t('profile.name')} value={name} onChangeText={setName} />
+        <TextInput style={CommonStyles.input} placeholder={t('profile.email')} value={email} onChangeText={setEmail} />
+        <TextInput style={CommonStyles.input} placeholder={t('profile.phone')} value={phone} onChangeText={setPhone} />
 
 
         {/* Input para abrir el dropdown */}
@@ -212,7 +214,7 @@ export default function EditProfileScreen() {
               onFocus={()=>setOpen(true)}>
           <TextInput
               style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? "#252525" : "rgba(0,0,0,0.5)"}]}
-              placeholder={nationality? nationality : "Seleccionar nacionalidad"}
+              placeholder={nationality? nationality : t('profile.selectNationality')}
               value={search}
               onChangeText={setSearch}
           />
@@ -256,7 +258,7 @@ export default function EditProfileScreen() {
           style={[CommonStyles.input, styles.dateInput]}
         >
           <Text style={[styles.dateText, !birthdateDisplay && styles.placeholderText]}>
-            {birthdateDisplay || "Fecha de nacimiento"}
+            {birthdateDisplay || t('profile.birthdate')}
           </Text>
         </TouchableOpacity>
 
@@ -271,7 +273,7 @@ export default function EditProfileScreen() {
           />
         )}
 
-        <PrimaryButton title={loading ? "Guardando..." : "Guardar"} onPress={handleSave} style={{ marginTop: 24 }} disabled={loading} />
+        <PrimaryButton title={loading ? t('common.loading') : t('common.save')} onPress={handleSave} style={{ marginTop: 24 }} disabled={loading} />
       </View>
     </SafeAreaView>
   );
