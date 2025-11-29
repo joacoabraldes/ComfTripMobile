@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform, ScrollView } from "react-native";
 import { useTranslation } from '@/i18n';
+import { CommonStyles } from '@/constants/Styles';
 
 function base64UrlDecode(input: string) {
   try {

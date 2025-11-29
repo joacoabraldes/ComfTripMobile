@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
+import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
 
 type Friend = {
   id: number;
@@ -366,13 +367,13 @@ export default function CommunityScreen() {
                     style={[styles.actionButton, styles.acceptButton]}
                     onPress={() => acceptRequest(req.id)}
                   >
-                    <Ionicons name="checkmark" size={18} color="#1abc9c" />
+                    <Ionicons name="checkmark" size={18} color={AppColors.success} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.rejectButton]}
                     onPress={() => rejectRequest(req.id)}
                   >
-                    <Ionicons name="close" size={18} color="#e74c3c" />
+                    <Ionicons name="close" size={18} color={AppColors.error} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -394,7 +395,7 @@ export default function CommunityScreen() {
                     style={[styles.actionButton, styles.shareButton]}
                     onPress={() => openShareModal(friend)}
                   >
-                    <Ionicons name="share" size={18} color="#2b8cff" />
+                    <Ionicons name="share" size={18} color={StateColors.info} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.removeButton]}
@@ -521,18 +522,18 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     marginTop: 16,
-    color: '#666',
+    color: AppColors.textSecondary,
     fontSize: 16,
   },
   card: {
-    backgroundColor: '#fff',
+    backgroundColor: AppColors.backgroundPrimary,
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 12,
     padding: 16,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.06,
         shadowRadius: 10,
         shadowOffset: { width: 0, height: 6 },
@@ -545,7 +546,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: AppColors.text,
     marginBottom: 16,
   },
   sendRow: {
@@ -556,16 +557,16 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: AppColors.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 16,
     marginRight: 8,
-    backgroundColor: '#fff',
+    backgroundColor: AppColors.backgroundPrimary,
   },
   sendButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 8,
@@ -574,12 +575,12 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   sendButtonText: {
-    color: '#fff',
+    color: AppColors.white,
     fontWeight: '600',
   },
   hint: {
     fontSize: 12,
-    color: '#666',
+    color: AppColors.textSecondary,
     fontStyle: 'italic',
   },
   listItem: {
@@ -587,7 +588,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: AppColors.borderLight,
   },
   itemInfo: {
     flex: 1,
@@ -604,16 +605,16 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: AppColors.text,
   },
   itemSubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: AppColors.textSecondary,
     marginTop: 2,
   },
   itemStatus: {
     fontSize: 12,
-    color: '#888',
+    color: AppColors.textMutedDark,
     marginTop: 2,
   },
   itemActions: {
@@ -630,35 +631,35 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppColors.backgroundTertiary,
   },
   acceptButton: {
-    backgroundColor: '#e8f5e8',
+    backgroundColor: StateColors.successLight,
   },
   rejectButton: {
-    backgroundColor: '#ffeaea',
+    backgroundColor: StateColors.errorLight,
   },
   shareButton: {
-    backgroundColor: '#e8f2ff',
+    backgroundColor: StateColors.info + '20',
   },
   removeButton: {
-    backgroundColor: '#ffeaea',
+    backgroundColor: StateColors.errorLight,
   },
   avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    color: '#fff',
+    color: AppColors.white,
     fontSize: 16,
     fontWeight: '600',
   },
   emptyText: {
-    color: '#666',
+    color: AppColors.textSecondary,
     fontSize: 14,
     fontStyle: 'italic',
     textAlign: 'center',
@@ -666,20 +667,20 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: AppColors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: AppColors.backgroundPrimary,
     borderRadius: 12,
     padding: 20,
     width: '100%',
     maxHeight: '80%',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.25,
         shadowRadius: 20,
         shadowOffset: { width: 0, height: 10 },
@@ -696,26 +697,26 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppColors.backgroundTertiary,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
   },
   modalCloseText: {
     fontSize: 20,
-    color: '#666',
+    color: AppColors.textSecondary,
     fontWeight: 'bold',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
+    color: AppColors.text,
     marginBottom: 8,
     marginTop: 16,
   },
   modalHint: {
     fontSize: 14,
-    color: '#666',
+    color: AppColors.textSecondary,
     marginBottom: 16,
   },
   tripList: {
@@ -727,7 +728,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#eee',
+    borderBottomColor: AppColors.borderLight,
   },
   tripInfo: {
     flex: 1,
@@ -735,16 +736,16 @@ const styles = StyleSheet.create({
   tripTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
+    color: AppColors.text,
   },
   tripDates: {
     fontSize: 14,
-    color: '#666',
+    color: AppColors.textSecondary,
     marginTop: 2,
   },
   tripOwner: {
     fontSize: 12,
-    color: '#888',
+    color: AppColors.textMutedDark,
     marginTop: 2,
   },
   checkbox: {
@@ -754,18 +755,18 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: '#ddd',
+    borderColor: AppColors.border,
     borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: AppColors.backgroundPrimary,
   },
   checkboxSelected: {
-    backgroundColor: '#FF3951',
-    borderColor: '#FF3951',
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
   checkmark: {
-    color: '#fff',
+    color: AppColors.white,
     fontSize: 14,
     fontWeight: 'bold',
   },
@@ -782,22 +783,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: AppColors.backgroundTertiary,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: AppColors.border,
   },
   cancelButtonText: {
-    color: '#666',
+    color: AppColors.textSecondary,
     fontWeight: '600',
   },
   shareModalButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
   },
   shareModalButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: AppColors.textDisabled,
   },
   shareModalButtonText: {
-    color: '#fff',
+    color: AppColors.white,
     fontWeight: '600',
   },
 });

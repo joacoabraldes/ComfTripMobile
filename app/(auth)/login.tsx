@@ -4,6 +4,7 @@ import { MapSvg } from '@/components/icons/MapSvg';
 import { apiPost, tokenStorage } from '@/helpers/api';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
@@ -20,6 +21,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -126,7 +128,11 @@ export default function LoginScreen() {
                 style={styles.eyeButton}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Text style={styles.eyeText}>{showPassword ? t('auth.login.hidePassword') : t('auth.login.showPassword')}</Text>
+                <Ionicons
+                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                  size={22}
+                  color={AppColors.primary}
+                />
               </TouchableOpacity>
             </View>
 
@@ -160,13 +166,13 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
   topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
-  title: { color: '#252525', fontSize: 24, fontWeight: '800', marginTop: 40 },
+  title: { color: AppColors.text, fontSize: 24, fontWeight: '800', marginTop: 40 },
 
   form: { paddingBottom: 60 },
 
   inputBox: {
     width: '100%',
-    backgroundColor: 'rgba(196,196,196,0.2)',
+    backgroundColor: AppColors.backgroundInputMuted,
     borderRadius: 10,
     justifyContent: 'center',
     overflow: 'hidden',
@@ -174,7 +180,7 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: 16,
     lineHeight: 20,
-    color: '#252525',
+    color: AppColors.text,
     paddingHorizontal: 22,
     paddingVertical: 0,
     height: '100%',
@@ -182,12 +188,12 @@ const styles = StyleSheet.create({
   },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
-  forgotText: { color: '#FF3951', fontSize: 13 },
+  forgotText: { color: AppColors.primary, fontSize: 13 },
 
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
-  already: { color: '#252525', fontSize: 13, fontWeight: '500' },
-  registerLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
+  already: { color: AppColors.text, fontSize: 13, fontWeight: '500' },
+  registerLink: { color: AppColors.primary, fontSize: 13, fontWeight: '700', marginLeft: 6 },
 
   eyeButton: { position: 'absolute', right: 12, height: '100%', justifyContent: 'center' },
-  eyeText: { color: '#FF3951', fontSize: 13, fontWeight: '700' },
+  eyeText: { color: AppColors.primary, fontSize: 13, fontWeight: '700' },
 });

@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { AppColors, ShadowColors } from '@/constants/Colors';
 
 const ICON_SIZE = 20;
 
@@ -71,7 +72,7 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
               <Ionicons
                 name={getIconName(route.name)}
                 size={ICON_SIZE}
-                color={isFocused ? '#FF3951' : '#868686'}
+                color={isFocused ? AppColors.primary : AppColors.textMutedDark}
               />
             </View>
 
@@ -97,13 +98,13 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#EEEEEE',
+    backgroundColor: AppColors.backgroundTertiary,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center', 
     paddingTop: 0,
     paddingHorizontal: 12,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 4,
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
 
   label: {
     textAlign: 'center',
-    color: '#868686', 
+    color: AppColors.textMutedDark, 
     fontSize: 11,
     fontFamily: 'Inter',
     fontWeight: '400' as any,
@@ -144,6 +145,6 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   labelActive: {
-    color: '#FF3951',
+    color: AppColors.primary,
   },
 });

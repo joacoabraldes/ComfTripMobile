@@ -14,6 +14,7 @@ import ReviewForm from '@/components/trip/ReviewForm';
 import ShareTripButton from '@/components/trip/ShareTripButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import { useTranslation } from '@/i18n';
+import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
 
 type Params = {
   id?: string;
@@ -261,7 +262,7 @@ export default function TripDetails() {
           <Text style={styles.subtitle}>{dateRangeStr}</Text>
           {isCompleted && (
             <View style={styles.completedBadge}>
-              <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+              <MaterialIcons name="check-circle" size={16} color={AppColors.success} />
               <Text style={styles.completedBadgeText}>{t('tripDetails.completedBadge')}</Text>
             </View>
           )}
@@ -286,7 +287,7 @@ export default function TripDetails() {
                     <MaterialIcons
                       name={review ? 'edit' : 'add-circle-outline'}
                       size={20}
-                      color="#FF3951"
+                      color={AppColors.primary}
                     />
                     <Text style={styles.editReviewButtonText}>
                       {review ? t('common.edit') : t('common.add')}
@@ -301,7 +302,7 @@ export default function TripDetails() {
                           key={star}
                           name={star <= (review.rating || 0) ? 'star' : 'star-border'}
                           size={20}
-                          color={star <= (review.rating || 0) ? '#FFD700' : '#CCC'}
+                          color={star <= (review.rating || 0) ? '#FFD700' : AppColors.textDisabled}
                         />
                       ))}
                       <Text style={styles.reviewRatingText}>
@@ -337,16 +338,16 @@ export default function TripDetails() {
 
         {loading ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 20 }}>
-            <ActivityIndicator size="small" color="#FF3951" />
-            <Text style={{ marginTop: 8, color: '#777' }}>{t('tripDetails.loadingActivities')}</Text>
+            <ActivityIndicator size="small" color={AppColors.primary} />
+            <Text style={{ marginTop: 8, color: AppColors.textSecondary }}>{t('tripDetails.loadingActivities')}</Text>
           </View>
         ) : error ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
-            <Text style={{ color: '#B00020' }}>{error}</Text>
+            <Text style={{ color: AppColors.error }}>{error}</Text>
           </View>
         ) : activities.length === 0 ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
-            <Text style={{ color: '#777' }}>{t('tripDetails.noActivities')}</Text>
+            <Text style={{ color: AppColors.textSecondary }}>{t('tripDetails.noActivities')}</Text>
           </View>
         ) : (
           activities.map((a) => (
@@ -354,7 +355,7 @@ export default function TripDetails() {
               {a.img ? (
                 <Image source={{ uri: a.img }} style={styles.activityImage} resizeMode="cover" />
               ) : (
-                <View style={[styles.activityImage, { backgroundColor: '#CFCFCF' }]} />
+                <View style={[styles.activityImage, { backgroundColor: AppColors.borderLight }]} />
               )}
 
               <View style={styles.activityContent}>
@@ -362,7 +363,7 @@ export default function TripDetails() {
                 <Text style={styles.activityDate}>{a.dateStr}</Text>
               </View>
               <TouchableOpacity style={styles.pencil} onPress={() => onEdit(a)}>
-                <MaterialIcons name="edit" size={20} color="#555" />
+                <MaterialIcons name="edit" size={20} color={AppColors.textSecondary} />
               </TouchableOpacity>
             </View>
           ))
@@ -386,13 +387,13 @@ export default function TripDetails() {
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: '800', color: '#000' },
-  subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },
+  title: { fontSize: 26, fontWeight: '800', color: AppColors.black },
+  subtitle: { marginTop: 8, fontSize: 16, color: AppColors.textTertiary },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: StateColors.successLight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -401,16 +402,16 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: AppColors.success,
   },
-  sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: '#111' },
+  sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: AppColors.text },
   reviewSection: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundPrimary,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -430,7 +431,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   editReviewButtonText: {
-    color: '#FF3951',
+    color: AppColors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -447,22 +448,22 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: AppColors.text,
   },
   reviewTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111',
+    color: AppColors.text,
     marginBottom: 8,
   },
   reviewComment: {
     fontSize: 15,
-    color: '#666',
+    color: AppColors.textSecondary,
     lineHeight: 22,
   },
   noReviewText: {
     fontSize: 14,
-    color: '#999',
+    color: AppColors.textMutedDark,
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 20,
@@ -482,18 +483,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 14,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: AppColors.backgroundTertiary,
     marginTop: 10,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.04,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  activityImage: { width: 56, height: 56, borderRadius: 10, marginRight: 12, backgroundColor: '#ddd' },
+  activityImage: { width: 56, height: 56, borderRadius: 10, marginRight: 12, backgroundColor: AppColors.borderLight },
   activityContent: { flex: 1 },
-  activityTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  activityDate: { marginTop: 4, fontSize: 13, color: '#777' },
+  activityTitle: { fontSize: 16, fontWeight: '700', color: AppColors.text },
+  activityDate: { marginTop: 4, fontSize: 13, color: AppColors.textSecondary },
 
   pencil: {
     padding: 6,
@@ -505,16 +506,16 @@ const styles = StyleSheet.create({
 
   addBtn: {
     width: '100%',
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 18,
   },
-  addBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  addBtnText: { color: AppColors.white, fontSize: 18, fontWeight: '700' },
 
   deleteBtn: {
-    backgroundColor: '#edededff',
+    backgroundColor: AppColors.backgroundTertiary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,

@@ -23,6 +23,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -153,7 +154,7 @@ export default function RegisterScreen() {
               <TextInput
                 ref={nameRef}
                 placeholder={t('auth.register.name')}
-                placeholderTextColor="rgba(0,0,0,0.5)"
+                placeholderTextColor={AppColors.textMuted}
                 value={name}
                 onChangeText={setName}
                 style={styles.textInput}
@@ -168,7 +169,7 @@ export default function RegisterScreen() {
               <TextInput
                 ref={emailRef}
                 placeholder={t('auth.register.email')}
-                placeholderTextColor="rgba(0,0,0,0.5)"
+                placeholderTextColor={AppColors.textMuted}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -186,7 +187,7 @@ export default function RegisterScreen() {
               <TextInput
                 ref={passwordRef}
                 placeholder={t('auth.register.password')}
-                placeholderTextColor="rgba(0,0,0,0.5)"
+                placeholderTextColor={AppColors.textMuted}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
@@ -201,9 +202,9 @@ export default function RegisterScreen() {
             </View>
 
             {/* Nationality dropdown */}
-            <View style={[styles.inputBox, { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0, borderColor: '#FF3951' }]}>
+            <View style={[styles.inputBox, { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: open ? AppColors.backgroundPrimary : AppColors.backgroundInputMuted, borderWidth: open ? 2 : 0, borderColor: AppColors.primary }]}>
               <TextInput
-                style={[styles.textInput, { flex: 1, borderWidth: 0, outline: "none", color: nationality ? "#252525" : "rgba(0,0,0,0.5)" }]}
+                style={[styles.textInput, { flex: 1, borderWidth: 0, outline: "none", color: nationality ? AppColors.text : AppColors.textMuted }]}
                 placeholder={nationality ? nationality : t('auth.register.selectNationality')}
                 value={search}
                 onChangeText={setSearch}
@@ -252,7 +253,7 @@ export default function RegisterScreen() {
               onPress={() => setShowDatePicker(true)}
               style={[styles.inputBox, { height: inputHeight, marginTop: 12, justifyContent: 'center' }]}
             >
-              <Text style={[styles.textInput, { color: birthdate ? "#252525" : "rgba(0,0,0,0.5)" }]}>
+              <Text style={[styles.textInput, { color: birthdate ? AppColors.text : AppColors.textMuted }]}>
                 {birthdate || t('auth.register.selectBirthdate')}
               </Text>
             </TouchableOpacity>
@@ -309,18 +310,18 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
   topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
-  title: { color: '#252525', fontWeight: '800' },
+  title: { color: AppColors.text, fontWeight: '800' },
   form: { paddingBottom: 60 },
 
   inputBox: { 
     width: '100%',
-    backgroundColor: 'rgba(196,196,196,0.2)',
+    backgroundColor: AppColors.backgroundInputMuted,
     borderRadius: 10,
     justifyContent: 'center' 
   },
   textInput: { 
     fontSize: 16, 
-    color: '#252525', 
+    color: AppColors.text, 
     paddingHorizontal: 22, 
     paddingVertical: 0,
     height: '100%',
@@ -330,26 +331,26 @@ const styles = StyleSheet.create({
   },
 
   termsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, width: '100%' },
-  checkbox: { width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: '#CBCBCB', marginRight: 8 },
-  checkboxTick: { flex: 1, backgroundColor: '#FF3951', borderRadius: 2 },
-  termsText: { fontSize: 9, color: '#252525', flexWrap: 'wrap', flex: 1 },
-  link: { color: '#FF3951' },
+  checkbox: { width: 12, height: 12, borderRadius: 3, borderWidth: 1, borderColor: AppColors.borderLight, marginRight: 8 },
+  checkboxTick: { flex: 1, backgroundColor: AppColors.primary, borderRadius: 2 },
+  termsText: { fontSize: 9, color: AppColors.text, flexWrap: 'wrap', flex: 1 },
+  link: { color: AppColors.primary },
 
-  nextBtn: { width: '100%', backgroundColor: '#FF3951',
+  nextBtn: { width: '100%', backgroundColor: AppColors.primary,
     borderRadius: 10, justifyContent: 'center',
     alignItems: 'center', flexDirection: 'row' },
-  nextText: { color: '#FCFCFC', fontSize: 20, fontWeight: '600' },
+  nextText: { color: AppColors.white, fontSize: 20, fontWeight: '600' },
   loginRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18, alignItems: 'center' },
 
-  already: { color: '#252525', fontSize: 13, fontWeight: '500' },
-  loginLink: { color: '#FF3951', fontSize: 13, fontWeight: '700', marginLeft: 6 },
+  already: { color: AppColors.text, fontSize: 13, fontWeight: '500' },
+  loginLink: { color: AppColors.primary, fontSize: 13, fontWeight: '700', marginLeft: 6 },
 
   dropdown: { 
     left: 0, 
     right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: AppColors.borderLight,
     borderRadius: 10,
     marginTop: 4,
     maxHeight: 200,
@@ -362,12 +363,12 @@ const styles = StyleSheet.create({
     alignItems: "center", 
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: "#fff" 
+    backgroundColor: AppColors.backgroundPrimary 
   },
-  itemHover: { backgroundColor: "#f0f0f0" },
-  itemSelected: { backgroundColor: "#FF395120" }, // Light red background for selected item
+  itemHover: { backgroundColor: AppColors.backgroundHover },
+  itemSelected: { backgroundColor: AppColors.primaryLight },
   itemText: {
     fontSize: 16,
-    color: '#252525',
+    color: AppColors.text,
   },
 });

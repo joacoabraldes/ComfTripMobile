@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 
 export default function AddActivity() {
   const router = useRouter();
@@ -118,7 +119,7 @@ export default function AddActivity() {
             <Image source={{ uri: imageUri }} style={styles.imagePreview} />
           ) : (
             <View style={styles.imagePlaceholder}>
-              <Text style={{ color: '#fff', fontWeight: '600' }}>{t('addActivity.noPhoto')}</Text>
+              <Text style={{ color: AppColors.white, fontWeight: '600' }}>{t('addActivity.noPhoto')}</Text>
             </View>
           )}
 
@@ -151,7 +152,7 @@ export default function AddActivity() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFF' },
+  container: { flex: 1, backgroundColor: AppColors.backgroundPrimary },
   contentContainer: { padding: 20, paddingBottom: 32 },
   header: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
 
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 10,
-    backgroundColor: '#9E9E9E',
+    backgroundColor: AppColors.textSecondary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -179,13 +180,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
   },
-  photoBtnText: { color: '#fff', fontWeight: '700' },
+  photoBtnText: { color: AppColors.white, fontWeight: '700' },
 
   label: { marginBottom: 8, fontWeight: '700' },
-  input: { width: '100%', padding: 12, borderRadius: 8, backgroundColor: '#F5F5F5', fontSize: 16 },
+  input: { width: '100%', padding: 12, borderRadius: 8, backgroundColor: AppColors.backgroundTertiary, fontSize: 16 },
 
-  saveBtn: { width: '100%', backgroundColor: '#FF3951', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  saveBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  saveBtn: { width: '100%', backgroundColor: AppColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  saveBtnText: { color: AppColors.white, fontSize: 18, fontWeight: '700' },
 });

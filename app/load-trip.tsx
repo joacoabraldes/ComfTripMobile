@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity } fr
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { apiPost } from '@/helpers/api';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 
 export default function LoadTrip() {
   const router = useRouter();
@@ -79,12 +80,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center', // Center vertically
     alignItems: 'center', // Center horizontally
-    backgroundColor: 'white',
+    backgroundColor: AppColors.backgroundPrimary,
     padding: 20,
   },
   text: {
     fontSize: 16,
-    color: '#666',
+    color: AppColors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -94,17 +95,17 @@ const styles = StyleSheet.create({
   },
   textError: {
     fontSize: 16,
-    color: '#c0392b',
+    color: AppColors.error,
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     padding: 12,
     borderRadius: 20,
   },
   retryButtonText: {
-    color: '#fff',
+    color: AppColors.white,
     fontSize: 16,
   },
 });

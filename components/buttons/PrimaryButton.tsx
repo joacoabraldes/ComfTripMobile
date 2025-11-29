@@ -8,6 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { AppColors } from '@/constants/Colors';
 
 type Props = {
   title: string;
@@ -67,14 +68,14 @@ export default function PrimaryButton({
 const styles = StyleSheet.create({
   button: {
     width: '100%',
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
     paddingHorizontal: 12,
   },
   title: {
-    color: '#FCFCFC',
+    color: AppColors.white,
     fontSize: 20,
     fontWeight: '600',
   },

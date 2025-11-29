@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
+import { AppColors, ShadowColors } from '@/constants/Colors';
 
 type TopBarProps = {
   // Para pantallas primarias (tabs)
@@ -80,7 +81,7 @@ export default function TopBar({
               style={styles.backButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="arrow-back" size={24} color="#252525" />
+              <Ionicons name="arrow-back" size={24} color={AppColors.text} />
             </TouchableOpacity>
           )}
           <Text style={styles.title} numberOfLines={1}>
@@ -97,7 +98,7 @@ export default function TopBar({
               style={styles.profileButton}
               activeOpacity={0.7}
             >
-              <Ionicons name="person-circle-outline" size={28} color="#252525" />
+              <Ionicons name="person-circle-outline" size={28} color={AppColors.text} />
             </TouchableOpacity>
           )}
         </View>
@@ -108,13 +109,13 @@ export default function TopBar({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundPrimary,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: AppColors.border,
     justifyContent: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.05,
         shadowRadius: 4,
         shadowOffset: { width: 0, height: 2 },
@@ -125,7 +126,7 @@ const styles = StyleSheet.create({
     }),
   },
   containerSecondary: {
-    backgroundColor: '#FCFCFC',
+    backgroundColor: AppColors.background,
   },
   content: {
     height: 44,
@@ -150,7 +151,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 17,
     fontWeight: '600',
-    color: '#252525',
+    color: AppColors.text,
     marginLeft: 0,
   },
   rightSection: {

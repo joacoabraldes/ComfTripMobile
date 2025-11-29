@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
+import { AppColors, ShadowColors } from '@/constants/Colors';
 
 type MenuOption = {
   label: string;
@@ -43,7 +44,7 @@ export default function ContextMenu({ options }: ContextMenuProps) {
           style={styles.menuButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="ellipsis-vertical" size={22} color="#252525" />
+          <Ionicons name="ellipsis-vertical" size={22} color={AppColors.text} />
         </TouchableOpacity>
       </View>
 
@@ -77,7 +78,7 @@ export default function ContextMenu({ options }: ContextMenuProps) {
                         <Ionicons
                           name={option.icon}
                           size={20}
-                          color={option.destructive ? '#FF3B30' : '#252525'}
+                          color={option.destructive ? AppColors.error : AppColors.text}
                           style={styles.menuIcon}
                         />
                       )}
@@ -114,20 +115,20 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: AppColors.overlay,
   },
   menuWrapper: {
     position: 'absolute',
     alignItems: 'flex-end',
   },
   menuContainer: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundPrimary,
     borderRadius: 12,
     paddingVertical: 4,
     minWidth: 180,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.15,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 4 },
@@ -149,15 +150,15 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 16,
-    color: '#252525',
+    color: AppColors.text,
     fontWeight: '400',
   },
   menuTextDestructive: {
-    color: '#FF3B30',
+    color: AppColors.error,
   },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: AppColors.border,
     marginHorizontal: 20,
   },
 });

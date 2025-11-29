@@ -18,6 +18,7 @@ import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
+import { AppColors, ShadowColors } from '@/constants/Colors';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -318,7 +319,7 @@ export default function InterestsScreen() {
         {showLoadingList ? (
           <View style={{ alignItems: "center", marginTop: 40 }}>
             <ActivityIndicator size="large" />
-            <Text style={{ color: "#6f6f6f", marginTop: 8 }}>{t('auth.interests.loading')}</Text>
+            <Text style={{ color: AppColors.textSecondary, marginTop: 8 }}>{t('auth.interests.loading')}</Text>
           </View>
         ) : (
           <FlatList
@@ -329,7 +330,7 @@ export default function InterestsScreen() {
             contentContainerStyle={{ paddingBottom: 24 }}
             ListEmptyComponent={
               <View style={{ alignItems: "center", marginTop: 24 }}>
-                <Text style={{ color: "#6f6f6f" }}>{t('auth.interests.noInterests')}</Text>
+                <Text style={{ color: AppColors.textSecondary }}>{t('auth.interests.noInterests')}</Text>
               </View>
             }
             // performance tuning
@@ -363,24 +364,24 @@ export default function InterestsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 12, color: "#252525" },
+  title: { fontSize: 22, fontWeight: "700", marginBottom: 12, color: AppColors.text },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: AppColors.backgroundPrimary,
     borderRadius: 12,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
-    shadowColor: "#000",
+    borderColor: AppColors.borderLight,
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
     position: "relative",
   },
-  cardSelected: { borderColor: "#FF3951", backgroundColor: "#FFF5F6" },
-  image: { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, borderRadius: 10, backgroundColor: "#EDEDED" },
+  cardSelected: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryLighter },
+  image: { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, borderRadius: 10, backgroundColor: AppColors.borderLight },
   imageLoader: {
     position: "absolute",
     left: 0,
@@ -389,24 +390,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: { flex: 1, justifyContent: "center" },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#1E1E1E", marginBottom: 6 },
-  cardSubtitle: { fontSize: 13, color: "#6F6F6F", lineHeight: 18 },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: AppColors.text, marginBottom: 6 },
+  cardSubtitle: { fontSize: 13, color: AppColors.textSecondary, lineHeight: 18 },
   checkBadge: {
     position: "absolute",
     right: 12,
     top: 12,
-    backgroundColor: "#FF3951",
+    backgroundColor: AppColors.primary,
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
-  checkText: { color: "#fff", fontSize: 16, fontWeight: "700", lineHeight: 18 },
+  checkText: { color: AppColors.white, fontSize: 16, fontWeight: "700", lineHeight: 18 },
   loadingOverlay: {
     position: "absolute",
     left: 0,
@@ -415,6 +416,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: AppColors.backgroundPrimary + '99',
   },
 });

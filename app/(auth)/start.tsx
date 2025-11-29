@@ -11,6 +11,7 @@ import { useRouter } from 'expo-router';
 import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
@@ -57,7 +58,7 @@ export default function StartScreen() {
             onPress={() => router.push('/login')}
             height={btnHeight}
             borderRadius={btnRadius}
-            style={{ backgroundColor: '#FF3951' }}
+            style={{ backgroundColor: AppColors.primary }}
             textStyle={{ fontSize: labelFontSize }}
           />
 
@@ -69,10 +70,10 @@ export default function StartScreen() {
             style={{
               backgroundColor: 'transparent',
               borderWidth: 1,
-              borderColor: '#FF3951',
+              borderColor: AppColors.primary,
               marginTop: Math.round(height * 0.012),
             }}
-            textStyle={{ color: '#FF3951', fontSize: labelFontSize }}
+            textStyle={{ color: AppColors.primary, fontSize: labelFontSize }}
           />
         </View>
       </View>
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
   },
 
   brand: {
-    color: '#FF3951',
+    color: AppColors.primary,
     fontWeight: '400',
     textAlign: 'center',
   },
@@ -114,7 +115,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   actionText: {
-    color: '#FCFCFC',
+    color: AppColors.white,
     fontWeight: '600',
   },
 
@@ -122,11 +123,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#FF3951',
+    borderColor: AppColors.primary,
     backgroundColor: 'transparent',
   },
   actionTextOutline: {
-    color: '#FF3951',
+    color: AppColors.primary,
     fontWeight: '600',
   },
 

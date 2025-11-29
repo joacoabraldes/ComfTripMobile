@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "@/i18n";
+import { AppColors, ShadowColors } from "@/constants/Colors";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -283,7 +284,7 @@ export default function ProfileScreen() {
     return (
       <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
         <View style={styles.infoLeft}>
-          {iconName ? <Ionicons name={iconName} size={iconSize || 18} color="#666" /> : null}
+          {iconName ? <Ionicons name={iconName} size={iconSize || 18} color={AppColors.textSecondary} /> : null}
           <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: iconName ? Math.round(width * 0.02) : 0 }]}>{label}</Text>
         </View>
         <Text style={[styles.infoValue, { fontSize: fontSizeMedium }]}>{value}</Text>
@@ -315,7 +316,7 @@ export default function ProfileScreen() {
           {/* Language Selector */}
           <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
             <View style={styles.infoLeft}>
-              <Ionicons name="globe" size={iconSize} color="#666" />
+              <Ionicons name="globe" size={iconSize} color={AppColors.textSecondary} />
               <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>
                 {t('profile.language')}
               </Text>
@@ -331,7 +332,7 @@ export default function ProfileScreen() {
               >
                 <Text style={[
                   { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'es' ? { color: '#fff' } : { color: '#666' }
+                  language === 'es' ? { color: AppColors.white } : { color: AppColors.textSecondary }
                 ]}>
                   {t('profile.spanish')}
                 </Text>
@@ -346,7 +347,7 @@ export default function ProfileScreen() {
               >
                 <Text style={[
                   { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'en' ? { color: '#fff' } : { color: '#666' }
+                  language === 'en' ? { color: AppColors.white } : { color: AppColors.textSecondary }
                 ]}>
                   {t('profile.english')}
                 </Text>
@@ -382,7 +383,7 @@ export default function ProfileScreen() {
               onPress={handleLogout}
               height={btnHeight}
               borderRadius={btnRadius}
-              style={[styles.actionButton, { width: '100%', backgroundColor: '#DC3545' }]}
+              style={[styles.actionButton, { width: '100%', backgroundColor: AppColors.error }]}
             />
           </View>
         </View>
@@ -390,8 +391,6 @@ export default function ProfileScreen() {
     </SecondaryLayout>
   );
 }
-
-const RED = "#FF3951";
 
 const styles = StyleSheet.create({
   scrollView: {
@@ -401,10 +400,10 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   infoCard: {
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.backgroundPrimary,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.08,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
@@ -419,31 +418,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEE",
+    borderBottomColor: AppColors.borderLight,
   },
   infoLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: { color: "#888", fontWeight: "500" },
-  infoValue: { color: "#111", fontWeight: "600" },
+  infoLabel: { color: AppColors.textSecondary, fontWeight: "500" },
+  infoValue: { color: AppColors.text, fontWeight: "600" },
   languageButton: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#f5f5f5",
+    borderColor: AppColors.border,
+    backgroundColor: AppColors.backgroundTertiary,
   },
   languageButtonActive: {
-    backgroundColor: RED,
-    borderColor: RED,
+    backgroundColor: AppColors.primary,
+    borderColor: AppColors.primary,
   },
 
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111",
+    color: AppColors.text,
     marginBottom: 6,
     marginTop: 6,
   },
   interestsText: {
     textAlign: "center",
-    color: "#555",
+    color: AppColors.textSecondary,
     fontSize: 14,
     paddingHorizontal: 12,
   },

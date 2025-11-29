@@ -10,6 +10,7 @@ import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { Ionicons } from '@expo/vector-icons';
+import { AppColors, ShadowColors } from '@/constants/Colors';
 
 export default function TripsScreen() {
   const { t } = useTranslation();
@@ -57,9 +58,9 @@ export default function TripsScreen() {
     const status = getTripStatus(item.start_date, item.end_date);
     const statusValue = getTripStatusValue(item.start_date, item.end_date);
     
-    const bgColor = statusValue === 2 ? '#F8F1EF' : (statusValue === 1 ? '#FFFFFF' : '#F1F1F1');
-    const accent = statusValue === 2 ? '#FFD8D8' : (statusValue === 1 ? '#FF3951' : '#CACACA');
-    const badgeTextColor = statusValue === 1 ? '#FFFFFF' : '#333';
+    const bgColor = statusValue === 2 ? AppColors.accentCard : (statusValue === 1 ? AppColors.backgroundPrimary : AppColors.backgroundTertiary);
+    const accent = statusValue === 2 ? AppColors.accent : (statusValue === 1 ? AppColors.primary : AppColors.textDisabled);
+    const badgeTextColor = statusValue === 1 ? AppColors.white : AppColors.text;
     
     const statusLabels: Record<'upcoming' | 'current' | 'past', string> = {
       upcoming: t('trips.status.upcoming'),
@@ -118,9 +119,9 @@ export default function TripsScreen() {
     return (
       <PrimaryLayout title={t('trips.title')}>
         <View style={styles.center}>
-          <Text style={{ color: '#B00020', marginBottom: 8 }}>{t('common.error')}: {error}</Text>
+          <Text style={{ color: AppColors.error, marginBottom: 8 }}>{t('common.error')}: {error}</Text>
           <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
-            <Text style={{ color: '#fff' }}>{t('common.retry')}</Text>
+            <Text style={{ color: AppColors.white }}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
       </PrimaryLayout>
@@ -141,7 +142,7 @@ export default function TripsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text style={{ color: '#777' }}>{t('trips.empty')}</Text>
+            <Text style={{ color: AppColors.textSecondary }}>{t('trips.empty')}</Text>
           </View>
         }
       />
@@ -155,7 +156,7 @@ export default function TripsScreen() {
           accessibilityLabel={t('trips.addTrip')}
           activeOpacity={0.85}
         >
-          <Ionicons name="add" size={32} color="#FFFFFF" />
+          <Ionicons name="add" size={32} color={AppColors.white} />
         </TouchableOpacity>
       </View>
     </PrimaryLayout>
@@ -163,7 +164,7 @@ export default function TripsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
+  screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
 
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
 
@@ -173,7 +174,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 20,
     // shadow
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -185,12 +186,12 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 12,
     marginRight: 12,
-    backgroundColor: '#ddd',
+    backgroundColor: AppColors.borderLight,
   },
 
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: '#000', fontWeight: '600' },
-  dates: { fontSize: 14, color: '#757575', marginTop: 4 },
+  destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
+  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
 
   badge: {
     paddingHorizontal: 8,
@@ -200,11 +201,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 64,
   },
-  badgeText: { fontSize: 12, color: '#333', fontWeight: '700' },
+  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 8,
@@ -215,11 +216,11 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 14,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.18,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 4 },

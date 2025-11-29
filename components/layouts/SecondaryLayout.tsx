@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import TopBar from '@/components/ui/TopBar';
+import { AppColors } from '@/constants/Colors';
 
 type SecondaryLayoutProps = {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ export default function SecondaryLayout({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FCFCFC',
+    backgroundColor: AppColors.background,
   },
   content: {
     flex: 1,

@@ -17,6 +17,8 @@ import {
 } from "react-native";
 import countryRegionData from "country-region-data";
 import { useTranslation } from '@/i18n';
+import { CommonStyles } from '@/constants/Styles';
+import { AppColors } from '@/constants/Colors';
 
 export const options = {
   headerShown: false,
@@ -207,7 +209,7 @@ export default function EditProfileScreen() {
         <View style={[styles.inputBox, { flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0 }]}
               onFocus={()=>setOpen(true)}>
           <TextInput
-              style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? "#252525" : "rgba(0,0,0,0.5)"}]}
+              style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? AppColors.text : AppColors.textMuted}]}
               placeholder={nationality? nationality : t('profile.selectNationality')}
               value={search}
               onChangeText={setSearch}
@@ -221,27 +223,25 @@ export default function EditProfileScreen() {
         </View>
         {open && (
               <View style={styles.dropdown}>
-              <FlatList
-                  data={filteredCountries}
-                  keyExtractor={(item) => item}
-                  keyboardShouldPersistTaps="handled"
-                  renderItem={({ item }) => {
-                    const isSelected = nationality === item;
-                    return (
-                        <TouchableOpacity
-                            style={[styles.item,
-                              isSelected && styles.itemSelected]}
-                            onPress={() => {
-                              setNationality(item);
-                              setSearch("");
-                              setOpen(false);
-                            }}
-                        >
-                          <Text>{item}</Text>
-                        </TouchableOpacity>
-                    );
-                  }}
-              />
+              <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+                {filteredCountries.map((item) => {
+                      const isSelected = nationality === item;
+                      return (
+                          <TouchableOpacity
+                              key={item}
+                              style={[styles.item,
+                                isSelected && styles.itemSelected]}
+                              onPress={() => {
+                                setNationality(item);
+                                setSearch("");
+                                setOpen(false);
+                              }}
+                          >
+                            <Text>{item}</Text>
+                          </TouchableOpacity>
+                      );
+                    })}
+              </ScrollView>
             </View>
         )}
 
@@ -288,36 +288,36 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   inputBox: {
-    backgroundColor: 'rgba(196,196,196,0.2)',
+    backgroundColor: AppColors.backgroundInputMuted,
     borderRadius: 8,
     padding: 12,
     marginBottom: 12,
     justifyContent: 'center' },
 
-  textInput: { fontSize: 16, color: '#252525', borderRadius: 8},
+  textInput: { fontSize: 16, color: AppColors.text, borderRadius: 8},
   dateInput: {
     // make the TouchableOpacity look like the other inputs
     justifyContent: "center",
   },
   dateText: {
     fontSize: 16,
-    color: "#111",
+    color: AppColors.text,
   },
   placeholderText: {
-    color: "#999",
+    color: AppColors.textMutedDark,
   },
 
   dropdown: { left: 0, right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: AppColors.borderLight,
     borderRadius: 10,
     maxHeight: 200,
     zIndex: 1000,
     elevation: 10,
     marginBottom: 12,},
 
-  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: "#fff" },
-  itemHover: { backgroundColor: "#f0f0f0" },
-  itemSelected: { backgroundColor: "#d0d0d0" },
+  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: AppColors.backgroundPrimary },
+  itemHover: { backgroundColor: AppColors.backgroundHover },
+  itemSelected: { backgroundColor: AppColors.backgroundHover },
 });

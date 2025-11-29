@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
+import { AppColors } from '@/constants/Colors';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -248,7 +249,7 @@ export default function AddTrip() {
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
         <TextInput
-          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? "#252525" : "rgba(0,0,0,0.5)"}]}
+          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? AppColors.text : AppColors.textMuted}]}
           placeholder={t('addTrip.searchPlaceholder')}
           value={query}
           onChangeText={onChangeQuery}
@@ -259,19 +260,17 @@ export default function AddTrip() {
 
       {openSuggestions && suggestions.length > 0 && (
         <View style={styles.dropdown}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item) => item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {suggestions.map((item) => (
               <TouchableOpacity
+                key={item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
                 style={styles.item}
                 onPress={() => handleSelectSuggestion(item)}
               >
                 <Text>{item.display_name}</Text>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -388,19 +387,22 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
-    backgroundColor: 'white',
+    backgroundColor: AppColors.backgroundPrimary,
+  },
+  contentContainer: {
+    paddingBottom: 32,
   },
   mapButton: {
     marginTop: 8,
     alignSelf: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: AppColors.black,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
   },
-  mapButtonText: { color: '#000000', fontWeight: '600' },
+  mapButtonText: { color: AppColors.black, fontWeight: '600' },
   mapContainer: {
     marginTop: 12,
     width: '100%',
@@ -414,16 +416,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: AppColors.overlay,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  closeMapBtnText: { color: '#fff' },
+  closeMapBtnText: { color: AppColors.white },
   header: {
     fontSize: 16,
     marginBottom: 10,
-    color: '#666',
+    color: AppColors.textSecondary,
     textAlign: 'center',
   },
   destinationInput: {
@@ -432,14 +434,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 15,
     borderRadius: 25,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: AppColors.backgroundTertiary,
   },
   destinationText: {
     fontSize: 16,
   },
   closeIcon: {
     fontSize: 24,
-    color: '#666',
+    color: AppColors.textSecondary,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -457,7 +459,7 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 20,
-    color: '#FF3951',
+    color: AppColors.primary,
   },
   calendar: {
     marginTop: 10,
@@ -468,7 +470,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   weekDay: {
-    color: '#999',
+    color: AppColors.textMutedDark,
     fontSize: 12,
   },
   daysGrid: {
@@ -489,35 +491,35 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   selectedDay: {
-    backgroundColor: '#FFE5E8',
+    backgroundColor: AppColors.primaryLight,
   },
   selectedDayText: {
-    color: '#FF3951',
+    color: AppColors.primary,
   },
   pastDayText: {
-    color: '#CCC',
+    color: AppColors.textDisabled,
   },
   dateRange: {
     textAlign: 'center',
     marginTop: 20,
-    color: '#666',
+    color: AppColors.textSecondary,
   },
   createTripButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     padding: 15,
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 20,
   },
   createTripButtonText: {
-    color: 'white',
+    color: AppColors.white,
     fontSize: 16,
   },
 
   dropdown: { left: 0, right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: AppColors.borderLight,
     borderRadius: 10,
     marginTop: 4,
     marginBottom: 20,
@@ -525,7 +527,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 10 },
 
-  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: "#fff" },
-  itemHover: { backgroundColor: "#f0f0f0" },
-  itemSelected: { backgroundColor: "#d0d0d0" },
+  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: AppColors.backgroundPrimary },
+  itemHover: { backgroundColor: AppColors.backgroundHover },
+  itemSelected: { backgroundColor: AppColors.backgroundHover },
 });

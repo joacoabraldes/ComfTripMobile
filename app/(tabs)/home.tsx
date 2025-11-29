@@ -17,6 +17,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/i18n';
 import LogoSvg from '@/components/icons/LogoSvg';
+import { AppColors, ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
 
 type Trip = {
   id: number;
@@ -255,7 +256,7 @@ export default function HomeScreen() {
         <Text style={styles.upcomingLabel}>{t('home.upcomingTrip')}</Text>
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.card, { backgroundColor: '#F8F1EF' }]}
+          style={[styles.card, { backgroundColor: AppColors.accentCard }]}
           onPress={() => {
             router.push({
               pathname: '../trip-details',
@@ -278,8 +279,8 @@ export default function HomeScreen() {
             <Text style={styles.destination}>{trip.destination}</Text>
             <Text style={styles.dates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: '#FFD8D8' }]}>
-            <Text style={[styles.badgeText, { color: '#333' }]}>{t('home.upcoming')}</Text>
+          <View style={[styles.badge, { backgroundColor: AppColors.accent }]}>
+            <Text style={[styles.badgeText, { color: AppColors.text }]}>{t('home.upcoming')}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -350,7 +351,7 @@ export default function HomeScreen() {
               timeRemainingText = t('home.timeRemainingMinutesOnly', { minutes: mins, minutesText });
             }
             return (
-              <Text style={{ marginTop: 10, color: '#2E7D32', fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ marginTop: 10, color: AppColors.success, fontWeight: '600', fontSize: 15 }}>
                 {timeRemainingText}
               </Text>
             );
@@ -460,7 +461,7 @@ export default function HomeScreen() {
           }}
           activeOpacity={0.9}
         >
-          <Text style={{ color: '#fff', fontWeight: '700' }}>{t('home.viewDetails')}</Text>
+          <Text style={{ color: AppColors.white, fontWeight: '700' }}>{t('home.viewDetails')}</Text>
         </TouchableOpacity>
       </>
     );
@@ -527,7 +528,7 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FCFCFC', paddingTop: 8 },
+  root: { flex: 1, backgroundColor: AppColors.background, paddingTop: 8 },
 
   centerArea: {
     width: '100%',
@@ -555,7 +556,7 @@ const styles = StyleSheet.create({
 
   copyText: {
     textAlign: 'center',
-    color: 'rgba(0,0,0,0.60)',
+    color: AppColors.textMuted,
     fontFamily: Platform.select({ ios: 'Roboto', android: 'Roboto', default: 'System' }),
     fontWeight: '500' as any,
     letterSpacing: 0.18,
@@ -570,13 +571,13 @@ const styles = StyleSheet.create({
 
   // Reuse card styles similar to trips.tsx
   upcomingWrap: { width: '100%', alignItems: 'center' },
-  upcomingLabel: { alignSelf: 'flex-start', marginBottom: 6, color: '#252525', fontWeight: '700' },
+  upcomingLabel: { alignSelf: 'flex-start', marginBottom: 6, color: AppColors.text, fontWeight: '700' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -587,11 +588,11 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 12,
     marginRight: 12,
-    backgroundColor: '#ddd',
+    backgroundColor: AppColors.borderLight,
   },
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: '#000', fontWeight: '600' },
-  dates: { fontSize: 14, color: '#757575', marginTop: 4 },
+  destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
+  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -600,33 +601,33 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 64,
   },
-  badgeText: { fontSize: 12, color: '#333', fontWeight: '700' },
+  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
 
   // Ongoing summary styles
   ongoingWrap: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundPrimary,
     borderRadius: 16,
     padding: 14,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  ongoingHeader: { fontSize: 22, color: '#000', fontWeight: '800' },
-  ongoingDates: { marginTop: 4, color: '#757575' },
+  ongoingHeader: { fontSize: 22, color: AppColors.black, fontWeight: '800' },
+  ongoingDates: { marginTop: 4, color: AppColors.textTertiary },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
   },
-  activityRowLabel: { fontWeight: '800', color: '#111', marginRight: 6 },
-  activityRowText: { flex: 1, color: '#111' },
-  activityRowTime: { color: '#777', marginLeft: 8 },
+  activityRowLabel: { fontWeight: '800', color: AppColors.text, marginRight: 6 },
+  activityRowText: { flex: 1, color: AppColors.text },
+  activityRowTime: { color: AppColors.textSecondary, marginLeft: 8 },
   viewDetailsBtn: {
     marginTop: 12,
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -636,15 +637,15 @@ const styles = StyleSheet.create({
   currentActivityPreview: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#E8F5E8', // Slightly different background to distinguish from next
+    backgroundColor: StateColors.successLight,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#D4E6D4',
+    borderColor: StateColors.successBorder,
   },
   currentActivityLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2E7D32', // Green color for current activity
+    color: AppColors.success,
     marginBottom: 8,
   },
   currentActivityContent: {
@@ -656,7 +657,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: AppColors.borderLight,
   },
   currentActivityInfo: {
     flex: 1,
@@ -665,18 +666,18 @@ const styles = StyleSheet.create({
   currentActivityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212529',
+    color: AppColors.text,
     marginBottom: 2,
   },
   currentActivityTime: {
     fontSize: 12,
-    color: '#2E7D32',
+    color: AppColors.success,
     fontWeight: '500',
     marginBottom: 4,
   },
   currentActivityDescription: {
     fontSize: 13,
-    color: '#6C757D',
+    color: AdditionalColors.lightGray,
     lineHeight: 18,
   },
 
@@ -684,15 +685,15 @@ const styles = StyleSheet.create({
   nextActivityPreview: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: AppColors.backgroundSection,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E9ECEF',
+    borderColor: AppColors.borderLight,
   },
   nextActivityLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#495057',
+    color: AdditionalColors.darkGray,
     marginBottom: 8,
   },
   nextActivityContent: {
@@ -704,7 +705,7 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: '#E9ECEF',
+    backgroundColor: AppColors.borderLight,
   },
   nextActivityInfo: {
     flex: 1,
@@ -713,18 +714,18 @@ const styles = StyleSheet.create({
   nextActivityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#212529',
+    color: AppColors.text,
     marginBottom: 2,
   },
   nextActivityTime: {
     fontSize: 12,
-    color: '#495057',
+    color: AdditionalColors.darkGray,
     fontWeight: '500',
     marginBottom: 4,
   },
   nextActivityDescription: {
     fontSize: 13,
-    color: '#6C757D',
+    color: AdditionalColors.lightGray,
     lineHeight: 18,
   },
 });
