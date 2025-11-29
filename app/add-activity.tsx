@@ -16,6 +16,8 @@ import * as ImagePicker from 'expo-image-picker';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
+import BackButton from '@/components/BackButton';
+import { CommonStyles } from '@/constants/Styles';
 
 export default function AddActivity() {
   const router = useRouter();

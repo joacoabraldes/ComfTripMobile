@@ -16,12 +16,12 @@ import {
   View,
   KeyboardAvoidingView,
   ScrollView,
-  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
+import InputField from '@/components/forms/InputField';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -90,51 +90,39 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.form}>
-            <Text style={[styles.title, { fontSize: titleFontSize, marginBottom: 24 }]}>{t('auth.login.title')}</Text>
-
-            <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
-              <TextInput
-                placeholder={t('auth.login.email')}
-                placeholderTextColor="rgba(0,0,0,0.5)"
-                value={identifier}
-                onChangeText={setIdentifier}
-                keyboardType="default"
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="next"
-                blurOnSubmit={false}
-                onSubmitEditing={() => passwordRef.current?.focus()}
-                style={styles.textInput}
-              />
+            <View style={styles.titleContainer}>
+              <Text style={[styles.title, { fontSize: titleFontSize }]}>{t('auth.login.title')}</Text>
             </View>
 
-            <View style={[styles.inputBox, { height: inputHeight, marginTop: 16 }]}>
-              <TextInput
-                ref={passwordRef}
-                placeholder={t('auth.login.password')}
-                placeholderTextColor="rgba(0,0,0,0.5)"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="go"
-                onSubmitEditing={handleNext}
-                style={[styles.textInput, { paddingRight: 60 }]}
-              />
-              <TouchableOpacity
-                accessibilityLabel={showPassword ? t('auth.login.hidePasswordLabel') : t('auth.login.showPasswordLabel')}
-                onPress={() => setShowPassword((v) => !v)}
-                style={styles.eyeButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons
-                  name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                  size={22}
-                  color={AppColors.primary}
-                />
-              </TouchableOpacity>
-            </View>
+            <InputField
+              placeholder={t('auth.login.email')}
+              value={identifier}
+              onChangeText={setIdentifier}
+              keyboardType="default"
+              autoCapitalize="none"
+              autoCorrect={false}
+              containerStyle={{ height: inputHeight, marginTop: 16 }}
+              returnKeyType="next"
+              blurOnSubmit={false}
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+
+            <InputField
+              ref={passwordRef}
+              placeholder={t('auth.login.password')}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+              showPasswordToggle
+              showPassword={showPassword}
+              onTogglePassword={() => setShowPassword(!showPassword)}
+              containerStyle={{ height: inputHeight, marginTop: 16 }}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="go"
+              onSubmitEditing={handleNext}
+              accessibilityLabel={showPassword ? t('auth.login.hidePasswordLabel') : t('auth.login.showPasswordLabel')}
+            />
 
             <View style={styles.forgotWrap}>
               <Text style={styles.forgotText}>{t('auth.login.forgotPassword')}</Text>
@@ -166,26 +154,22 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
   topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
-  title: { color: AppColors.text, fontSize: 24, fontWeight: '800', marginTop: 40 },
+  titleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+    marginBottom: 24,
+    minHeight: 40,
+  },
+  title: { 
+    color: AppColors.text, 
+    fontSize: 24, 
+    fontWeight: '800', 
+    textAlign: 'center',
+    textAlignVertical: 'center',
+  },
 
   form: { paddingBottom: 60 },
-
-  inputBox: {
-    width: '100%',
-    backgroundColor: AppColors.backgroundInputMuted,
-    borderRadius: 10,
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  textInput: {
-    fontSize: 16,
-    lineHeight: 20,
-    color: AppColors.text,
-    paddingHorizontal: 22,
-    paddingVertical: 0,
-    height: '100%',
-    textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
-  },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
   forgotText: { color: AppColors.primary, fontSize: 13 },
@@ -193,7 +177,4 @@ const styles = StyleSheet.create({
   registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
   already: { color: AppColors.text, fontSize: 13, fontWeight: '500' },
   registerLink: { color: AppColors.primary, fontSize: 13, fontWeight: '700', marginLeft: 6 },
-
-  eyeButton: { position: 'absolute', right: 12, height: '100%', justifyContent: 'center' },
-  eyeText: { color: AppColors.primary, fontSize: 13, fontWeight: '700' },
 });

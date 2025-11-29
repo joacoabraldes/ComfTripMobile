@@ -59,7 +59,6 @@ export default function LoadTrip() {
         <>
           <Text style={styles.text}>{t('loadTrip.calculating')}</Text>
           <Image source={require('../assets/images/loading.gif')} style={styles.loadingImage} />
-          {/* <ActivityIndicator size="large" color="#FF3951" style={{ marginTop: 20 }} /> */}
         </>
       )}
 

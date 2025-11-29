@@ -10,6 +10,8 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
@@ -19,6 +21,8 @@ import { useRouter } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors } from '@/constants/Colors';
+import ProgressIndicator from '@/components/forms/ProgressIndicator';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -143,6 +147,10 @@ export default function InterestsScreen() {
 
   const router = useRouter();
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  
+  const titleFontSize = Math.round(Math.max(24, Math.min(32, width * 0.08)));
+  const subtitleFontSize = Math.round(Math.max(14, Math.min(16, width * 0.04)));
 
   useEffect(() => {
     let mounted = true;
@@ -251,8 +259,8 @@ export default function InterestsScreen() {
     return null;
   }, []);
 
-  const handleSaveInterests = async () => {
-    if (selected.length === 0) return;
+  const handleSaveInterests = async (skip: boolean = false) => {
+    if (!skip && selected.length === 0) return;
     setLoading(true);
     try {
       const token = await getTokenWithRetries(6, 250);
@@ -276,7 +284,11 @@ export default function InterestsScreen() {
         if (match?.id) selectedIds.push(match.id);
       }
 
-      const payloadBody = selectedIds.length > 0 ? { interestIds: selectedIds } : { interestSlugs: selected };
+      const payloadBody = skip || selectedIds.length === 0 
+        ? { interestIds: [] } 
+        : selectedIds.length > 0 
+        ? { interestIds: selectedIds } 
+        : { interestSlugs: selected };
 
       let postRes: any = null;
       try {
@@ -293,6 +305,12 @@ export default function InterestsScreen() {
       const success = (postRes && postRes.status >= 200 && postRes.status < 300) || Boolean(postData && (postData.message || postData.success));
 
       if (success) {
+        // Clear saved form data after successful registration
+        try {
+          await AsyncStorage.removeItem('@register_form_data');
+        } catch (error) {
+          console.warn('Error clearing form data:', error);
+        }
         Alert.alert(t('auth.interests.saved'), t('auth.interests.savedSuccess'));
         router.replace("/home");
       } else {
@@ -314,43 +332,74 @@ export default function InterestsScreen() {
   return (
     <SafeAreaView style={CommonStyles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>{t('auth.interests.title')}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { fontSize: titleFontSize }]}>{t('auth.register.title')}</Text>
+          <Text style={[styles.subtitle, { fontSize: subtitleFontSize }]}>{t('auth.register.subtitle')}</Text>
+        </View>
 
-        {showLoadingList ? (
-          <View style={{ alignItems: "center", marginTop: 40 }}>
-            <ActivityIndicator size="large" />
-            <Text style={{ color: AppColors.textSecondary, marginTop: 8 }}>{t('auth.interests.loading')}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={interests}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            ListEmptyComponent={
-              <View style={{ alignItems: "center", marginTop: 24 }}>
-                <Text style={{ color: AppColors.textSecondary }}>{t('auth.interests.noInterests')}</Text>
-              </View>
-            }
-            // performance tuning
-            initialNumToRender={6}
-            maxToRenderPerBatch={6}
-            windowSize={7}
-            removeClippedSubviews={true}
-          />
-        )}
+        {/* Progress Indicator */}
+        <ProgressIndicator currentStep={2} totalSteps={2} />
 
-        <PrimaryButton
-          title={selected.length ? t('auth.interests.continueWithCount', { count: selected.length }) : t('auth.interests.continue')}
-          onPress={handleSaveInterests}
-          height={52}
-          borderRadius={12}
-          style={{ marginTop: 12 }}
-          disabled={selected.length === 0 || loading}
-        >
-          {loading && <ActivityIndicator />}
-        </PrimaryButton>
+        <Text style={styles.interestsTitle}>{t('auth.interests.title')}</Text>
+
+        <View style={styles.listContainer}>
+          {showLoadingList ? (
+            <View style={{ alignItems: "center", marginTop: 40 }}>
+              <ActivityIndicator size="large" />
+              <Text style={{ color: AppColors.textSecondary, marginTop: 8 }}>{t('auth.interests.loading')}</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={interests}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              ListEmptyComponent={
+                <View style={{ alignItems: "center", marginTop: 24 }}>
+                  <Text style={{ color: AppColors.textSecondary }}>{t('auth.interests.noInterests')}</Text>
+                </View>
+              }
+              // performance tuning
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={7}
+              removeClippedSubviews={true}
+            />
+          )}
+        </View>
+
+        {/* Navigation Buttons - Fixed at bottom */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.navButton, styles.backButton]}
+            onPress={() => router.push('/register')}
+            disabled={loading}
+          >
+            <Text style={styles.backButtonText}>{t('auth.register.backButton')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.navButton, styles.skipButton]}
+            onPress={() => handleSaveInterests(true)}
+            disabled={loading}
+          >
+            <Text style={styles.skipButtonText}>{t('auth.register.skipButton')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.navButton, styles.completeButton, loading && styles.completeButtonDisabled]}
+            onPress={() => handleSaveInterests(false)}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={AppColors.white} />
+            ) : (
+              <Text style={styles.completeButtonText}>{t('auth.register.completeButton')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {loading && (
           <View style={styles.loadingOverlay} pointerEvents="none">
@@ -363,8 +412,80 @@ export default function InterestsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 12, color: AppColors.text },
+  container: { flex: 1, padding: 20, paddingBottom: 0 },
+  listContainer: { flex: 1, marginBottom: 16 },
+  header: {
+    marginTop: Platform.OS === 'ios' ? 20 : 10,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  title: {
+    color: AppColors.text,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: AppColors.textSecondary,
+    textAlign: 'center',
+  },
+  interestsTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: AppColors.text,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.borderLight,
+  },
+  navButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  backButton: {
+    backgroundColor: AppColors.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    flex: 1,
+  },
+  backButtonText: {
+    color: AppColors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+    flex: 1,
+  },
+  skipButtonText: {
+    color: AppColors.textSecondary,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  completeButton: {
+    backgroundColor: AppColors.primary,
+    flex: 2,
+  },
+  completeButtonDisabled: {
+    backgroundColor: AppColors.textDisabled,
+    opacity: 0.6,
+  },
+  completeButtonText: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
