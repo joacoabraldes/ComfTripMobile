@@ -1,4 +1,3 @@
-import { IconSymbol } from '@/components/ui/IconSymbol';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import {
@@ -10,29 +9,28 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
-type IconProps = React.ComponentProps<typeof IconSymbol>;
-type IconName = IconProps['name'];
+const ICON_SIZE = 20;
 
-const iconMap: Record<string, IconName> = {
-  home: 'house.fill' as IconName,
-  explore: 'paperplane.fill' as IconName,
-  trips: 'airplane' as IconName,
-  map: 'map.fill' as IconName,
-  community: 'person.2.fill' as IconName,
+const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+  home: 'home',
+  explore: 'compass',
+  trips: 'briefcase',
+  map: 'map',
+  community: 'people',
 };
 
-function getIconName(routeName: string): IconName {
+function getIconName(routeName: string): keyof typeof Ionicons.glyphMap {
   const key = routeName.toLowerCase();
-  return (iconMap[key] ?? iconMap.home) as IconName;
+  return (iconMap[key] ?? iconMap.home);
 }
 
 export default function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets?.() ?? { bottom: 0, top: 0, left: 0, right: 0 };
   const bottomInset = insets.bottom || (Platform.OS === 'android' ? 16 : 0);
 
-  const ICON_SIZE = 24;
-  const BAR_HEIGHT = 70 + bottomInset;
+  const BAR_HEIGHT = 50 + bottomInset;
 
   return (
     <View style={[styles.container, { height: BAR_HEIGHT, paddingBottom: bottomInset }]}>
@@ -70,8 +68,9 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
             ]}
           >
             <View style={styles.iconWrap}>
-              <IconSymbol
+              <Ionicons
                 name={getIconName(route.name)}
+                size={ICON_SIZE}
                 color={isFocused ? '#FF3951' : '#868686'}
               />
             </View>
@@ -101,7 +100,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEEEEE',
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'flex-start', 
+    alignItems: 'center', 
     paddingTop: 0,
     paddingHorizontal: 12,
     shadowColor: '#000',
@@ -111,11 +110,11 @@ const styles = StyleSheet.create({
   },
   tabItem: {
     flex: 1,
-    padding: 8,
+    padding: 4,
     flexDirection: 'column',
-    justifyContent: 'flex-end', 
+    justifyContent: 'center', 
     alignItems: 'center',
-    marginHorizontal: 6,
+    marginHorizontal: 4,
     borderRadius: 20,
     opacity: 1,
   },
@@ -128,20 +127,20 @@ const styles = StyleSheet.create({
 
 
   iconWrap: {
-    width: 24,
-    height: 24,
+    width: ICON_SIZE,
+    height: ICON_SIZE,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 2,
   },
 
   label: {
     textAlign: 'center',
     color: '#868686', 
-    fontSize: 16,
+    fontSize: 11,
     fontFamily: 'Inter',
     fontWeight: '400' as any,
-    lineHeight: 16,
+    lineHeight: 12,
     marginTop: 0,
   },
   labelActive: {

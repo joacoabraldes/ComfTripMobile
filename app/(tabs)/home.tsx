@@ -1,7 +1,6 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import { ArrowIcon } from '@/components/icons/ArrowIcon';
-import MapSvg from '@/components/icons/MapSvg';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
+import { Ionicons } from '@expo/vector-icons';
 import { apiGet } from '@/helpers/api';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -14,10 +13,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/i18n';
+import LogoSvg from '@/components/icons/LogoSvg';
 
 type Trip = {
   id: number;
@@ -111,7 +110,6 @@ export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const bottomInset = insets?.bottom ?? 0;
-  const topInset = insets?.top ?? 0;
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -130,7 +128,7 @@ export default function HomeScreen() {
   const ctaBottomBase = 20 + bottomInset + TABBAR_HEIGHT;
   const ctaBottom = ctaBottomBase + 20;
 
-  const contentTop = topInset + 24;
+  const contentTop = 24; // TopBar ya maneja el safe area
   const contentBottom = height - (ctaBottom + 40);
   const availableContentHeight = Math.max(260, contentBottom - contentTop);
   const maxSvgHeightFromWidth = Math.round(
@@ -471,17 +469,8 @@ export default function HomeScreen() {
   const showHeaderSection = (!!ongoingTrip || (!!upcomingTrip && !ongoingTrip)) && !loadingTrips;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PrimaryLayout title={t('tabs.home')}>
       <View style={styles.root}>
-        {/* Profile button in top right corner */}
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => router.push('/profile')}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-
         <View
           style={[
             styles.centerArea,
@@ -501,9 +490,7 @@ export default function HomeScreen() {
 
             {!showHeaderSection && (
               <>
-                <View style={styles.svgWrapper}>
-                  <MapSvg width={svgMaxWidth} height={svgMaxHeight} />
-                </View>
+                <LogoSvg width={150} height={150} />
                 <View style={styles.copyWrapper}>
                   <Text
                     style={[
@@ -530,19 +517,17 @@ export default function HomeScreen() {
             onPress={() => router.push('/add-trip')}
             height={btnHeight}
             borderRadius={btnRadius}
-            rightIcon={<ArrowIcon color="#FFFFFF" />}
             style={{ width: btnWidth }}
             activeOpacity={0.95}
           />
         </View>
       </View>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
-  root: { flex: 1, backgroundColor: '#FCFCFC' },
+  root: { flex: 1, backgroundColor: '#FCFCFC', paddingTop: 8 },
 
   centerArea: {
     width: '100%',
@@ -581,30 +566,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: 'center',
-  },
-
-  profileButton: {
-    position: 'absolute',
-    top: 30,
-    right: 25,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#cfcfcf',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 10,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
   },
 
   // Reuse card styles similar to trips.tsx

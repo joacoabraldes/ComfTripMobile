@@ -1,10 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
-import BackButton from '@/components/BackButton';
-import { CommonStyles } from '@/constants/Styles';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 interface CalendarDay {
   date: number;
@@ -244,11 +242,8 @@ export default function AddTrip() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <Text style={styles.header}>{t('addTrip.selectDestination')}</Text>
+    <SecondaryLayout title={t('addTrip.selectDestination')}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
@@ -383,7 +378,8 @@ export default function AddTrip() {
       >
         <Text style={styles.createTripButtonText}>{t('addTrip.createTrip')}</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 

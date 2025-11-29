@@ -15,6 +15,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -285,22 +286,20 @@ export default function ExploreScreen() {
   if (initialLoading) {
     // show a minimal page while categories load
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <PrimaryLayout title={t('explore.title')}>
         <View style={styles.container}>
-          <Text style={styles.title}>{t('explore.loadingTitle')}</Text>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FF3951" />
             <Text style={styles.loadingText}>{t('explore.loading')}</Text>
           </View>
         </View>
-      </SafeAreaView>
+      </PrimaryLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PrimaryLayout title={t('explore.title')}>
       <View style={styles.container}>
-        <Text style={styles.title}>{t('explore.title')}</Text>
 
         {/* categories */}
         <ScrollView
@@ -448,14 +447,12 @@ export default function ExploreScreen() {
           )}
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
-  container: { flex: 1, paddingHorizontal: 16 },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', marginBottom: 20, marginTop: 38, textAlign: 'center' },
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

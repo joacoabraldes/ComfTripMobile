@@ -8,13 +8,12 @@ import {
   Image,
   Alert,
   Platform,
+  ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
-import BackButton from '@/components/BackButton';
-import { CommonStyles } from '@/constants/Styles';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 
 export default function AddActivity() {
@@ -104,7 +103,8 @@ export default function AddActivity() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SecondaryLayout title={isEdit ? t('addActivity.editActivity') : t('addActivity.addActivity')}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
       <View style={CommonStyles.backButtonContainer}>
         <BackButton />
       </View>
@@ -145,12 +145,14 @@ export default function AddActivity() {
       <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
         <Text style={styles.saveBtnText}>{t('addActivity.save')}</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 80 : 60, backgroundColor: '#FFF' },
+  container: { flex: 1, backgroundColor: '#FFF' },
+  contentContainer: { padding: 20, paddingBottom: 32 },
   header: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
 
   row: { flexDirection: 'row', alignItems: 'center', marginTop: 18 },

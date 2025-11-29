@@ -288,7 +288,6 @@ export default function RegisterScreen() {
               onPress={handleNext}
               height={btnHeight}
               borderRadius={btnRadius}
-              rightIcon={<ArrowIcon color="#FFFFFF" />}
               style={{ marginTop: 20 }}
             >
               {loading && <ActivityIndicator />}

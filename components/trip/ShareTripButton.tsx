@@ -5,7 +5,7 @@ import { apiGet, apiPost } from '@/helpers/api';
 import { useTranslation } from '@/i18n';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import { Friend } from '@/types';
@@ -13,12 +13,15 @@ import { Friend } from '@/types';
 interface ShareTripButtonProps {
   tripId: number;
   tripDestination: string;
+  showButton?: boolean;
+  initialVisible?: boolean;
+  onClose?: () => void;
 }
 
-export default function ShareTripButton({ tripId, tripDestination }: ShareTripButtonProps) {
+export default function ShareTripButton({ tripId, tripDestination, showButton = true, initialVisible = false, onClose }: ShareTripButtonProps) {
   const { t } = useTranslation();
   const router = useRouter();
-  const [showModal, setShowModal] = useState<boolean>(false);
+  const [showModal, setShowModal] = useState<boolean>(initialVisible);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [sharing, setSharing] = useState<boolean>(false);
@@ -129,21 +132,37 @@ export default function ShareTripButton({ tripId, tripDestination }: ShareTripBu
     );
   };
 
+  useEffect(() => {
+    if (initialVisible && !showModal) {
+      setShowModal(true);
+      if (friends.length === 0) {
+        loadFriends();
+      }
+    }
+  }, [initialVisible]);
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    if (onClose) onClose();
+  };
+
   return (
     <>
-      <TouchableOpacity
-        style={styles.shareButton}
-        onPress={handleOpenModal}
-        accessibilityLabel={t('share.button')}
-      >
-        <MaterialIcons name="share" size={22} color="#2d2d2d" />
-      </TouchableOpacity>
+      {showButton && (
+        <TouchableOpacity
+          style={styles.shareButton}
+          onPress={handleOpenModal}
+          accessibilityLabel={t('share.button')}
+        >
+          <MaterialIcons name="share" size={22} color="#2d2d2d" />
+        </TouchableOpacity>
+      )}
 
       <Modal
         visible={showModal}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowModal(false)}
+        onRequestClose={handleCloseModal}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -151,7 +170,7 @@ export default function ShareTripButton({ tripId, tripDestination }: ShareTripBu
               <Text style={styles.modalTitle}>{t('share.title')}</Text>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => setShowModal(false)}
+                onPress={handleCloseModal}
                 disabled={sharing}
               >
                 <MaterialIcons name="close" size={24} color="#666" />
@@ -172,7 +191,7 @@ export default function ShareTripButton({ tripId, tripDestination }: ShareTripBu
                 <TouchableOpacity
                   style={styles.communityButton}
                   onPress={() => {
-                    setShowModal(false);
+                    handleCloseModal();
                     router.push('/(tabs)/community');
                   }}
                 >

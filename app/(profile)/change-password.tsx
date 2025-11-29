@@ -1,12 +1,10 @@
 // ChangePasswordScreen.tsx
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import BackButton from "@/components/BackButton";
+import SecondaryLayout from "@/components/layouts/SecondaryLayout";
 import { apiPut, tokenStorage } from "@/helpers/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommonStyles } from '@/constants/Styles';
+import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform, ScrollView } from "react-native";
 import { useTranslation } from '@/i18n';
 
 function base64UrlDecode(input: string) {
@@ -113,21 +111,17 @@ export default function ChangePasswordScreen() {
 
   if (initChecking) {
     return (
-      <SafeAreaView style={CommonStyles.safeArea}>
-        <View style={CommonStyles.containerWithBackButton}>
+      <SecondaryLayout title={t('changePassword.title')}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
         </View>
-      </SafeAreaView>
+      </SecondaryLayout>
     );
   }
 
   return (
-    <SafeAreaView style={CommonStyles.safeArea}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <View style={CommonStyles.containerWithBackButton}>
-        <Text style={CommonStyles.pageTitle}>{t('changePassword.title')}</Text>
+    <SecondaryLayout title={t('changePassword.title')}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <TextInput
           style={CommonStyles.input}
           placeholder={t('changePassword.currentPassword')}
@@ -145,10 +139,23 @@ export default function ChangePasswordScreen() {
           autoCapitalize="none"
         />
         <PrimaryButton title={loading ? t('changePassword.changing') : t('changePassword.change')} onPress={handleChangePassword} style={{ marginTop: 24 }} disabled={loading} />
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 24,
+    paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
 });

@@ -2,18 +2,17 @@ import { apiDelete, apiGet } from '@/helpers/api';
 import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
 import { getTripStatus, isTripCompleted } from '@/helpers/tripUtils';
 import { Activity, Trip, TripReview } from '@/types';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import BackButton from '@/components/BackButton';
-import { CommonStyles } from '@/constants/Styles';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewForm from '@/components/trip/ReviewForm';
 import ShareTripButton from '@/components/trip/ShareTripButton';
+import ContextMenu from '@/components/ui/ContextMenu';
 import { useTranslation } from '@/i18n';
 
 type Params = {
@@ -128,10 +127,13 @@ export default function TripDetails() {
               setReview(reviewData);
             }
           } catch (err: any) {
-            // Review doesn't exist yet, that's okay
-            if (err?.status !== 404) {
-              console.error('Error loading review:', err);
+            // Review doesn't exist yet, that's okay (404 or endpoint not found)
+            const status = err?.status || (typeof err === 'string' && err.includes('Cannot GET') ? 404 : null);
+            if (status !== 404 && status !== null) {
+              // Only log non-404 errors
+              console.error('Error loading review:', err?.message || err);
             }
+            // Silently ignore 404s and endpoint not found errors
           }
         }
       } catch (err: any) {
@@ -226,16 +228,33 @@ export default function TripDetails() {
         setReview(reviewData);
       }
     } catch (err: any) {
-      // Review doesn't exist, ignore
-      console.error('Error reloading review:', err);
+      // Review doesn't exist or endpoint not found, ignore (don't log expected errors)
+      const status = err?.status || (typeof err === 'string' && err.includes('Cannot GET') ? 404 : null);
+      if (status !== 404 && status !== null) {
+        // Only log non-404 errors
+        console.error('Error reloading review:', err?.message || err);
+      }
     }
   };
 
+  const [showShareModal, setShowShareModal] = useState(false);
+
+  const menuOptions = [
+    {
+      label: t('tripDetails.shareButton'),
+      icon: 'share-outline' as const,
+      onPress: () => setShowShareModal(true),
+    },
+    {
+      label: t('common.delete'),
+      icon: 'trash-outline' as const,
+      onPress: confirmAndDelete,
+      destructive: true,
+    },
+  ];
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
+    <SecondaryLayout title={destination} rightActions={<ContextMenu options={menuOptions} />}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
@@ -351,27 +370,21 @@ export default function TripDetails() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-      <View style={styles.actionButtons}>
-        {isCompleted && Number.isFinite(tripId) && (
-          <ShareTripButton tripId={tripId} tripDestination={destination} />
-        )}
-        <TouchableOpacity
-          style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-          onPress={confirmAndDelete}
-          disabled={deleting}
-          accessibilityRole="button"
-          accessibilityLabel={t('tripDetails.deleteButton')}
-        >
-          <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      {showShareModal && (
+        <ShareTripButton 
+          tripId={tripId} 
+          tripDestination={destination}
+          showButton={false}
+          initialVisible={true}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+    </SecondaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FCFCFC' },
-  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 80 : 60, alignItems: 'center' },
+  scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
   title: { fontSize: 26, fontWeight: '800', color: '#000' },
   subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },

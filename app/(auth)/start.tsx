@@ -8,8 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import { useRouter } from 'expo-router';
-import { LogoSvg } from '@/components/icons/LogoSvg';
-import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useTranslation } from '@/i18n';
 
@@ -58,7 +57,6 @@ export default function StartScreen() {
             onPress={() => router.push('/login')}
             height={btnHeight}
             borderRadius={btnRadius}
-            rightIcon={<ArrowIcon color="#FFFFFF" style={{ marginLeft: 10 }} />}
             style={{ backgroundColor: '#FF3951' }}
             textStyle={{ fontSize: labelFontSize }}
           />
@@ -68,7 +66,6 @@ export default function StartScreen() {
             onPress={() => router.push('/register')}
             height={btnHeight}
             borderRadius={btnRadius}
-            rightIcon={<ArrowIcon color="#FF3951" style={{ marginLeft: 10 }} />}
             style={{
               backgroundColor: 'transparent',
               borderWidth: 1,

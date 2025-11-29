@@ -1,7 +1,7 @@
 // moved from EditProfileScreen.tsx
 import DateTimePicker from "@react-native-community/datetimepicker";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import BackButton from "@/components/BackButton";
+import SecondaryLayout from "@/components/layouts/SecondaryLayout";
 import { apiGet, apiPut, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
@@ -13,11 +13,9 @@ import {
   TextInput,
   View,
   TouchableOpacity,
-  Platform, FlatList,
+  Platform, FlatList, ScrollView,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import countryRegionData from "country-region-data";
-import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
 
 export const options = {
@@ -188,21 +186,17 @@ export default function EditProfileScreen() {
 
   if (initialLoading) {
     return (
-      <SafeAreaView style={CommonStyles.safeArea}>
-        <View style={CommonStyles.containerWithBackButton}>
+      <SecondaryLayout title={t('profile.editProfile')}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" />
         </View>
-      </SafeAreaView>
+      </SecondaryLayout>
     );
   }
 
   return (
-    <SafeAreaView style={CommonStyles.safeArea}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <View style={[CommonStyles.containerWithBackButton, { padding: 24, paddingTop: Platform.OS === 'ios' ? 80 : 60 }]}>
-        <Text style={CommonStyles.pageTitle}>{t('profile.editProfile')}</Text>
+    <SecondaryLayout title={t('profile.editProfile')}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
         <TextInput style={CommonStyles.input} placeholder={t('profile.name')} value={name} onChangeText={setName} />
         <TextInput style={CommonStyles.input} placeholder={t('profile.email')} value={email} onChangeText={setEmail} />
@@ -274,13 +268,25 @@ export default function EditProfileScreen() {
         )}
 
         <PrimaryButton title={loading ? t('common.loading') : t('common.save')} onPress={handleSave} style={{ marginTop: 24 }} disabled={loading} />
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    padding: 24,
+    paddingBottom: 32,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
   inputBox: {
     backgroundColor: 'rgba(196,196,196,0.2)',
     borderRadius: 8,

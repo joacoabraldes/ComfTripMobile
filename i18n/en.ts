@@ -2,7 +2,7 @@
  * English translations
  */
 
-export default {
+const en = {
   // Common
   common: {
     loading: 'Loading...',
@@ -23,6 +23,7 @@ export default {
     share: 'Share',
     review: 'Review',
     summary: 'Summary',
+    logo: 'ComfTrip logo',
   },
 
   // Trips
@@ -48,6 +49,7 @@ export default {
     deleteSuccess: 'Trip deleted successfully.',
     deleteError: 'Could not delete trip.',
     deleteButton: 'Delete trip',
+    shareButton: 'Share',
     itinerary: 'Itinerary',
     loadingActivities: 'Loading activities...',
     noActivities: 'No itinerary points yet.',
@@ -400,4 +402,6 @@ export default {
     completeBothFields: 'Please complete both password fields.',
   },
 };
+
+export default en;
 

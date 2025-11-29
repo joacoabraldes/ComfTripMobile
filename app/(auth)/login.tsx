@@ -139,7 +139,6 @@ export default function LoginScreen() {
               onPress={handleNext}
               height={btnHeight}
               borderRadius={btnRadius}
-              rightIcon={<ArrowIcon color="#FFFFFF" />}
               style={{ marginTop: 24 }}
             >
               {loading && <ActivityIndicator />}

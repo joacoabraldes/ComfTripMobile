@@ -1,4 +1,4 @@
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Ionicons } from '@expo/vector-icons';
 import { apiDelete, apiGet, apiPost } from '@/helpers/api';
 import React, { useEffect, useState } from 'react';
 import {
@@ -13,7 +13,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
 
 type Friend = {
@@ -316,24 +316,18 @@ export default function CommunityScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('community.title')}</Text>
-        </View>
+      <PrimaryLayout title={t('community.title')}>
         <View style={styles.center}>
           <ActivityIndicator size="large" />
           <Text style={styles.loadingText}>{t('communityExtra.loading')}</Text>
         </View>
-      </SafeAreaView>
+      </PrimaryLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <PrimaryLayout title={t('community.title')}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{t('community.title')}</Text>
-        </View>
 
         {/* Send Request Section */}
         <View style={styles.card}>
@@ -372,13 +366,13 @@ export default function CommunityScreen() {
                     style={[styles.actionButton, styles.acceptButton]}
                     onPress={() => acceptRequest(req.id)}
                   >
-                    <IconSymbol name="person.fill" size={16} color="#1abc9c" />
+                    <Ionicons name="checkmark" size={18} color="#1abc9c" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.rejectButton]}
                     onPress={() => rejectRequest(req.id)}
                   >
-                    <IconSymbol name="person.fill" size={16} color="#e74c3c" />
+                    <Ionicons name="close" size={18} color="#e74c3c" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -400,13 +394,13 @@ export default function CommunityScreen() {
                     style={[styles.actionButton, styles.shareButton]}
                     onPress={() => openShareModal(friend)}
                   >
-                    <IconSymbol name="paperplane.fill" size={16} color="#2b8cff" />
+                    <Ionicons name="share" size={18} color="#2b8cff" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.actionButton, styles.removeButton]}
                     onPress={() => removeFriend(friend.id)}
                   >
-                    <IconSymbol name="person.fill" size={16} color="#e74c3c" />
+                    <Ionicons name="trash" size={18} color="#e74c3c" />
                   </TouchableOpacity>
                 </View>,
                 true
@@ -445,7 +439,7 @@ export default function CommunityScreen() {
             </TouchableOpacity>
             
             <Text style={styles.modalTitle}>
-              {t('community.shareTrips', { name: shareTargetFriend?.name || shareTargetFriend?.email || t('communityExtra.userNumber', { number: shareTargetFriend?.id }) })}
+              {t('community.shareTrips', { name: shareTargetFriend?.name || shareTargetFriend?.email || t('communityExtra.userNumber', { number: shareTargetFriend?.id ?? 0 }) })}
             </Text>
             <Text style={styles.modalHint}>
               {t('community.selectTrips')}
@@ -508,31 +502,17 @@ export default function CommunityScreen() {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FCFCFC',
-  },
   scrollView: {
     flex: 1,
   },
   content: {
     paddingBottom: 32,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 38,
-    paddingBottom: 16,
-  },
-  title: {
-    fontSize: 30,
-    fontWeight: '800',
-    color: '#252525',
-    textAlign: 'center',
+    paddingTop: 8,
   },
   center: {
     flex: 1,

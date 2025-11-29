@@ -16,13 +16,13 @@ import {
   Pressable,
   Platform,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { ArrowIcon } from "@/components/icons/ArrowIcon";
+import PrimaryLayout from "@/components/layouts/PrimaryLayout";
+import { Ionicons } from "@expo/vector-icons";
 import { apiGet } from "@/helpers/api";
 import { useTranslation } from '@/i18n';
 
@@ -98,10 +98,11 @@ export default function MapScreen() {
   const { t } = useTranslation();
 
   // Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
-  const displayCategoryFromFk = (fk?: string | null) => {
+  // Memoized para evitar recreaciones innecesarias
+  const displayCategoryFromFk = useCallback((fk?: string | null) => {
     if (!fk) return t('map.other');
     return String(fk).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  }, [t]);
 
   const [loadingPosition, setLoadingPosition] = useState(true);
   const [webReady, setWebReady] = useState(false);
@@ -849,7 +850,7 @@ export default function MapScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PrimaryLayout title={t('tabs.map')}>
       <View style={[styles.container, { flex: 1 }]}>
         {/* WebView (map) fills container */}
         <WebView
@@ -870,7 +871,7 @@ export default function MapScreen() {
           style={[
             styles.filterOverlay,
             {
-              top: (insets.top ?? 12) + 8, // keep filter below status bar / notch
+              top: 8, // TopBar ya maneja el safe area
               left: 16,
             },
           ]}
@@ -995,7 +996,7 @@ export default function MapScreen() {
                     onPress={openDirections}
                     height={52}
                     borderRadius={10}
-                    rightIcon={<ArrowIcon color="#FFFFFF" />}
+                    rightIcon={<Ionicons name="arrow-forward" size={20} color="#FFFFFF" />}
                     style={{ flex: 1 }}
                     activeOpacity={0.95}
                   />
@@ -1009,12 +1010,11 @@ export default function MapScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
 
   // overlay wrapper (positioned dynamically)
   filterOverlay: {

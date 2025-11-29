@@ -1,6 +1,6 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import BackButton from "@/components/BackButton";
+import { Ionicons } from "@expo/vector-icons";
+import SecondaryLayout from "@/components/layouts/SecondaryLayout";
 import { apiGet, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -13,10 +13,9 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  ScrollView,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from "@react-navigation/native";
-import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from "@/i18n";
 
 // Helper: base64url decode (works in RN / browser)
@@ -67,8 +66,6 @@ export default function ProfileScreen() {
   // Tamaños relativos basados en el tamaño de pantalla
   const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
-  const avatarSize = Math.round(Math.max(80, Math.min(100, width * 0.25)));
-  const avatarHaloSize = Math.round(avatarSize * 1.2);
   const iconSize = Math.round(Math.max(16, Math.min(20, width * 0.045)));
 
   const [loading, setLoading] = useState(true);
@@ -233,11 +230,11 @@ export default function ProfileScreen() {
 
   if (loading || !profile) {
     return (
-      <SafeAreaView style={CommonStyles.safeArea}>
+      <SecondaryLayout title={t('profile.editProfile')}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
         </View>
-      </SafeAreaView>
+      </SecondaryLayout>
     );
   }
 
@@ -282,12 +279,12 @@ export default function ProfileScreen() {
   const paddingLarge = Math.round(Math.max(14, Math.min(16, width * 0.04)));
   const borderRadius = Math.round(Math.max(10, Math.min(12, width * 0.03)));
 
-  function InfoRow({ label, value, iconName, iconSize }: { label: string; value: string; iconName?: string; iconSize?: number }) {
+  function InfoRow({ label, value, iconName, iconSize }: { label: string; value: string; iconName?: keyof typeof Ionicons.glyphMap; iconSize?: number }) {
     return (
       <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
         <View style={styles.infoLeft}>
-          {iconName ? <IconSymbol name={iconName as any} size={iconSize || 18} color="#666" /> : null}
-          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>{label}</Text>
+          {iconName ? <Ionicons name={iconName} size={iconSize || 18} color="#666" /> : null}
+          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: iconName ? Math.round(width * 0.02) : 0 }]}>{label}</Text>
         </View>
         <Text style={[styles.infoValue, { fontSize: fontSizeMedium }]}>{value}</Text>
       </View>
@@ -295,34 +292,30 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={CommonStyles.safeArea}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <View style={styles.container}>
-        <View style={[styles.avatarWrap, { height: Math.round(height * 0.15) }]}>
-          <View style={[styles.avatarHalo, { width: avatarHaloSize, height: avatarHaloSize }]} />
-          <TouchableOpacity activeOpacity={0.8} style={[styles.avatar, { width: avatarSize, height: avatarSize }]}>
-            <IconSymbol name="person.fill" size={Math.round(avatarSize * 0.65)} color="#1E1E1E" />
-          </TouchableOpacity>
-        </View>
-
+    <SecondaryLayout title={t('profile.editProfile')}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Card */}
         <View style={[styles.infoCard, { 
           borderRadius: borderRadius,
           paddingVertical: paddingMedium,
           paddingHorizontal: paddingMedium,
-          marginTop: Math.round(height * 0.008)
+          marginTop: 16,
+          marginHorizontal: 16,
         }]}>
-          <InfoRow label={t('profile.user')} value={displayName} iconName="person.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.phone')} value={displayPhone} iconName="phone" iconSize={iconSize} />
-          <InfoRow label={t('profile.nationality')} value={displayNationality} iconName="flag.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="birthday.cake.fill" iconSize={iconSize} />
+          <InfoRow label={t('profile.user')} value={displayName} iconName="person" iconSize={iconSize} />
+          <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail" iconSize={iconSize} />
+          <InfoRow label={t('profile.phone')} value={displayPhone} iconName="call" iconSize={iconSize} />
+          <InfoRow label={t('profile.nationality')} value={displayNationality} iconName="flag" iconSize={iconSize} />
+          <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="calendar" iconSize={iconSize} />
           
           {/* Language Selector */}
           <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
             <View style={styles.infoLeft}>
-              <IconSymbol name="globe" size={iconSize} color="#666" />
+              <Ionicons name="globe" size={iconSize} color="#666" />
               <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>
                 {t('profile.language')}
               </Text>
@@ -362,70 +355,52 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        <View style={[styles.actions, { 
-          marginTop: Math.round(height * 0.018),
-          paddingHorizontal: paddingLarge
-        }]}>
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          {/* Row with Edit Profile and Change Password */}
           <View style={styles.buttonRow}>
             <PrimaryButton
               title={t('profile.editProfile')}
               onPress={handleEdit}
               height={btnHeight}
               borderRadius={btnRadius}
-              style={{ width: Math.round(width * 0.6) }}
+              style={[styles.actionButton, { flex: 1, marginRight: 8 }]}
             />
-          </View>
-
-          <View style={[styles.buttonRow, { marginTop: Math.round(height * 0.018) }]}>
             <PrimaryButton
               title={t('profile.changePassword')}
               onPress={handleChangePassword}
               height={btnHeight}
               borderRadius={btnRadius}
-              style={{ width: Math.round(width * 0.65) }}
+              style={[styles.actionButton, { flex: 1, marginLeft: 8 }]}
+            />
+          </View>
+
+          {/* Logout Button */}
+          <View style={[styles.buttonRow, { marginTop: 16 }]}>
+            <PrimaryButton
+              title={t('profile.logout')}
+              onPress={handleLogout}
+              height={btnHeight}
+              borderRadius={btnRadius}
+              style={[styles.actionButton, { width: '100%', backgroundColor: '#DC3545' }]}
             />
           </View>
         </View>
-
-        <View style={[styles.logoutWrap, { bottom: Math.round(height * 0.18) }]}>
-          <PrimaryButton
-            title={t('profile.logout')}
-            onPress={handleLogout}
-            height={Math.round(btnHeight * 1.1)}
-            borderRadius={Math.round(btnRadius * 1.5)}
-            style={{ width: Math.round(width * 0.6) }}
-          />
-        </View>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 
 const RED = "#FF3951";
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: Platform.OS === 'ios' ? 60 : 50 },
-
-  avatarWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
+  scrollView: {
+    flex: 1,
   },
-  avatarHalo: {
-    position: "absolute",
-    borderRadius: 9999,
-    backgroundColor: "rgba(255,57,81,0.15)",
-    top: Math.round(8),
+  scrollContent: {
+    paddingBottom: 32,
   },
-  avatar: {
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-
   infoCard: {
-    width: "92%",
     backgroundColor: "#fff",
     ...Platform.select({
       ios: {
@@ -473,23 +448,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
 
-  actions: {
-    marginTop: 14,
-    alignItems: "center",
-    width: "100%",
+  actionsContainer: {
+    marginTop: 24,
     paddingHorizontal: 16,
+    width: "100%",
   },
   buttonRow: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-
-  logoutWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
+  actionButton: {
+    minWidth: 0,
   },
-
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  centered: { 
+    flex: 1, 
+    alignItems: "center", 
+    justifyContent: "center",
+    paddingTop: 100,
+  },
 });
+
+
+

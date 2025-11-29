@@ -2,7 +2,7 @@
  * Spanish translations
  */
 
-export default {
+const es = {
   // Common
   common: {
     loading: 'Cargando...',
@@ -23,6 +23,7 @@ export default {
     share: 'Compartir',
     review: 'Reseña',
     summary: 'Resumen',
+    logo: 'ComfTrip logo',
   },
 
   // Trips
@@ -48,6 +49,7 @@ export default {
     deleteSuccess: 'El viaje fue eliminado correctamente.',
     deleteError: 'No se pudo eliminar el viaje.',
     deleteButton: 'Eliminar viaje',
+    shareButton: 'Compartir',
     itinerary: 'Itinerario',
     loadingActivities: 'Cargando actividades...',
     noActivities: 'Aún no hay puntos en el itinerario.',
@@ -357,7 +359,7 @@ export default {
     home: 'Inicio',
     trips: 'Viajes',
     map: 'Mapa',
-    explore: 'Lugar',
+    explore: 'Explorar',
     community: 'Social',
   },
 
@@ -401,3 +403,4 @@ export default {
   },
 };
 
+export default es;

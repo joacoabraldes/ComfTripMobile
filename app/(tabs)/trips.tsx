@@ -8,6 +8,8 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TripsScreen() {
   const { t } = useTranslation();
@@ -104,28 +106,30 @@ export default function TripsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.screen}>
-        <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
-      </View>
+      <PrimaryLayout title={t('trips.title')}>
+        <View style={styles.center}>
+          <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
+        </View>
+      </PrimaryLayout>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: '#B00020', marginBottom: 8 }}>{t('common.error')}: {error}</Text>
-        <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
-          <Text style={{ color: '#fff' }}>{t('common.retry')}</Text>
-        </TouchableOpacity>
-      </View>
+      <PrimaryLayout title={t('trips.title')}>
+        <View style={styles.center}>
+          <Text style={{ color: '#B00020', marginBottom: 8 }}>{t('common.error')}: {error}</Text>
+          <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
+            <Text style={{ color: '#fff' }}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      </PrimaryLayout>
     );
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? 8 : 0 }]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('trips.title')}</Text>
-      </View>
+    <PrimaryLayout title={t('trips.title')}>
+      <View style={styles.screen}>
 
       <FlatList
         data={trips}
@@ -142,25 +146,24 @@ export default function TripsScreen() {
         }
       />
 
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
-        ]}
-        onPress={() => router.push('/add-trip')}
-        accessibilityLabel={t('trips.addTrip')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-    </View>
+        <TouchableOpacity
+          style={[
+            styles.fab,
+            { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
+          ]}
+          onPress={() => router.push('/add-trip')}
+          accessibilityLabel={t('trips.addTrip')}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={32} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+    </PrimaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 0, alignItems: 'center', position: 'relative', overflow: 'visible' },
-  header: { width: '100%', alignItems: 'center', marginTop: 28, marginBottom: 6 },
-  title: { color: '#252525', fontSize: 30, fontWeight: '800' },
+  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
 
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
 
@@ -222,5 +225,4 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     zIndex: 9999,
   },
-  fabText: { color: '#fff', fontSize: 32, lineHeight: 34, fontWeight: '600' },
 });
