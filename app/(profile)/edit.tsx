@@ -13,12 +13,14 @@ import {
   TextInput,
   View,
   TouchableOpacity,
-  Platform, FlatList, ScrollView,
+  Platform,
+  ScrollView,
 } from "react-native";
-import countryRegionData from "country-region-data";
 import { useTranslation } from '@/i18n';
 import { CommonStyles } from '@/constants/Styles';
 import { AppColors } from '@/constants/Colors';
+import PhoneField from '@/components/forms/PhoneField';
+import NationalityField from '@/components/forms/NationalityField';
 
 export const options = {
   headerShown: false,
@@ -69,11 +71,9 @@ export default function EditProfileScreen() {
   const [userId, setUserId] = useState<string | number | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-
+  const [phoneCode, setPhoneCode] = useState('+1');
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [nationality, setNationality] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   // birthdate state now as Date | null (for picker) and display string
   const [birthdateDate, setBirthdateDate] = useState<Date | null>(null);
   const [birthdateDisplay, setBirthdateDisplay] = useState("");
@@ -82,28 +82,6 @@ export default function EditProfileScreen() {
 
   // DateTimePicker visibility (for Android modal / iOS inline)
   const [showPicker, setShowPicker] = useState(false);
-
-  // Safe country names extraction with fallback
-  const countryNames = React.useMemo(() => {
-    try {
-      if (!countryRegionData || !Array.isArray(countryRegionData)) {
-        console.warn('countryRegionData not available, using fallback');
-        return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos', 'Francia', 'Italia', 'Alemania', 'Reino Unido'];
-      }
-      // countryRegionData is an array of [countryName, countryShortCode, regions]
-      return countryRegionData
-        .map(countryArr => Array.isArray(countryArr) ? countryArr[0] : countryArr)
-        .filter(Boolean)
-        .sort();
-    } catch (error) {
-      console.error('Error processing country data:', error);
-      return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos'];
-    }
-  }, []);
-
-  const filteredCountries = countryNames.filter((c) =>
-      typeof c === 'string' && c.toLowerCase().includes(search.toLowerCase())
-  );
 
   useEffect(() => {
     (async () => {
@@ -120,8 +98,35 @@ export default function EditProfileScreen() {
 
         setName(user.name || "");
         setEmail(user.email || "");
-        setPhone(user.phone || "");
-        setNationality(user.nationality || "");
+        
+        // Parse phone number to extract code and number
+        const phone = user.phone || "";
+        if (phone) {
+          // Try to extract country code (assuming format like +1234567890 or +52 1234567890)
+          const phoneMatch = phone.match(/^(\+\d{1,4})\s*(.+)$/);
+          if (phoneMatch) {
+            setPhoneCode(phoneMatch[1]);
+            setPhoneNumber(phoneMatch[2]);
+          } else if (phone.startsWith('+')) {
+            // If it starts with + but no space, try to extract first 1-4 digits as code
+            const codeMatch = phone.match(/^(\+\d{1,4})/);
+            if (codeMatch) {
+              setPhoneCode(codeMatch[1]);
+              setPhoneNumber(phone.substring(codeMatch[1].length));
+            } else {
+              setPhoneCode('+1');
+              setPhoneNumber(phone);
+            }
+          } else {
+            setPhoneCode('+1');
+            setPhoneNumber(phone);
+          }
+        } else {
+          setPhoneCode('+1');
+          setPhoneNumber("");
+        }
+        
+        setNationality(user.nationality || null);
 
         // parse birthdate into Date if possible
         const raw = user.birthdate || "";
@@ -171,7 +176,7 @@ export default function EditProfileScreen() {
       const res = await apiPut(`/users/${userId}`, {
         name,
         email,
-        phone,
+        phone: `${phoneCode}${phoneNumber}`,
         nationality: nationality || "",
         // send ISO date (YYYY-MM-DD) if we have one, otherwise empty string
         birthdate: birthdateDate ? dateToISODate(birthdateDate) : birthdateDisplay || "",
@@ -202,48 +207,24 @@ export default function EditProfileScreen() {
 
         <TextInput style={CommonStyles.input} placeholder={t('profile.name')} value={name} onChangeText={setName} />
         <TextInput style={CommonStyles.input} placeholder={t('profile.email')} value={email} onChangeText={setEmail} />
-        <TextInput style={CommonStyles.input} placeholder={t('profile.phone')} value={phone} onChangeText={setPhone} />
-
-
-        {/* Input para abrir el dropdown */}
-        <View style={[styles.inputBox, { flexDirection: "row", alignItems: "center", backgroundColor: open ? "white" : 'rgba(196,196,196,0.2)', borderWidth: open ? 2 : 0 }]}
-              onFocus={()=>setOpen(true)}>
-          <TextInput
-              style={[styles.textInput, { flex:1, borderWidth:0, outline:"none", color: nationality? AppColors.text : AppColors.textMuted}]}
-              placeholder={nationality? nationality : t('profile.selectNationality')}
-              value={search}
-              onChangeText={setSearch}
+        
+        <View style={{ marginBottom: 12 }}>
+          <PhoneField
+            code={phoneCode}
+            value={phoneNumber}
+            onCodeChange={setPhoneCode}
+            onNumberChange={setPhoneNumber}
+            placeholder={t('profile.phone')}
           />
-          <Text
-              style={{ fontSize: 16, marginLeft: "auto", transform: [{ rotate: open ? "0deg" : "180deg" }]}}
-              onPress={() => setOpen(!open)}
-          >
-            ▲
-          </Text>
         </View>
-        {open && (
-              <View style={styles.dropdown}>
-              <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-                {filteredCountries.map((item) => {
-                      const isSelected = nationality === item;
-                      return (
-                          <TouchableOpacity
-                              key={item}
-                              style={[styles.item,
-                                isSelected && styles.itemSelected]}
-                              onPress={() => {
-                                setNationality(item);
-                                setSearch("");
-                                setOpen(false);
-                              }}
-                          >
-                            <Text>{item}</Text>
-                          </TouchableOpacity>
-                      );
-                    })}
-              </ScrollView>
-            </View>
-        )}
+
+        <View style={{ marginBottom: 12 }}>
+          <NationalityField
+            value={nationality}
+            onValueChange={setNationality}
+            placeholder={t('profile.selectNationality')}
+          />
+        </View>
 
         {/* Birthdate field: tap to open native picker */}
         <TouchableOpacity
@@ -287,14 +268,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 24,
   },
-  inputBox: {
-    backgroundColor: AppColors.backgroundInputMuted,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 12,
-    justifyContent: 'center' },
-
-  textInput: { fontSize: 16, color: AppColors.text, borderRadius: 8},
   dateInput: {
     // make the TouchableOpacity look like the other inputs
     justifyContent: "center",
@@ -306,18 +279,4 @@ const styles = StyleSheet.create({
   placeholderText: {
     color: AppColors.textMutedDark,
   },
-
-  dropdown: { left: 0, right: 0,
-    backgroundColor: AppColors.backgroundPrimary,
-    borderWidth: 1,
-    borderColor: AppColors.borderLight,
-    borderRadius: 10,
-    maxHeight: 200,
-    zIndex: 1000,
-    elevation: 10,
-    marginBottom: 12,},
-
-  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: AppColors.backgroundPrimary },
-  itemHover: { backgroundColor: AppColors.backgroundHover },
-  itemSelected: { backgroundColor: AppColors.backgroundHover },
 });

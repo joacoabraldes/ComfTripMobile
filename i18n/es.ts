@@ -210,13 +210,14 @@ const es = {
       nextButton: 'Siguiente',
       backButton: 'Atrás',
       skipButton: 'Omitir',
-      completeButton: 'Completar registro',
+      completeButton: 'Listo',
       alreadyMember: 'Ya eres miembro? ',
       loginLink: 'Iniciar sesion',
       registerFailed: 'Registro fallido',
       completeFields: 'Por favor complete los campos requeridos',
       acceptTerms: 'Debe aceptar los términos y condiciones',
       attention: 'Atención',
+      noNationalitiesFound: 'No se encontraron nacionalidades',
     },
     start: {
       loginButton: 'Iniciar Sesión',
@@ -418,6 +419,7 @@ const es = {
     invalidUser: 'Usuario inválido.',
     userNotIdentified: 'Usuario no identificado. Intenta iniciar sesión de nuevo.',
     completeBothFields: 'Por favor completa ambos campos de contraseña.',
+    confirmPassword: 'Confirmar contraseña',
   },
 };
 

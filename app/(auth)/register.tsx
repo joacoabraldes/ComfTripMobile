@@ -1,8 +1,6 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import { MapSvg } from '@/components/icons/MapSvg';
 import { apiPost, tokenStorage } from '@/helpers/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import countryRegionData from "country-region-data";
 import { useRouter, useFocusEffect } from 'expo-router';
 import React, { useRef, useState, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,6 +24,7 @@ import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
 import PhoneField from '@/components/forms/PhoneField';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
+import NationalityField from '@/components/forms/NationalityField';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -42,8 +41,6 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [nationality, setNationality] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
 
   const [birthdate, setBirthdate] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -88,27 +85,6 @@ export default function RegisterScreen() {
     setShowDatePicker(Platform.OS === 'ios');
     if (selected) setBirthdate(formatDate(selected));
   };
-
-  // Safe country names extraction with fallback
-  const countryNames = useMemo(() => {
-    try {
-      if (!countryRegionData || !Array.isArray(countryRegionData)) {
-        console.warn('countryRegionData not available, using fallback');
-        return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos', 'Francia', 'Italia', 'Alemania', 'Reino Unido'];
-      }
-      return countryRegionData
-        .map(countryArr => Array.isArray(countryArr) ? countryArr[0] : countryArr)
-        .filter(Boolean)
-        .sort();
-    } catch (error) {
-      console.error('Error processing country data:', error);
-      return ['Argentina', 'Brasil', 'Chile', 'Colombia', 'México', 'Perú', 'España', 'Estados Unidos'];
-    }
-  }, []);
-
-  const filteredCountries = countryNames.filter((c) =>
-    typeof c === 'string' && c.toLowerCase().includes(search.toLowerCase())
-  );
 
   // Save form data to AsyncStorage before navigating
   const saveFormData = async () => {
@@ -172,37 +148,9 @@ export default function RegisterScreen() {
       }
     }
 
-    setLoading(true);
-    try {
-      const payload = {
-        name,
-        email,
-        phone: `${phoneCode}${phoneNumber}`,
-        password,
-        password_hash: password,
-        nationality: nationality || "",
-        birthdate: birthdate || null,
-      };
-
-      const res = await apiPost('/auth/register', payload);
-      const data = res.data ?? res;
-
-      const token = data?.token || data?.accessToken || data?.jwt || data?.data?.token || null;
-
-      if (token) await tokenStorage.setToken(token);
-      else console.warn('No token found in register response, storing full response', data);
-
-      // Save form data before navigating to interests
-      await saveFormData();
-
-      router.push('/interests');
-    } catch (err: any) {
-      console.error('Register error', err);
-      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.register.registerFailed');
-      Alert.alert(t('auth.register.registerFailed'), msg);
-    } finally {
-      setLoading(false);
-    }
+    // Save form data before navigating to interests (registration will happen in interests screen)
+    await saveFormData();
+    router.push('/interests');
   };
 
   return (
@@ -236,8 +184,6 @@ export default function RegisterScreen() {
               containerStyle={{ height: inputHeight, marginTop: 16 }}
               returnKeyType="next"
               onSubmitEditing={() => emailRef.current?.focus()}
-              onFocus={() => setOpen(false)}
-              blurOnSubmit={false}
             />
 
             <InputField
@@ -251,8 +197,6 @@ export default function RegisterScreen() {
               containerStyle={{ height: inputHeight, marginTop: 12 }}
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
-              onFocus={() => setOpen(false)}
-              blurOnSubmit={false}
             />
 
             <View style={{ marginTop: 12 }}>
@@ -267,54 +211,14 @@ export default function RegisterScreen() {
             </View>
 
             {/* Nationality dropdown */}
-            <View style={[styles.inputBox, { marginTop: 12, flexDirection: "row", alignItems: "center", backgroundColor: open ? AppColors.backgroundPrimary : AppColors.backgroundInputMuted, borderWidth: open ? 2 : 0, borderColor: AppColors.primary, height: inputHeight }]}>
-              <TextInput
-                style={[styles.textInput, { flex: 1, borderWidth: 0, outline: "none", color: nationality ? AppColors.text : AppColors.textMuted }]}
-                placeholder={nationality ? nationality : t('auth.register.selectNationality')}
-                value={search}
-                onChangeText={setSearch}
-                onFocus={() => setOpen(true)}
-                returnKeyType="done"
-                onSubmitEditing={() => setOpen(false)}
-                placeholderTextColor={AppColors.textMuted}
+            <View style={{ marginTop: 12 }}>
+              <NationalityField
+                value={nationality}
+                onValueChange={setNationality}
+                inputHeight={inputHeight}
+                placeholder={t('auth.register.selectNationality')}
               />
-              <TouchableOpacity
-                style={{ padding: 12 }}
-                onPress={() => setOpen(!open)}
-              >
-                <Text style={{ fontSize: 16, transform: [{ rotate: open ? "0deg" : "180deg" }], color: AppColors.textSecondary }}>
-                  ▲
-                </Text>
-              </TouchableOpacity>
             </View>
-
-            {open && (
-              <View style={styles.dropdown}>
-                <ScrollView
-                  nestedScrollEnabled={true}
-                  keyboardShouldPersistTaps="handled"
-                  showsVerticalScrollIndicator={true}
-                  style={{ maxHeight: 200 }}
-                >
-                  {filteredCountries.map((item, index) => {
-                    const isSelected = nationality === item;
-                    return (
-                      <TouchableOpacity
-                        key={`${item}-${index}`}
-                        style={[styles.item, isSelected && styles.itemSelected]}
-                        onPress={() => {
-                          setNationality(item);
-                          setSearch("");
-                          setOpen(false);
-                        }}
-                      >
-                        <Text style={styles.itemText}>{item}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            )}
 
             <InputField
               ref={passwordRef}
@@ -330,8 +234,6 @@ export default function RegisterScreen() {
               autoCorrect={false}
               returnKeyType="next"
               onSubmitEditing={() => confirmPasswordRef.current?.focus()}
-              onFocus={() => setOpen(false)}
-              blurOnSubmit={false}
             />
 
             <InputField
@@ -347,8 +249,6 @@ export default function RegisterScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="done"
-              onSubmitEditing={() => setOpen(false)}
-              onFocus={() => setOpen(false)}
             />
 
             <View style={[styles.termsRow, { marginTop: 12 }]}>
@@ -419,22 +319,6 @@ const styles = StyleSheet.create({
   form: {
     width: '100%',
   },
-  inputBox: {
-    width: '100%',
-    backgroundColor: AppColors.backgroundInputMuted,
-    borderRadius: 10,
-    justifyContent: 'center',
-  },
-  textInput: {
-    fontSize: 16,
-    color: AppColors.text,
-    paddingHorizontal: 22,
-    paddingVertical: 0,
-    height: '100%',
-    borderRadius: 10,
-    textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
-    minHeight: 24,
-  },
   termsRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -487,34 +371,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginLeft: 6,
-  },
-  dropdown: {
-    left: 0,
-    right: 0,
-    backgroundColor: AppColors.backgroundPrimary,
-    borderWidth: 1,
-    borderColor: AppColors.borderLight,
-    borderRadius: 10,
-    marginTop: 4,
-    maxHeight: 200,
-    zIndex: 1000,
-    elevation: 10,
-  },
-  item: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: AppColors.backgroundPrimary,
-  },
-  itemHover: {
-    backgroundColor: AppColors.backgroundHover,
-  },
-  itemSelected: {
-    backgroundColor: AppColors.primaryLight,
-  },
-  itemText: {
-    fontSize: 16,
-    color: AppColors.text,
   },
 });

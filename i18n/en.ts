@@ -210,13 +210,14 @@ const en = {
       nextButton: 'Next',
       backButton: 'Back',
       skipButton: 'Skip',
-      completeButton: 'Complete registration',
+      completeButton: 'Done',
       alreadyMember: 'Already a member? ',
       loginLink: 'Log in',
       registerFailed: 'Registration failed',
       completeFields: 'Please complete the required fields',
       acceptTerms: 'You must accept the terms and conditions',
       attention: 'Attention',
+      noNationalitiesFound: 'No nationalities found',
     },
     start: {
       loginButton: 'Login',
@@ -418,6 +419,7 @@ const en = {
     invalidUser: 'Invalid user.',
     userNotIdentified: 'User not identified. Try logging in again.',
     completeBothFields: 'Please complete both password fields.',
+    confirmPassword: 'Confirm password',
   },
 };
 

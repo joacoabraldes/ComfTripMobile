@@ -263,13 +263,50 @@ export default function InterestsScreen() {
     if (!skip && selected.length === 0) return;
     setLoading(true);
     try {
-      const token = await getTokenWithRetries(6, 250);
-      if (!token) {
-        Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
-        router.replace("/login");
+      // First, register the user with form data from AsyncStorage
+      let token: string | null = null;
+      try {
+        const savedData = await AsyncStorage.getItem('@register_form_data');
+        if (savedData) {
+          const formData = JSON.parse(savedData);
+          const registerPayload = {
+            name: formData.name,
+            email: formData.email,
+            phone: `${formData.phoneCode}${formData.phoneNumber}`,
+            password: formData.password,
+            password_hash: formData.password,
+            nationality: formData.nationality || "",
+            birthdate: formData.birthdate || null,
+          };
+
+          const registerRes = await apiPost('/auth/register', registerPayload);
+          const registerData = registerRes.data ?? registerRes;
+          token = registerData?.token || registerData?.accessToken || registerData?.jwt || registerData?.data?.token || null;
+
+          if (token) {
+            await tokenStorage.setToken(token);
+          } else {
+            console.warn('No token found in register response', registerData);
+            Alert.alert(t('auth.register.registerFailed'), t('auth.register.registerFailed'));
+            return;
+          }
+        } else {
+          // If no saved data, try to get existing token
+          token = await getTokenWithRetries(6, 250);
+          if (!token) {
+            Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
+            router.replace("/login");
+            return;
+          }
+        }
+      } catch (registerErr: any) {
+        console.error('Register error:', registerErr);
+        const msg = (registerErr && registerErr.message) || (registerErr && registerErr.error) || JSON.stringify(registerErr) || t('auth.register.registerFailed');
+        Alert.alert(t('auth.register.registerFailed'), msg);
         return;
       }
 
+      // Now save interests
       let userId: number | string | null = null;
       try {
         const payload = parseJwt(token);
@@ -381,14 +418,6 @@ export default function InterestsScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.navButton, styles.skipButton]}
-            onPress={() => handleSaveInterests(true)}
-            disabled={loading}
-          >
-            <Text style={styles.skipButtonText}>{t('auth.register.skipButton')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
             style={[styles.navButton, styles.completeButton, loading && styles.completeButtonDisabled]}
             onPress={() => handleSaveInterests(false)}
             disabled={loading}
@@ -463,15 +492,6 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     fontSize: 14,
     fontWeight: '600',
-  },
-  skipButton: {
-    backgroundColor: 'transparent',
-    flex: 1,
-  },
-  skipButtonText: {
-    color: AppColors.textSecondary,
-    fontSize: 14,
-    fontWeight: '500',
   },
   completeButton: {
     backgroundColor: AppColors.primary,
