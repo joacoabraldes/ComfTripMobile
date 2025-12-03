@@ -42,6 +42,9 @@ export default function LoginScreen() {
   const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
 
+  // Validate form
+  const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
+
   const handleNext = async () => {
     if (!identifier || !password) {
       Alert.alert(t('auth.login.attention'), t('auth.login.completeFields'));
@@ -121,11 +124,12 @@ export default function LoginScreen() {
               autoCorrect={false}
               returnKeyType="go"
               onSubmitEditing={handleNext}
-              accessibilityLabel={showPassword ? t('auth.login.hidePasswordLabel') : t('auth.login.showPasswordLabel')}
             />
 
             <View style={styles.forgotWrap}>
-              <Text style={styles.forgotText}>{t('auth.login.forgotPassword')}</Text>
+              <Text style={styles.forgotText} onPress={() => router.push('/recover-password')}>
+                {t('auth.login.forgotPassword')}
+              </Text>
             </View>
 
             <PrimaryButton
@@ -134,6 +138,7 @@ export default function LoginScreen() {
               height={btnHeight}
               borderRadius={btnRadius}
               style={{ marginTop: 24 }}
+              disabled={!isFormValid || loading}
             >
               {loading && <ActivityIndicator />}
             </PrimaryButton>

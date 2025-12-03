@@ -54,6 +54,12 @@ export default function ChangePasswordScreen() {
   const { width } = useWindowDimensions();
   const inputHeight = Math.round(Math.max(44, Math.min(56, width * 0.12)))
 
+  // Validate form - all fields must be filled and passwords must match
+  const isFormValid = oldPassword.trim().length > 0 && 
+                      newPassword.trim().length >= 6 && 
+                      confirmPassword.trim().length >= 6 && 
+                      newPassword === confirmPassword;
+
   // if no id param, try to read it from token
   useEffect(() => {
     let mounted = true;
@@ -170,7 +176,12 @@ export default function ChangePasswordScreen() {
           autoCapitalize="none"
           autoCorrect={false}
         />
-        <PrimaryButton title={loading ? t('changePassword.changing') : t('changePassword.change')} onPress={handleChangePassword} style={{ marginTop: 24 }} disabled={loading} />
+        <PrimaryButton 
+          title={loading ? t('changePassword.changing') : t('changePassword.change')} 
+          onPress={handleChangePassword} 
+          style={{ marginTop: 24 }} 
+          disabled={!isFormValid || loading} 
+        />
       </ScrollView>
     </SecondaryLayout>
   );

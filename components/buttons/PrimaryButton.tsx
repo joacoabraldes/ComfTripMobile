@@ -54,10 +54,23 @@ export default function PrimaryButton({
       activeOpacity={activeOpacity}
       onPress={onPress}
       disabled={disabled}
-      style={[styles.button, { height, borderRadius }, style]}
+      style={[
+        styles.button,
+        { height, borderRadius },
+        disabled && styles.buttonDisabled,
+        style
+      ]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        {title ? <Text style={[styles.title, textStyle]}>{title}</Text> : null}
+        {title ? (
+          <Text style={[
+            styles.title,
+            disabled && styles.titleDisabled,
+            textStyle
+          ]}>
+            {title}
+          </Text>
+        ) : null}
         {renderChildren(children)}
         {rightIcon ? <View style={styles.iconWrap}>{rightIcon}</View> : null}
       </View>
@@ -74,10 +87,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 12,
   },
+  buttonDisabled: {
+    backgroundColor: AppColors.backgroundInput,
+    opacity: 0.6,
+  },
   title: {
     color: AppColors.white,
     fontSize: 20,
     fontWeight: '600',
+  },
+  titleDisabled: {
+    color: AppColors.textDisabled,
   },
   iconWrap: {
     marginLeft: 8,
