@@ -43,6 +43,8 @@ export default function RegisterScreen() {
   const [nationality, setNationality] = useState<string | null>(null);
 
   const [birthdate, setBirthdate] = useState('');
+  const [birthdateDate, setBirthdateDate] = useState<Date | null>(null);
+  const [birthdateDisplay, setBirthdateDisplay] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -81,9 +83,20 @@ export default function RegisterScreen() {
     return `${yyyy}-${mm}-${dd}`;
   };
 
+  const formatDateForDisplay = (d: Date) => {
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   const onDateChange = (_event: any, selected?: Date) => {
     setShowDatePicker(Platform.OS === 'ios');
-    if (selected) setBirthdate(formatDate(selected));
+    if (selected) {
+      setBirthdateDate(selected);
+      setBirthdate(formatDate(selected));
+      setBirthdateDisplay(formatDateForDisplay(selected));
+    }
   };
 
   // Save form data to AsyncStorage before navigating
@@ -121,7 +134,19 @@ export default function RegisterScreen() {
             setPassword(formData.password || '');
             setConfirmPassword(formData.confirmPassword || '');
             setNationality(formData.nationality || null);
-            setBirthdate(formData.birthdate || '');
+            const savedBirthdate = formData.birthdate || '';
+            setBirthdate(savedBirthdate);
+            if (savedBirthdate) {
+              try {
+                const date = new Date(savedBirthdate);
+                if (!isNaN(date.getTime())) {
+                  setBirthdateDate(date);
+                  setBirthdateDisplay(formatDateForDisplay(date));
+                }
+              } catch (e) {
+                // Invalid date, leave empty
+              }
+            }
             setAccepted(formData.accepted || false);
           }
         } catch (error) {
@@ -219,6 +244,28 @@ export default function RegisterScreen() {
                 placeholder={t('auth.register.selectNationality')}
               />
             </View>
+
+            {/* Birthdate field: tap to open native picker */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setShowDatePicker(true)}
+              style={[styles.dateInput, { height: inputHeight, marginTop: 12 }]}
+            >
+              <Text style={[styles.dateText, !birthdateDisplay && styles.datePlaceholder]}>
+                {birthdateDisplay || t('auth.register.selectBirthdate') || 'Seleccionar fecha de nacimiento'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* DateTimePicker: rendered conditionally */}
+            {showDatePicker && (
+              <DateTimePicker
+                value={birthdateDate ?? new Date()}
+                mode="date"
+                display={Platform.select({ ios: "spinner", android: "calendar" })}
+                maximumDate={new Date()} // birthdate can't be in the future
+                onChange={onDateChange}
+              />
+            )}
 
             <InputField
               ref={passwordRef}
@@ -371,5 +418,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginLeft: 6,
+  },
+  dateInput: {
+    backgroundColor: AppColors.backgroundInputMuted,
+    borderRadius: 10,
+    paddingHorizontal: 22,
+    justifyContent: 'center',
+    borderWidth: 0,
+  },
+  dateText: {
+    fontSize: 16,
+    color: AppColors.text,
+  },
+  datePlaceholder: {
+    color: AppColors.textMuted,
   },
 });
