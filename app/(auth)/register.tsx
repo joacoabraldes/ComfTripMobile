@@ -69,12 +69,13 @@ export default function RegisterScreen() {
       name.trim().length > 0 &&
       email.trim().length > 0 &&
       phoneNumber.trim().length > 0 &&
+      birthdate.trim().length > 0 &&
       password.trim().length > 0 &&
       confirmPassword.trim().length > 0 &&
       password === confirmPassword &&
       accepted
     );
-  }, [name, email, phoneNumber, password, confirmPassword, accepted]);
+  }, [name, email, phoneNumber, birthdate, password, confirmPassword, accepted]);
 
   const formatDate = (d: Date) => {
     const yyyy = d.getFullYear();
@@ -159,7 +160,7 @@ export default function RegisterScreen() {
 
   const handleNext = async () => {
     if (!isFormValid) {
-      if (!name || !email || !phoneNumber || !password || !confirmPassword) {
+      if (!name || !email || !phoneNumber || !birthdate || !password || !confirmPassword) {
         Alert.alert(t('auth.register.attention'), t('auth.register.completeFields'));
         return;
       }

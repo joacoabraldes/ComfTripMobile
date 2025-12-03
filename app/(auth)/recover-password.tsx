@@ -50,6 +50,12 @@ export default function RecoverPasswordScreen() {
   const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
 
+  // Validate email format
+  const isEmailValid = useMemo(() => {
+    if (!email.trim()) return false;
+    return validateEmail(email);
+  }, [email]);
+
   // Validate form - all fields must be filled and passwords must match
   const isFormValid = useMemo(() => {
     return (
@@ -214,9 +220,9 @@ export default function RecoverPasswordScreen() {
                 onSubmitEditing={() => newPasswordRef.current?.focus()}
               />
               <TouchableOpacity
-                style={[styles.resendButton, resendCooldown > 0 && styles.resendButtonDisabled]}
+                style={[styles.resendButton, (resendCooldown > 0 || !isEmailValid) && styles.resendButtonDisabled]}
                 onPress={handleSendCode}
-                disabled={resendCooldown > 0 || sendingCode}
+                disabled={resendCooldown > 0 || sendingCode || !isEmailValid}
               >
                 {sendingCode ? (
                   <ActivityIndicator size="small" color={AppColors.primary} />

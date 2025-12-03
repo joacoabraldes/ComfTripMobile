@@ -1,10 +1,8 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import { MapSvg } from '@/components/icons/MapSvg';
 import { apiPost, tokenStorage } from '@/helpers/api';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
 import {
   ActivityIndicator,
   Alert,
@@ -106,7 +104,6 @@ export default function LoginScreen() {
               autoCorrect={false}
               containerStyle={{ height: inputHeight, marginTop: 16 }}
               returnKeyType="next"
-              blurOnSubmit={false}
               onSubmitEditing={() => passwordRef.current?.focus()}
             />
 

@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   buttonDisabled: {
-    backgroundColor: AppColors.backgroundInput,
+    //backgroundColor: AppColors.backgroundInput,
     opacity: 0.6,
   },
   title: {
