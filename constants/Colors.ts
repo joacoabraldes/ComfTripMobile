@@ -102,13 +102,76 @@ export const Colors = {
     additionalColors: AdditionalColors,
   },
   dark: {
-    // Para futuro soporte de modo oscuro
+    // Compatibilidad con el sistema existente
     text: '#ECEDEE',
     background: '#151718',
-    tint: '#fff',
+    tint: '#FF3951', // Mantener el color primario
     icon: '#9BA1A6',
     tabIconDefault: '#9BA1A6',
-    tabIconSelected: '#fff',
+    tabIconSelected: '#FF3951',
+    
+    // Nueva paleta unificada para modo oscuro
+    primary: {
+      primary: '#FF3951', // Mantener el color primario
+      primaryLight: '#4A1F24', // Versión oscura para fondos
+      primaryLighter: '#2A1215', // Versión muy oscura
+      primaryDark: '#E6283A',
+      accent: '#4A1F24',
+      accentCard: '#2A1215',
+    },
+    textColors: {
+      primary: '#ECEDEE',
+      secondary: '#9BA1A6',
+      tertiary: '#6C757D',
+      muted: 'rgba(255, 255, 255, 0.5)',
+      mutedDark: '#6C757D',
+      white: '#FFFFFF',
+      light: '#4A5568',
+      disabled: '#4A5568',
+      onPrimary: '#FFFFFF',
+    },
+    backgroundColors: {
+      primary: '#1A1A1A',
+      secondary: '#151718',
+      tertiary: '#0F0F0F',
+      input: '#2A2A2A',
+      inputMuted: 'rgba(255, 255, 255, 0.1)',
+      card: '#1F1F1F',
+      cardSecondary: '#252525',
+      section: '#1A1A1A',
+      hover: '#2A2A2A',
+      selected: '#3A3A3A',
+      overlay: 'rgba(0, 0, 0, 0.7)',
+    },
+    borderColors: {
+      default: '#2A2A2A',
+      light: '#1F1F1F',
+      medium: '#3A3A3A',
+      dark: '#FFFFFF',
+      input: '#2A2A2A',
+      divider: '#2A2A2A',
+    },
+    stateColors: {
+      success: '#4CAF50',
+      successLight: '#1B3E1D',
+      successBorder: '#2E5C30',
+      error: '#FF5252',
+      errorLight: '#3D1F1F',
+      warning: '#FF9800',
+      info: '#2196F3',
+    },
+    shadowColors: {
+      black: '#000000',
+    },
+    additionalColors: {
+      green: '#4CAF50',
+      gray: '#6C757D',
+      darkGray: '#4A5568',
+      lightGray: '#9BA1A6',
+      black: '#000000',
+      white: '#FFFFFF',
+      transparent: 'transparent',
+    },
   },
 } as const;
 

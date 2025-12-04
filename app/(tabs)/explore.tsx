@@ -2,7 +2,7 @@
 import { apiGet } from '@/helpers/api';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors } from '@/constants/Colors';
+import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -120,6 +121,7 @@ function sortByRelevanceDesc(arr?: Location[]) {
 export default function ExploreScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const translateCategory = useCategoryTranslation();
 
   // server-driven
   const [categories, setCategories] = useState<Category[]>([]);
@@ -238,8 +240,8 @@ export default function ExploreScreen() {
     });
   };
 
-  const popularExperiences = useMemo(() => mapToExperiences(popularLocations), [popularLocations]);
-  const filteredExperiences = useMemo(() => mapToExperiences(locationsFiltered), [locationsFiltered]);
+  const popularExperiences = useMemo(() => mapToExperiences(popularLocations), [popularLocations, t]);
+  const filteredExperiences = useMemo(() => mapToExperiences(locationsFiltered), [locationsFiltered, t]);
 
   const onCategoryClick = (cat: Category | null) => {
     if (!cat) {
@@ -326,7 +328,7 @@ export default function ExploreScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.categoryChipText, selectedCategorySlug === cat.slug && styles.categoryChipTextSelected]}>
-                {cat.title}
+                {translateCategory(cat.slug, cat.title)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -335,7 +337,16 @@ export default function ExploreScreen() {
         {/* Results */}
         <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{selectedCategorySlug === 'todo' ? t('explore.results') : t('explore.resultsWithCategory', { category: selectedCategorySlug })}</Text>
+            <Text style={styles.sectionTitle}>
+              {selectedCategorySlug === 'todo' 
+                ? t('explore.results') 
+                : t('explore.resultsWithCategory', { 
+                    category: selectedCategoryId 
+                      ? translateCategory(categories.find(c => c.id === selectedCategoryId)?.slug, selectedCategorySlug)
+                      : selectedCategorySlug 
+                  })
+              }
+            </Text>
             <Text style={styles.resultCount}>{t('explore.resultCount', { count: filteredExperiences.length })}</Text>
           </View>
 

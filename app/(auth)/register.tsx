@@ -123,35 +123,58 @@ export default function RegisterScreen() {
     }
   };
 
-  // Restore form data when screen is focused
+  // Restore form data when screen is focused, but only if coming from interests
   useFocusEffect(
     useCallback(() => {
       const loadFormData = async () => {
         try {
-          const savedData = await AsyncStorage.getItem('@register_form_data');
-          if (savedData) {
-            const formData = JSON.parse(savedData);
-            setName(formData.name || '');
-            setEmail(formData.email || '');
-            setPhoneCode(formData.phoneCode || '+1');
-            setPhoneNumber(formData.phoneNumber || '');
-            setPassword(formData.password || '');
-            setConfirmPassword(formData.confirmPassword || '');
-            setNationality(formData.nationality || null);
-            const savedBirthdate = formData.birthdate || '';
-            setBirthdate(savedBirthdate);
-            if (savedBirthdate) {
-              try {
-                const date = new Date(savedBirthdate);
-                if (!isNaN(date.getTime())) {
-                  setBirthdateDate(date);
-                  setBirthdateDisplay(formatDateForDisplay(date));
+          // Check if we're coming from interests screen
+          const fromInterests = await AsyncStorage.getItem('@register_from_interests');
+          if (fromInterests === 'true') {
+            // Clear the flag
+            await AsyncStorage.removeItem('@register_from_interests');
+            
+            // Load form data
+            const savedData = await AsyncStorage.getItem('@register_form_data');
+            if (savedData) {
+              const formData = JSON.parse(savedData);
+              setName(formData.name || '');
+              setEmail(formData.email || '');
+              setPhoneCode(formData.phoneCode || '+1');
+              setPhoneNumber(formData.phoneNumber || '');
+              setPassword(formData.password || '');
+              setConfirmPassword(formData.confirmPassword || '');
+              setNationality(formData.nationality || null);
+              const savedBirthdate = formData.birthdate || '';
+              setBirthdate(savedBirthdate);
+              if (savedBirthdate) {
+                try {
+                  const date = new Date(savedBirthdate);
+                  if (!isNaN(date.getTime())) {
+                    setBirthdateDate(date);
+                    setBirthdateDisplay(formatDateForDisplay(date));
+                  }
+                } catch (e) {
+                  // Invalid date, leave empty
                 }
-              } catch (e) {
-                // Invalid date, leave empty
               }
+              setAccepted(formData.accepted || false);
             }
-            setAccepted(formData.accepted || false);
+          } else {
+            // If not coming from interests, clear form data
+            await AsyncStorage.removeItem('@register_form_data');
+            // Reset form
+            setName('');
+            setEmail('');
+            setPhoneCode('+1');
+            setPhoneNumber('');
+            setPassword('');
+            setConfirmPassword('');
+            setNationality(null);
+            setBirthdate('');
+            setBirthdateDate(null);
+            setBirthdateDisplay('');
+            setAccepted(false);
           }
         } catch (error) {
           console.warn('Error loading form data:', error);

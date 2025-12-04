@@ -14,19 +14,25 @@ import {
   View,
   KeyboardAvoidingView,
   ScrollView,
+  TouchableOpacity,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
 import { getResponsiveValues } from '@/helpers/responsive';
 import TextButton from '@/components/buttons/TextButton';
+import { Ionicons } from '@expo/vector-icons';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
+  const AppColors = useAppColors();
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
@@ -83,6 +89,16 @@ export default function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.select({ ios: 80, android: 0 })}
       >
+        {/* Language Selector Button - Top Right */}
+        <View style={styles.languageButtonContainer}>
+          <TouchableOpacity
+            onPress={() => setShowLanguageModal(true)}
+            style={styles.languageButtonTop}
+          >
+            <Ionicons name="globe-outline" size={24} color={AppColors.text} />
+          </TouchableOpacity>
+        </View>
+
         <ScrollView
           contentContainerStyle={[styles.container, { paddingHorizontal: horizontalPadding }]}
           keyboardShouldPersistTaps="handled"
@@ -156,6 +172,77 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {t('profile.selectLanguage')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowLanguageModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  language === 'es' && styles.modalOptionSelected,
+                ]}
+                onPress={() => {
+                  setLanguage('es');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  language === 'es' && styles.modalOptionTextSelected,
+                ]}>
+                  {t('profile.spanish')}
+                </Text>
+                {language === 'es' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  language === 'en' && styles.modalOptionSelected,
+                ]}
+                onPress={() => {
+                  setLanguage('en');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  language === 'en' && styles.modalOptionTextSelected,
+                ]}>
+                  {t('profile.english')}
+                </Text>
+                {language === 'en' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -186,4 +273,95 @@ const styles = StyleSheet.create({
   registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18 },
   already: { color: AppColors.text, fontSize: 13, fontWeight: '500' },
   registerLink: { fontSize: 13, fontWeight: '700', marginLeft: 6 },
+  languageButtonContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 100,
+  },
+  languageButtonTop: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: AppColors.backgroundTertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: AppColors.backgroundPrimary,
+    borderRadius: 16,
+    width: '85%',
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.borderLight,
+  },
+  modalTitle: {
+    color: AppColors.text,
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalOptions: {
+    padding: 8,
+  },
+  modalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginVertical: 4,
+    backgroundColor: AppColors.backgroundTertiary,
+  },
+  modalOptionSelected: {
+    backgroundColor: AppColors.primaryLight,
+  },
+  modalOptionText: {
+    color: AppColors.text,
+    fontWeight: '500',
+    fontSize: 16,
+  },
+  modalOptionTextSelected: {
+    color: AppColors.primary,
+    fontWeight: '600',
+  },
 });

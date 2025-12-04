@@ -19,9 +19,11 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "@/i18n";
-import { AppColors, ShadowColors } from "@/constants/Colors";
+import { ShadowColors } from "@/constants/Colors";
 import { getResponsiveValues, responsiveSize } from "@/helpers/responsive";
 import TextButton from "@/components/buttons/TextButton";
+import { useTheme, ThemeMode } from "@/hooks/useTheme";
+import { useAppColors } from "@/hooks/useAppColors";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -67,6 +69,8 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const { t, language, setLanguage } = useTranslation();
+  const { themeMode, setThemeMode } = useTheme();
+  const AppColors = useAppColors();
   
   // Tamaños relativos basados en el tamaño de pantalla
   const responsive = getResponsiveValues(width, height);
@@ -77,6 +81,7 @@ export default function ProfileScreen() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // helper: try to read token a few times (handles small race where login sets token just before navigation)
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
@@ -228,6 +233,9 @@ export default function ProfileScreen() {
     ]);
   }
 
+  // Generate dynamic styles early so they're available everywhere
+  const styles = getStyles(AppColors);
+
   function handleEdit() {
     router.push("../(profile)/edit-profile");
   }
@@ -327,7 +335,7 @@ export default function ProfileScreen() {
           <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="calendar" iconSize={iconSize} />
           
           {/* Language Selector */}
-          <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
+          <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
             <View style={styles.infoLeft}>
               <Ionicons name="globe" size={iconSize} color={AppColors.textSecondary} />
               <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: responsive.spacing.small }]}>
@@ -340,6 +348,27 @@ export default function ProfileScreen() {
             >
               <Text style={[styles.languageButtonText, { fontSize: fontSizeMedium }]}>
                 {language === 'es' ? t('profile.spanish') : t('profile.english')}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textSecondary} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Theme Selector */}
+          <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
+            <View style={styles.infoLeft}>
+              <Ionicons name="color-palette" size={iconSize} color={AppColors.textSecondary} />
+              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: responsive.spacing.small }]}>
+                {t('profile.theme')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowThemeModal(true)}
+              style={styles.languageButton}
+            >
+              <Text style={[styles.languageButtonText, { fontSize: fontSizeMedium }]}>
+                {themeMode === 'light' ? t('profile.themeLight') : 
+                 themeMode === 'dark' ? t('profile.themeDark') : 
+                 t('profile.themeAuto')}
               </Text>
               <Ionicons name="chevron-forward" size={16} color={AppColors.textSecondary} style={{ marginLeft: 8 }} />
             </TouchableOpacity>
@@ -449,11 +478,116 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Theme Selection Modal */}
+      <Modal
+        visible={showThemeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemeModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowThemeModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { fontSize: fontSizeLarge }]}>
+                {t('profile.selectTheme')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowThemeModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'light' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('light');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="sunny" size={20} color={themeMode === 'light' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'light' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeLight')}
+                  </Text>
+                </View>
+                {themeMode === 'light' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'dark' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('dark');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="moon" size={20} color={themeMode === 'dark' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'dark' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeDark')}
+                  </Text>
+                </View>
+                {themeMode === 'dark' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'auto' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('auto');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="phone-portrait" size={20} color={themeMode === 'auto' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'auto' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeAuto')}
+                  </Text>
+                </View>
+                {themeMode === 'auto' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SecondaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (colors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   scrollView: {
     flex: 1,
   },
@@ -461,7 +595,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   infoCard: {
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: colors.backgroundPrimary,
     ...Platform.select({
       ios: {
         shadowColor: ShadowColors.black,
@@ -479,31 +613,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   infoLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: { color: AppColors.textSecondary, fontWeight: "500" },
-  infoValue: { color: AppColors.text, fontWeight: "600" },
+  infoLabel: { color: colors.textSecondary, fontWeight: "500" },
+  infoValue: { color: colors.text, fontWeight: "600" },
   languageButton: {
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
-    backgroundColor: AppColors.backgroundInputMuted,
+    backgroundColor: colors.backgroundInputMuted,
   },
   languageButtonText: {
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "600",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: colors.overlay,
     justifyContent: "center",
     alignItems: "center",
   },
   modalContent: {
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: colors.backgroundPrimary,
     borderRadius: 16,
     width: "85%",
     maxWidth: 400,
@@ -527,10 +661,10 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: AppColors.borderLight,
+    borderBottomColor: colors.borderLight,
   },
   modalTitle: {
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "700",
   },
   modalCloseButton: {
@@ -547,30 +681,35 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     marginVertical: 4,
-    backgroundColor: AppColors.backgroundTertiary,
+    backgroundColor: colors.backgroundTertiary,
+  },
+  modalOptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
   modalOptionSelected: {
-    backgroundColor: AppColors.primaryLight,
+    backgroundColor: colors.primaryLight,
   },
   modalOptionText: {
-    color: AppColors.text,
+    color: colors.text,
     fontWeight: "500",
   },
   modalOptionTextSelected: {
-    color: AppColors.primary,
+    color: colors.primary,
     fontWeight: "600",
   },
 
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: AppColors.text,
+    color: colors.text,
     marginBottom: 6,
     marginTop: 6,
   },
   interestsText: {
     textAlign: "center",
-    color: AppColors.textSecondary,
+    color: colors.textSecondary,
     fontSize: 14,
     paddingHorizontal: 12,
   },
@@ -580,11 +719,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   profilePhoto: {
-    backgroundColor: AppColors.backgroundInputMuted,
+    backgroundColor: colors.backgroundInputMuted,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 3,
-    borderColor: AppColors.borderLight,
+    borderColor: colors.borderLight,
   },
   actionsContainer: {
     marginTop: 24,

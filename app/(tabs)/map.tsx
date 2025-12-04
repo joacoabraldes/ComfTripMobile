@@ -26,6 +26,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { apiGet } from "@/helpers/api";
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 
 type Loc = {
   id: string;
@@ -97,6 +98,7 @@ export default function MapScreen() {
   const bottomInset = insets?.bottom ?? 0;
   const webRef = useRef<WebView | null>(null);
   const { t } = useTranslation();
+  const translateCategory = useCategoryTranslation();
 
   // Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
   // Memoized para evitar recreaciones innecesarias
@@ -631,10 +633,10 @@ export default function MapScreen() {
   useEffect(() => {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
-    if (cityName) postMessageToWeb({ type: "setInfo", payload: `Ciudad: ${cityName}` });
+    if (cityName) postMessageToWeb({ type: "setInfo", payload: t('map.city', { cityName }) });
     // send locations via postMessage — updates markers on the already-mounted map without reloading it
     postMessageToWeb({ type: "locations", payload: geojsonForWeb() });
-  }, [webReady, userCoords, cityName, locations]);
+  }, [webReady, userCoords, cityName, locations, t]);
 
   function geojsonForWeb() {
     return {
@@ -792,7 +794,7 @@ export default function MapScreen() {
 
         {failed && !loading && (
           <View style={[StyleSheet.absoluteFillObject, { justifyContent: "center", alignItems: "center" }]}>
-            <Text style={{ color: AppColors.white, fontWeight: "700" }}>Imagen no disponible</Text>
+            <Text style={{ color: AppColors.white, fontWeight: "700" }}>{t('map.imageNotAvailable')}</Text>
           </View>
         )}
       </View>
@@ -815,7 +817,7 @@ export default function MapScreen() {
       { key: "all", label: t('map.all'), slug: "" },
       ...interests.map((it) => ({
         key: String(it.id ?? it.slug ?? it.title),
-        label: it.title ?? String(it.slug ?? it.id),
+        label: translateCategory(it.slug, it.title ?? String(it.slug ?? it.id)),
         slug: it.slug ?? "",
       })),
     ];

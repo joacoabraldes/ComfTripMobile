@@ -12,18 +12,20 @@ import {
   ActivityIndicator,
   Platform,
   useWindowDimensions,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors } from '@/constants/Colors';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getResponsiveValues } from '@/helpers/responsive';
+import { useCategoryTranslation, useCategoryDescriptionTranslation } from '@/helpers/categoryTranslations';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -86,11 +88,15 @@ const InterestCard = React.memo(function InterestCard({
   onToggle,
   isSelected,
   imageFailed,
+  translateCategory,
+  translateDescription,
 }: {
   item: ServerInterest;
   onToggle: (slug: string) => void;
   isSelected: boolean;
   imageFailed?: boolean;
+  translateCategory: (slug: string | null | undefined, fallback?: string) => string;
+  translateDescription: (slug: string | null | undefined, fallback?: string) => string;
 }) {
   const [imgLoading, setImgLoading] = useState(true);
   const imageSource = imageFailed ? defaultImage : getImageSource(item.slug);
@@ -123,9 +129,9 @@ const InterestCard = React.memo(function InterestCard({
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardTitle}>{translateCategory(item.slug, item.title)}</Text>
         <Text style={styles.cardSubtitle} numberOfLines={3}>
-          {item.description}
+          {translateDescription(item.slug, item.description)}
         </Text>
       </View>
       {isSelected && (
@@ -150,42 +156,81 @@ export default function InterestsScreen() {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const responsive = getResponsiveValues(width);
+  const translateCategory = useCategoryTranslation();
+  const translateDescription = useCategoryDescriptionTranslation();
   
   const titleFontSize = responsive.fontSizes.titleLarge;
   const subtitleFontSize = responsive.fontSizes.subtitle;
 
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setFetching(true);
-      try {
-        const res = await apiGet("/users/interests");
-        const data = res?.data ?? res;
-        if (Array.isArray(data) && mounted) {
-          const normalized = data.map((d: any) => ({
-            id: d.id,
-            slug:
-              d.slug ??
-              (d.title ? String(d.title).toLowerCase().replace(/\s+/g, "-") : ""),
-            title: d.title ?? d.slug ?? "",
-            description: d.description ?? "",
-          }));
-          setInterests(normalized);
-        } else if (mounted) {
-          setInterests([]);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch interests:", err);
-        setInterests([]);
-      } finally {
-        if (mounted) setFetching(false);
+  // Handle hardware back button (Android) and navigation back gesture
+  const handleBackPress = useCallback(() => {
+    // Set flag to indicate we're going back to register from interests
+    AsyncStorage.setItem('@register_from_interests', 'true').then(() => {
+      router.push('/register');
+    });
+    return true; // Prevent default back behavior
+  }, [router]);
+
+  // Set up back button handler
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'android') {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+        return () => backHandler.remove();
       }
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    }, [handleBackPress])
+  );
+
+  const loadInterests = useCallback(async () => {
+    setFetching(true);
+    try {
+      const res = await apiGet("/users/interests");
+      const data = res?.data ?? res;
+      if (Array.isArray(data)) {
+        const normalized = data.map((d: any) => ({
+          id: d.id,
+          slug:
+            d.slug ??
+            (d.title ? String(d.title).toLowerCase().replace(/\s+/g, "-") : ""),
+          title: d.title ?? d.slug ?? "",
+          description: d.description ?? "",
+        }));
+        setInterests(normalized);
+      } else {
+        setInterests([]);
+      }
+    } catch (err: any) {
+      console.warn("Failed to fetch interests:", err);
+      setInterests([]);
+      // Show error message to user
+      const errorMsg = err?.message || err?.error || t('auth.interests.loadError');
+      Alert.alert(
+        t('common.error'),
+        errorMsg,
+        [
+          {
+            text: t('common.retry'),
+            onPress: () => {
+              // Retry loading
+              loadInterests();
+            },
+          },
+          {
+            text: t('common.ok'),
+            style: 'cancel',
+          },
+        ]
+      );
+    } finally {
+      setFetching(false);
+      // Ensure assetsReady is set even if there's an error
+      setAssetsReady(true);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    loadInterests();
+  }, [loadInterests]);
 
   // Preload local images with expo-asset **after** interests are fetched
   useEffect(() => {
@@ -211,17 +256,18 @@ export default function InterestsScreen() {
       }
     };
 
-    // Only preload when we actually have interests
-    if (interests.length > 0) {
+    // Only preload when we actually have interests and fetching is complete
+    if (interests.length > 0 && !fetching) {
       preload();
-    } else {
-      setAssetsReady(true); // nothing to preload
+    } else if (!fetching) {
+      // If fetching is done but no interests, mark assets as ready
+      setAssetsReady(true);
     }
 
     return () => {
       mounted = false;
     };
-  }, [interests]);
+  }, [interests, fetching]);
 
   const toggleInterest = useCallback((slug: string) => {
     setSelected((prev) => (prev.includes(slug) ? prev.filter((i) => i !== slug) : [...prev, slug]));
@@ -239,9 +285,11 @@ export default function InterestsScreen() {
         onToggle={toggleInterest}
         isSelected={selected.includes(item.slug)}
         imageFailed={Boolean(imageLoadFailed[item.slug])}
+        translateCategory={translateCategory}
+        translateDescription={translateDescription}
       />
     ),
-    [selected, imageLoadFailed, toggleInterest]
+    [selected, imageLoadFailed, toggleInterest, translateCategory, translateDescription]
   );
 
   const keyExtractor = useCallback((i: ServerInterest) => String(i.id ?? i.slug), []);
@@ -413,7 +461,11 @@ export default function InterestsScreen() {
         <View style={styles.buttonRow}>
           <TouchableOpacity
             style={[styles.navButton, styles.backButton]}
-            onPress={() => router.push('/register')}
+            onPress={async () => {
+              // Set flag to indicate we're going back to register from interests
+              await AsyncStorage.setItem('@register_from_interests', 'true');
+              router.push('/register');
+            }}
             disabled={loading}
           >
             <Text style={styles.backButtonText}>{t('auth.register.backButton')}</Text>
@@ -472,7 +524,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 12,
     paddingHorizontal: 0,
-    gap: 8,
+    gap: 12,
     borderTopWidth: 1,
     borderTopColor: AppColors.borderLight,
   },
@@ -488,7 +540,8 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.backgroundTertiary,
     borderWidth: 1,
     borderColor: AppColors.border,
-    flex: 1,
+    flex: 0,
+    minWidth: 100,
   },
   backButtonText: {
     color: AppColors.text,
@@ -497,7 +550,8 @@ const styles = StyleSheet.create({
   },
   completeButton: {
     backgroundColor: AppColors.primary,
-    flex: 2,
+    flex: 0,
+    minWidth: 100,
   },
   completeButtonDisabled: {
     backgroundColor: AppColors.textDisabled,
