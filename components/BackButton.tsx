@@ -1,7 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowIcon } from './icons/ArrowIcon';
+import { Ionicons } from '@expo/vector-icons';
 
 interface BackButtonProps {
   onPress?: () => void;
@@ -12,7 +12,7 @@ interface BackButtonProps {
 
 export default function BackButton({ 
   onPress, 
-  color = '#FF3951', 
+  color = '#252525', 
   style,
   size = 24 
 }: BackButtonProps) {
@@ -32,11 +32,10 @@ export default function BackButton({
       style={[styles.button, style]}
       activeOpacity={0.7}
     >
-      <ArrowIcon 
-        color={color} 
-        width={size * 0.57} 
-        height={size} 
-        style={{ transform: [{ rotate: '180deg' }] }}
+      <Ionicons 
+        name="arrow-back" 
+        size={size} 
+        color={color}
       />
     </TouchableOpacity>
   );

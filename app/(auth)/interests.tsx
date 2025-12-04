@@ -10,14 +10,23 @@ import {
   Image,
   Alert,
   ActivityIndicator,
+  Platform,
+  useWindowDimensions,
+  BackHandler,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
-import { useRouter } from "expo-router";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
+import { ShadowColors } from '@/constants/Colors';
+import ProgressIndicator from '@/components/forms/ProgressIndicator';
+import { useAppColors } from '@/hooks/useAppColors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getResponsiveValues } from '@/helpers/responsive';
+import { useCategoryTranslation, useCategoryDescriptionTranslation } from '@/helpers/categoryTranslations';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -80,11 +89,17 @@ const InterestCard = React.memo(function InterestCard({
   onToggle,
   isSelected,
   imageFailed,
+  translateCategory,
+  translateDescription,
+  styles,
 }: {
   item: ServerInterest;
   onToggle: (slug: string) => void;
   isSelected: boolean;
   imageFailed?: boolean;
+  translateCategory: (slug: string | null | undefined, fallback?: string) => string;
+  translateDescription: (slug: string | null | undefined, fallback?: string) => string;
+  styles: ReturnType<typeof getStyles>;
 }) {
   const [imgLoading, setImgLoading] = useState(true);
   const imageSource = imageFailed ? defaultImage : getImageSource(item.slug);
@@ -117,9 +132,9 @@ const InterestCard = React.memo(function InterestCard({
       </View>
 
       <View style={styles.content}>
-        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardTitle}>{translateCategory(item.slug, item.title)}</Text>
         <Text style={styles.cardSubtitle} numberOfLines={3}>
-          {item.description}
+          {translateDescription(item.slug, item.description)}
         </Text>
       </View>
       {isSelected && (
@@ -142,39 +157,85 @@ export default function InterestsScreen() {
 
   const router = useRouter();
   const { t } = useTranslation();
+  const { width } = useWindowDimensions();
+  const responsive = getResponsiveValues(width);
+  const translateCategory = useCategoryTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  const translateDescription = useCategoryDescriptionTranslation();
+  
+  const titleFontSize = responsive.fontSizes.titleLarge;
+  const subtitleFontSize = responsive.fontSizes.subtitle;
+
+  // Handle hardware back button (Android) and navigation back gesture
+  const handleBackPress = useCallback(() => {
+    // Set flag to indicate we're going back to register from interests
+    AsyncStorage.setItem('@register_from_interests', 'true').then(() => {
+      router.push('/register');
+    });
+    return true; // Prevent default back behavior
+  }, [router]);
+
+  // Set up back button handler
+  useFocusEffect(
+    useCallback(() => {
+      if (Platform.OS === 'android') {
+        const backHandler = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+        return () => backHandler.remove();
+      }
+    }, [handleBackPress])
+  );
+
+  const loadInterests = useCallback(async () => {
+    setFetching(true);
+    try {
+      const res = await apiGet("/users/interests");
+      const data = res?.data ?? res;
+      if (Array.isArray(data)) {
+        const normalized = data.map((d: any) => ({
+          id: d.id,
+          slug:
+            d.slug ??
+            (d.title ? String(d.title).toLowerCase().replace(/\s+/g, "-") : ""),
+          title: d.title ?? d.slug ?? "",
+          description: d.description ?? "",
+        }));
+        setInterests(normalized);
+      } else {
+        setInterests([]);
+      }
+    } catch (err: any) {
+      console.warn("Failed to fetch interests:", err);
+      setInterests([]);
+      // Show error message to user
+      const errorMsg = err?.message || err?.error || t('auth.interests.loadError');
+      Alert.alert(
+        t('common.error'),
+        errorMsg,
+        [
+          {
+            text: t('common.retry'),
+            onPress: () => {
+              // Retry loading
+              loadInterests();
+            },
+          },
+          {
+            text: t('common.ok'),
+            style: 'cancel',
+          },
+        ]
+      );
+    } finally {
+      setFetching(false);
+      // Ensure assetsReady is set even if there's an error
+      setAssetsReady(true);
+    }
+  }, [t]);
 
   useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      setFetching(true);
-      try {
-        const res = await apiGet("/users/interests");
-        const data = res?.data ?? res;
-        if (Array.isArray(data) && mounted) {
-          const normalized = data.map((d: any) => ({
-            id: d.id,
-            slug:
-              d.slug ??
-              (d.title ? String(d.title).toLowerCase().replace(/\s+/g, "-") : ""),
-            title: d.title ?? d.slug ?? "",
-            description: d.description ?? "",
-          }));
-          setInterests(normalized);
-        } else if (mounted) {
-          setInterests([]);
-        }
-      } catch (err) {
-        console.warn("Failed to fetch interests:", err);
-        setInterests([]);
-      } finally {
-        if (mounted) setFetching(false);
-      }
-    };
-    load();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+    loadInterests();
+  }, [loadInterests]);
 
   // Preload local images with expo-asset **after** interests are fetched
   useEffect(() => {
@@ -200,17 +261,18 @@ export default function InterestsScreen() {
       }
     };
 
-    // Only preload when we actually have interests
-    if (interests.length > 0) {
+    // Only preload when we actually have interests and fetching is complete
+    if (interests.length > 0 && !fetching) {
       preload();
-    } else {
-      setAssetsReady(true); // nothing to preload
+    } else if (!fetching) {
+      // If fetching is done but no interests, mark assets as ready
+      setAssetsReady(true);
     }
 
     return () => {
       mounted = false;
     };
-  }, [interests]);
+  }, [interests, fetching]);
 
   const toggleInterest = useCallback((slug: string) => {
     setSelected((prev) => (prev.includes(slug) ? prev.filter((i) => i !== slug) : [...prev, slug]));
@@ -228,9 +290,12 @@ export default function InterestsScreen() {
         onToggle={toggleInterest}
         isSelected={selected.includes(item.slug)}
         imageFailed={Boolean(imageLoadFailed[item.slug])}
+        translateCategory={translateCategory}
+        translateDescription={translateDescription}
+        styles={styles}
       />
     ),
-    [selected, imageLoadFailed, toggleInterest]
+    [selected, imageLoadFailed, toggleInterest, translateCategory, translateDescription, styles]
   );
 
   const keyExtractor = useCallback((i: ServerInterest) => String(i.id ?? i.slug), []);
@@ -250,17 +315,54 @@ export default function InterestsScreen() {
     return null;
   }, []);
 
-  const handleSaveInterests = async () => {
-    if (selected.length === 0) return;
+  const handleSaveInterests = async (skip: boolean = false) => {
+    if (!skip && selected.length === 0) return;
     setLoading(true);
     try {
-      const token = await getTokenWithRetries(6, 250);
-      if (!token) {
-        Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
-        router.replace("/login");
+      // First, register the user with form data from AsyncStorage
+      let token: string | null = null;
+      try {
+        const savedData = await AsyncStorage.getItem('@register_form_data');
+        if (savedData) {
+          const formData = JSON.parse(savedData);
+          const registerPayload = {
+            name: formData.name,
+            email: formData.email,
+            phone: `${formData.phoneCode}${formData.phoneNumber}`,
+            password: formData.password,
+            password_hash: formData.password,
+            nationality: formData.nationality || "",
+            birthdate: formData.birthdate || null,
+          };
+
+          const registerRes = await apiPost('/auth/register', registerPayload);
+          const registerData = registerRes.data ?? registerRes;
+          token = registerData?.token || registerData?.accessToken || registerData?.jwt || registerData?.data?.token || null;
+
+          if (token) {
+            await tokenStorage.setToken(token);
+          } else {
+            console.warn('No token found in register response', registerData);
+            Alert.alert(t('auth.register.registerFailed'), t('auth.register.registerFailed'));
+            return;
+          }
+        } else {
+          // If no saved data, try to get existing token
+          token = await getTokenWithRetries(6, 250);
+          if (!token) {
+            Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
+            router.replace("/login");
+            return;
+          }
+        }
+      } catch (registerErr: any) {
+        console.error('Register error:', registerErr);
+        const msg = (registerErr && registerErr.message) || (registerErr && registerErr.error) || JSON.stringify(registerErr) || t('auth.register.registerFailed');
+        Alert.alert(t('auth.register.registerFailed'), msg);
         return;
       }
 
+      // Now save interests
       let userId: number | string | null = null;
       try {
         const payload = parseJwt(token);
@@ -275,7 +377,11 @@ export default function InterestsScreen() {
         if (match?.id) selectedIds.push(match.id);
       }
 
-      const payloadBody = selectedIds.length > 0 ? { interestIds: selectedIds } : { interestSlugs: selected };
+      const payloadBody = skip || selectedIds.length === 0 
+        ? { interestIds: [] } 
+        : selectedIds.length > 0 
+        ? { interestIds: selectedIds } 
+        : { interestSlugs: selected };
 
       let postRes: any = null;
       try {
@@ -292,6 +398,12 @@ export default function InterestsScreen() {
       const success = (postRes && postRes.status >= 200 && postRes.status < 300) || Boolean(postData && (postData.message || postData.success));
 
       if (success) {
+        // Clear saved form data after successful registration
+        try {
+          await AsyncStorage.removeItem('@register_form_data');
+        } catch (error) {
+          console.warn('Error clearing form data:', error);
+        }
         Alert.alert(t('auth.interests.saved'), t('auth.interests.savedSuccess'));
         router.replace("/home");
       } else {
@@ -313,43 +425,70 @@ export default function InterestsScreen() {
   return (
     <SafeAreaView style={CommonStyles.safeArea}>
       <View style={styles.container}>
-        <Text style={styles.title}>{t('auth.interests.title')}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.title, { fontSize: titleFontSize }]}>{t('auth.register.title')}</Text>
+          <Text style={[styles.subtitle, { fontSize: subtitleFontSize }]}>{t('auth.register.subtitle')}</Text>
+        </View>
 
-        {showLoadingList ? (
-          <View style={{ alignItems: "center", marginTop: 40 }}>
-            <ActivityIndicator size="large" />
-            <Text style={{ color: "#6f6f6f", marginTop: 8 }}>{t('auth.interests.loading')}</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={interests}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            ListEmptyComponent={
-              <View style={{ alignItems: "center", marginTop: 24 }}>
-                <Text style={{ color: "#6f6f6f" }}>{t('auth.interests.noInterests')}</Text>
-              </View>
-            }
-            // performance tuning
-            initialNumToRender={6}
-            maxToRenderPerBatch={6}
-            windowSize={7}
-            removeClippedSubviews={true}
-          />
-        )}
+        {/* Progress Indicator */}
+        <ProgressIndicator currentStep={2} totalSteps={2} />
 
-        <PrimaryButton
-          title={selected.length ? t('auth.interests.continueWithCount', { count: selected.length }) : t('auth.interests.continue')}
-          onPress={handleSaveInterests}
-          height={52}
-          borderRadius={12}
-          style={{ marginTop: 12 }}
-          disabled={selected.length === 0 || loading}
-        >
-          {loading && <ActivityIndicator />}
-        </PrimaryButton>
+        <Text style={styles.interestsTitle}>{t('auth.interests.title')}</Text>
+
+        <View style={styles.listContainer}>
+          {showLoadingList ? (
+            <View style={{ alignItems: "center", marginTop: 40 }}>
+              <ActivityIndicator size="large" />
+              <Text style={{ color: AppColors.textSecondary, marginTop: 8 }}>{t('auth.interests.loading')}</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={interests}
+              renderItem={renderItem}
+              keyExtractor={keyExtractor}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 16 }}
+              ListEmptyComponent={
+                <View style={{ alignItems: "center", marginTop: 24 }}>
+                  <Text style={{ color: AppColors.textSecondary }}>{t('auth.interests.noInterests')}</Text>
+                </View>
+              }
+              // performance tuning
+              initialNumToRender={6}
+              maxToRenderPerBatch={6}
+              windowSize={7}
+              removeClippedSubviews={true}
+            />
+          )}
+        </View>
+
+        {/* Navigation Buttons - Fixed at bottom */}
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.navButton, styles.backButton]}
+            onPress={async () => {
+              // Set flag to indicate we're going back to register from interests
+              await AsyncStorage.setItem('@register_from_interests', 'true');
+              router.push('/register');
+            }}
+            disabled={loading}
+          >
+            <Text style={styles.backButtonText}>{t('auth.register.backButton')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.navButton, styles.completeButton, loading && styles.completeButtonDisabled]}
+            onPress={() => handleSaveInterests(false)}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={AppColors.white} />
+            ) : (
+              <Text style={styles.completeButtonText}>{t('auth.register.completeButton')}</Text>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {loading && (
           <View style={styles.loadingOverlay} pointerEvents="none">
@@ -361,26 +500,92 @@ export default function InterestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 20 },
-  title: { fontSize: 22, fontWeight: "700", marginBottom: 12, color: "#252525" },
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+  container: { flex: 1, padding: 20, paddingBottom: 0 },
+  listContainer: { flex: 1, marginBottom: 16 },
+  header: {
+    marginTop: Platform.OS === 'ios' ? 20 : 10,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  title: {
+    color: AppColors.text,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  subtitle: {
+    color: AppColors.textSecondary,
+    textAlign: 'center',
+  },
+  interestsTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: AppColors.text,
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 0,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: AppColors.borderLight,
+  },
+  navButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  backButton: {
+    backgroundColor: AppColors.backgroundTertiary,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    flex: 0,
+    minWidth: 100,
+  },
+  backButtonText: {
+    color: AppColors.text,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  completeButton: {
+    backgroundColor: AppColors.primary,
+    flex: 0,
+    minWidth: 100,
+  },
+  completeButtonDisabled: {
+    backgroundColor: AppColors.textDisabled,
+    opacity: 0.6,
+  },
+  completeButtonText: {
+    color: AppColors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 12,
     padding: 14,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#E8E8E8",
-    shadowColor: "#000",
+    borderColor: AppColors.borderLight,
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 2,
     position: "relative",
   },
-  cardSelected: { borderColor: "#FF3951", backgroundColor: "#FFF5F6" },
-  image: { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, borderRadius: 10, backgroundColor: "#EDEDED" },
+  cardSelected: { borderColor: AppColors.primary, backgroundColor: AppColors.primaryLighter },
+  image: { width: ITEM_IMAGE_SIZE, height: ITEM_IMAGE_SIZE, borderRadius: 10, backgroundColor: AppColors.borderLight },
   imageLoader: {
     position: "absolute",
     left: 0,
@@ -389,24 +594,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   content: { flex: 1, justifyContent: "center" },
-  cardTitle: { fontSize: 16, fontWeight: "700", color: "#1E1E1E", marginBottom: 6 },
-  cardSubtitle: { fontSize: 13, color: "#6F6F6F", lineHeight: 18 },
+  cardTitle: { fontSize: 16, fontWeight: "700", color: AppColors.text, marginBottom: 6 },
+  cardSubtitle: { fontSize: 13, color: AppColors.textSecondary, lineHeight: 18 },
   checkBadge: {
     position: "absolute",
     right: 12,
     top: 12,
-    backgroundColor: "#FF3951",
+    backgroundColor: AppColors.primary,
     width: 28,
     height: 28,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 3,
   },
-  checkText: { color: "#fff", fontSize: 16, fontWeight: "700", lineHeight: 18 },
+  checkText: { color: AppColors.white, fontSize: 16, fontWeight: "700", lineHeight: 18 },
   loadingOverlay: {
     position: "absolute",
     left: 0,
@@ -415,6 +620,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: AppColors.backgroundPrimary + '99',
   },
 });

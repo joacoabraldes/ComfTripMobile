@@ -16,15 +16,18 @@ import {
   Pressable,
   Platform,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { ViewStyle } from "react-native";
 import { WebView } from "react-native-webview";
 import * as Location from "expo-location";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets, SafeAreaView } from "react-native-safe-area-context";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { ArrowIcon } from "@/components/icons/ArrowIcon";
+import PrimaryLayout from "@/components/layouts/PrimaryLayout";
+import { Ionicons } from "@expo/vector-icons";
 import { apiGet } from "@/helpers/api";
 import { useTranslation } from '@/i18n';
+import { ShadowColors, StateColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 
 type Loc = {
   id: string;
@@ -96,12 +99,16 @@ export default function MapScreen() {
   const bottomInset = insets?.bottom ?? 0;
   const webRef = useRef<WebView | null>(null);
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  const translateCategory = useCategoryTranslation();
 
   // Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
-  const displayCategoryFromFk = (fk?: string | null) => {
+  // Memoized para evitar recreaciones innecesarias
+  const displayCategoryFromFk = useCallback((fk?: string | null) => {
     if (!fk) return t('map.other');
     return String(fk).replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  };
+  }, [t]);
 
   const [loadingPosition, setLoadingPosition] = useState(true);
   const [webReady, setWebReady] = useState(false);
@@ -629,10 +636,10 @@ export default function MapScreen() {
   useEffect(() => {
     if (!webReady) return;
     if (userCoords) postMessageToWeb({ type: "userLocation", payload: userCoords });
-    if (cityName) postMessageToWeb({ type: "setInfo", payload: `Ciudad: ${cityName}` });
+    if (cityName) postMessageToWeb({ type: "setInfo", payload: t('map.city', { cityName }) });
     // send locations via postMessage — updates markers on the already-mounted map without reloading it
     postMessageToWeb({ type: "locations", payload: geojsonForWeb() });
-  }, [webReady, userCoords, cityName, locations]);
+  }, [webReady, userCoords, cityName, locations, t]);
 
   function geojsonForWeb() {
     return {
@@ -790,7 +797,7 @@ export default function MapScreen() {
 
         {failed && !loading && (
           <View style={[StyleSheet.absoluteFillObject, { justifyContent: "center", alignItems: "center" }]}>
-            <Text style={{ color: "#fff", fontWeight: "700" }}>Imagen no disponible</Text>
+            <Text style={{ color: AppColors.white, fontWeight: "700" }}>{t('map.imageNotAvailable')}</Text>
           </View>
         )}
       </View>
@@ -813,7 +820,7 @@ export default function MapScreen() {
       { key: "all", label: t('map.all'), slug: "" },
       ...interests.map((it) => ({
         key: String(it.id ?? it.slug ?? it.title),
-        label: it.title ?? String(it.slug ?? it.id),
+        label: translateCategory(it.slug, it.title ?? String(it.slug ?? it.id)),
         slug: it.slug ?? "",
       })),
     ];
@@ -849,7 +856,7 @@ export default function MapScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PrimaryLayout title={t('tabs.map')}>
       <View style={[styles.container, { flex: 1 }]}>
         {/* WebView (map) fills container */}
         <WebView
@@ -870,8 +877,9 @@ export default function MapScreen() {
           style={[
             styles.filterOverlay,
             {
-              top: (insets.top ?? 12) + 8, // keep filter below status bar / notch
-              left: 16,
+              top: 8, // TopBar ya maneja el safe area
+              left: 10,
+              right: 10,
             },
           ]}
         >
@@ -947,7 +955,7 @@ export default function MapScreen() {
                   renderItem={({ item }) => {
                     const uri = typeof item === "string" ? item : String(item);
                     return (
-                      <View style={{ width: width, height: 160, justifyContent: "center", alignItems: "center", backgroundColor: "#000" }}>
+                      <View style={{ width: width, height: 160, justifyContent: "center", alignItems: "center", backgroundColor: AppColors.black }}>
                         <ImageWithFallback
                           uri={uri}
                           fallbackSeed={selected?.id ?? "placeholder"}
@@ -975,11 +983,11 @@ export default function MapScreen() {
               </View>
             ) : (
               <View style={[styles.imagesWrap, { height: 120, alignItems: "center", justifyContent: "center" }]}>
-                <Text style={{ color: "rgba(0,0,0,0.5)" }}>{t('map.noImages')}</Text>
+                <Text style={{ color: AppColors.textMuted }}>{t('map.noImages')}</Text>
               </View>
             )}
 
-            <ScrollView style={{ flex: 1, backgroundColor: "#fff" }} contentContainerStyle={{ padding: 20 }}>
+            <ScrollView style={{ flex: 1, backgroundColor: AppColors.backgroundPrimary }} contentContainerStyle={{ padding: 20 }}>
               <View style={styles.rowTop}>
                 <View style={[styles.badge, { backgroundColor: CATEGORY_COLOR[selected?.category ?? ""] || "#ddd" }]}>
                   {selected?.category ? <Text style={styles.badgeText}>{selected.category}</Text> : null}
@@ -995,7 +1003,7 @@ export default function MapScreen() {
                     onPress={openDirections}
                     height={52}
                     borderRadius={10}
-                    rightIcon={<ArrowIcon color="#FFFFFF" />}
+                    rightIcon={<Ionicons name="arrow-forward" size={20} color={AppColors.white} />}
                     style={{ flex: 1 }}
                     activeOpacity={0.95}
                   />
@@ -1009,12 +1017,12 @@ export default function MapScreen() {
           </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: "#FCFCFC" },
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
 
   // overlay wrapper (positioned dynamically)
   filterOverlay: {
@@ -1031,7 +1039,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.12,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
@@ -1042,7 +1050,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -1050,9 +1058,9 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: "#007bff",
+    backgroundColor: StateColors.info,
     borderWidth: 2,
-    borderColor: "#fff",
+    borderColor: AppColors.white,
   },
 
   // FILTER styles (matches the provided HTML look)
@@ -1068,18 +1076,18 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignSelf: "flex-start",
     // card background
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
     borderRadius: 13,
     paddingHorizontal: 8,
     paddingTop: 6,
     // shadow
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+      ios: { shadowColor: ShadowColors.black, shadowOpacity: 0.08, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
       android: { elevation: 2 },
     }),
   },
   filterTitle: {
-    color: "#000",
+    color: AppColors.black,
     fontSize: 14,
     fontWeight: "600",
     lineHeight: 20,
@@ -1103,15 +1111,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     // box-shadow
     ...Platform.select({
-      ios: { shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+      ios: { shadowColor: ShadowColors.black, shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
       android: { elevation: 1 },
     }),
   },
   chipActive: {
-    backgroundColor: "#007AFF",
+    backgroundColor: AppColors.primary,
   },
   chipInactive: {
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
   },
   chipText: {
     fontSize: 12,
@@ -1119,11 +1127,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.12,
   },
   chipTextActive: {
-    color: "#fff",
+    color: AppColors.white,
     fontWeight: "300",
   },
   chipTextInactive: {
-    color: "#000",
+    color: AppColors.black,
     fontWeight: "300",
   },
 
@@ -1136,29 +1144,29 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.6)",
+    backgroundColor: AppColors.backgroundPrimary + '99',
     zIndex: 70,
   },
 
-  modalSafe: { flex: 1, backgroundColor: "#fff" },
+  modalSafe: { flex: 1, backgroundColor: AppColors.white },
   modalHeader: {
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderColor: "#eee",
+    borderColor: AppColors.borderLight,
     flexDirection: "row",
     alignItems: "center",
   },
   closeBtn: { padding: 8 },
-  closeText: { color: "#007bff", fontWeight: "600" },
+  closeText: { color: StateColors.info, fontWeight: "600" },
   headerTitles: { flex: 1, alignItems: "center" },
-  modalTitle: { fontSize: 18, fontWeight: "700", color: "#111" },
-  modalCategory: { fontSize: 13, color: "rgba(0,0,0,0.6)", marginTop: 4 },
+  modalTitle: { fontSize: 18, fontWeight: "700", color: AppColors.text },
+  modalCategory: { fontSize: 13, color: AppColors.textMuted, marginTop: 4 },
 
   imagesWrap: {
     height: 220,
-    backgroundColor: "#000",
+    backgroundColor: AppColors.black,
   },
   detailImage: {
     height: 220,
@@ -1172,7 +1180,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
   },
-  overlayTitle: { color: "#fff", fontWeight: "700", fontSize: 16, maxWidth: "85%" },
+  overlayTitle: { color: AppColors.white, fontWeight: "700", fontSize: 16, maxWidth: "85%" },
 
   dots: {
     position: "absolute",
@@ -1187,11 +1195,11 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.45)",
     marginHorizontal: 3,
   },
-  dotActive: { backgroundColor: "#fff", width: 10, height: 10 },
+  dotActive: { backgroundColor: AppColors.white, width: 10, height: 10 },
 
   modalBody: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
   },
 
   rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
@@ -1201,11 +1209,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 999,
   },
-  badgeText: { color: "#fff", fontWeight: "700" },
+  badgeText: { color: AppColors.white, fontWeight: "700" },
 
   descriptionText: {
     fontSize: 16,
-    color: "rgba(0,0,0,0.8)",
+    color: AppColors.text,
     lineHeight: 22,
     marginBottom: 18,
   },
@@ -1222,14 +1230,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#eee",
+    borderColor: AppColors.borderLight,
     justifyContent: "center",
   },
-  secondaryTxt: { color: "#444", fontWeight: "600" },
+  secondaryTxt: { color: AppColors.text, fontWeight: "600" },
   modalOverlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor: "rgba(0,0,0,0.35)",
+    backgroundColor: AppColors.overlay,
   },
   backdrop: {
     position: "absolute",
@@ -1239,7 +1247,7 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   modalContent: {
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.white,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     overflow: "hidden",

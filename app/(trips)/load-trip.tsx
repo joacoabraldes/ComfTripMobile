@@ -3,6 +3,7 @@ import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity } fr
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { apiPost } from '@/helpers/api';
 import { useTranslation } from '@/i18n';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function LoadTrip() {
   const router = useRouter();
@@ -10,6 +11,8 @@ export default function LoadTrip() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   useEffect(() => {
     let mounted = true;
@@ -57,15 +60,14 @@ export default function LoadTrip() {
       {loading && !error && (
         <>
           <Text style={styles.text}>{t('loadTrip.calculating')}</Text>
-          <Image source={require('../assets/images/loading.gif')} style={styles.loadingImage} />
-          {/* <ActivityIndicator size="large" color="#FF3951" style={{ marginTop: 20 }} /> */}
+          <Image source={require('../../assets/images/loading.gif')} style={styles.loadingImage} />
         </>
       )}
 
       {error && (
         <>
           <Text style={styles.textError}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => router.push('/add-trip')}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.push('/(trips)/add-trip')}>
             <Text style={styles.retryButtonText}>{t('loadTrip.back')}</Text>
           </TouchableOpacity>
         </>
@@ -74,17 +76,18 @@ export default function LoadTrip() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center', // Center vertically
     alignItems: 'center', // Center horizontally
-    backgroundColor: 'white',
+    backgroundColor: AppColors.backgroundPrimary,
     padding: 20,
   },
   text: {
     fontSize: 16,
-    color: '#666',
+    color: AppColors.textSecondary,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -94,17 +97,17 @@ const styles = StyleSheet.create({
   },
   textError: {
     fontSize: 16,
-    color: '#c0392b',
+    color: AppColors.error,
     textAlign: 'center',
     marginBottom: 20,
   },
   retryButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     padding: 12,
     borderRadius: 20,
   },
   retryButtonText: {
-    color: '#fff',
+    color: AppColors.white,
     fontSize: 16,
   },
 });

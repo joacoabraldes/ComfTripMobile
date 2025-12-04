@@ -6,6 +6,8 @@ import { formatDateRange } from '@/helpers/dateUtils';
 import { useTranslation } from '@/i18n';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 interface TripSummaryProps {
   trip: Trip;
@@ -13,6 +15,8 @@ interface TripSummaryProps {
 
 export default function TripSummary({ trip }: TripSummaryProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const activitiesCount = trip.places?.length || 0;
   const hasBudget = trip.budget != null && trip.budget > 0;
   const hasNotes = trip.notes != null && trip.notes.trim().length > 0;
@@ -57,14 +61,15 @@ export default function TripSummary({ trip }: TripSummaryProps) {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -73,7 +78,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#111',
+    color: AppColors.text,
     marginBottom: 16,
   },
   summaryGrid: {
@@ -88,30 +93,30 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 13,
-    color: '#757575',
+    color: AppColors.textTertiary,
     marginBottom: 4,
     fontWeight: '600',
   },
   summaryValue: {
     fontSize: 16,
-    color: '#111',
+    color: AppColors.text,
     fontWeight: '700',
   },
   notesContainer: {
     marginTop: 8,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E5',
+    borderTopColor: AppColors.borderLight,
   },
   notesLabel: {
     fontSize: 13,
-    color: '#757575',
+    color: AppColors.textTertiary,
     marginBottom: 8,
     fontWeight: '600',
   },
   notesText: {
     fontSize: 15,
-    color: '#333',
+    color: AppColors.text,
     lineHeight: 22,
   },
 });

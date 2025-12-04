@@ -31,6 +31,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="explore"
+        options={{
+          title: t('tabs.explore'),
+        }}
+      />
+      <Tabs.Screen
         name="trips"
         options={{
           title: t('tabs.trips'),
@@ -40,12 +46,6 @@ export default function TabLayout() {
         name="map"
         options={{
           title: t('tabs.map'),
-        }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: t('tabs.explore'),
         }}
       />
       <Tabs.Screen
