@@ -8,6 +8,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewForm from '@/components/trip/ReviewForm';
@@ -15,6 +16,7 @@ import ShareTripButton from '@/components/trip/ShareTripButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 
 type Params = {
   id?: string;
@@ -28,6 +30,7 @@ export default function TripDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? t('tripSummary.destination');
@@ -84,10 +87,46 @@ export default function TripDetails() {
         // Expecting trip object with places array, like the web
         const places: any[] = tripData.places || [];
 
+        // Helper to parse images
+        const safeParseImages = (im: any): string[] => {
+          if (!im) return [];
+          if (Array.isArray(im)) {
+            return im
+              .map((it) => {
+                if (!it) return null;
+                if (typeof it === 'string') return it;
+                if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+                return String(it);
+              })
+              .filter(Boolean) as string[];
+          }
+          if (typeof im === 'string') {
+            try {
+              const parsed = JSON.parse(im);
+              if (Array.isArray(parsed)) {
+                return parsed
+                  .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+                  .filter(Boolean);
+              }
+              return [String(parsed)];
+            } catch (e) {
+              if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+              return [im];
+            }
+          }
+          if (typeof im === 'object' && im !== null) {
+            if (Array.isArray((im as any).urls)) return (im as any).urls;
+            if ((im as any).url) return [(im as any).url];
+            if ((im as any).src) return [(im as any).src];
+          }
+          return [];
+        };
+
         const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
           const loc = p.location || {};
           const title = loc?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
-          const firstImg = Array.isArray(loc?.imagenes) && loc.imagenes.length > 0 ? loc.imagenes[0] : null;
+          const images = safeParseImages(loc?.imagenes);
+          const firstImg = images.length > 0 ? images[0] : null;
 
           // Build sortable timestamp from date + start_hour
           let ts = Number.NaN;
@@ -146,31 +185,129 @@ export default function TripDetails() {
     return () => { mounted = false; };
   }, [params.id, tripId]);
 
-  // Preserve local edit sync (if any)
+  // Preserve local edit sync and refresh on focus (for deleted activities)
   useFocusEffect(
     React.useCallback(() => {
       let mounted = true;
       const checkUpdates = async () => {
         try {
           const raw = await AsyncStorage.getItem('updatedActivity');
-          if (!raw) return;
-          const parsed = JSON.parse(raw) as { key: string; newTitle?: string; imageUri?: string } | null;
-          if (!parsed || !mounted) return;
-
-          setActivities((prev) =>
-            prev.map((a) =>
-              a.key === parsed.key
-                ? {
-                    ...a,
-                    title: parsed.newTitle ?? a.title,
-                    img: parsed.imageUri !== undefined ? parsed.imageUri : a.img ?? null,
-                  }
-                : a
-            )
-          );
-
-          await AsyncStorage.removeItem('updatedActivity');
+          if (raw) {
+            const parsed = JSON.parse(raw) as { key: string; newTitle?: string; imageUri?: string } | null;
+            if (parsed && mounted) {
+              setActivities((prev) =>
+                prev.map((a) =>
+                  a.key === parsed.key
+                    ? {
+                        ...a,
+                        title: parsed.newTitle ?? a.title,
+                        img: parsed.imageUri !== undefined ? parsed.imageUri : a.img ?? null,
+                      }
+                    : a
+                )
+              );
+              await AsyncStorage.removeItem('updatedActivity');
+            }
+          }
         } catch {}
+
+        // Refresh trip data to get updated activities (in case one was deleted)
+        if (mounted && Number.isFinite(tripId) && tripId > 0) {
+          try {
+            const res = await apiGet(`/trips/${tripId}`);
+            const data = res?.data ?? res;
+
+            const tripData: Trip = {
+              id: data.id || tripId,
+              user_id: data.user_id || 0,
+              destination: data.destination || params.destination || t('tripSummary.destination'),
+              start_date: data.start_date || params.start_date || '',
+              end_date: data.end_date || params.end_date || '',
+              flag_url: data.flag_url || params.flag_url || null,
+              notes: data.notes || null,
+              budget: data.budget || null,
+              created_at: data.created_at || null,
+              places: Array.isArray(data?.places) ? data.places : (Array.isArray(data?.data?.places) ? data.data.places : []),
+            };
+
+            if (mounted) {
+              setTrip(tripData);
+            }
+
+            const places: any[] = tripData.places || [];
+
+            const safeParseImages = (im: any): string[] => {
+              if (!im) return [];
+              if (Array.isArray(im)) {
+                return im
+                  .map((it) => {
+                    if (!it) return null;
+                    if (typeof it === 'string') return it;
+                    if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+                    return String(it);
+                  })
+                  .filter(Boolean) as string[];
+              }
+              if (typeof im === 'string') {
+                try {
+                  const parsed = JSON.parse(im);
+                  if (Array.isArray(parsed)) {
+                    return parsed
+                      .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+                      .filter(Boolean);
+                  }
+                  return [String(parsed)];
+                } catch (e) {
+                  if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+                  return [im];
+                }
+              }
+              if (typeof im === 'object' && im !== null) {
+                if (Array.isArray((im as any).urls)) return (im as any).urls;
+                if ((im as any).url) return [(im as any).url];
+                if ((im as any).src) return [(im as any).src];
+              }
+              return [];
+            };
+
+            const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
+              const loc = p.location || {};
+              const title = loc?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
+              const images = safeParseImages(loc?.imagenes);
+              const firstImg = images.length > 0 ? images[0] : null;
+
+              let ts = Number.NaN;
+              if (p.date) {
+                const base = (typeof p.date === 'string' && p.date.includes('T')) ? p.date : `${p.date}T00:00:00`;
+                const start = p.start_hour ? `${base.split('T')[0]}T${p.start_hour}:00` : base;
+                const d = new Date(start);
+                ts = d.getTime();
+              }
+
+              const dateStr = `${formatDate(p.date)} ${formatTime(p.start_hour)}${p.end_hour ? ` - ${formatTime(p.end_hour)}` : ''}`.trim();
+
+              return {
+                key: String(p.id ?? idx),
+                title,
+                img: firstImg,
+                dateStr,
+                sortTs: isNaN(ts) ? undefined : ts,
+              };
+            });
+
+            const sorted = mapped.slice().sort((a, b) => {
+              const aa = a.sortTs ?? Number.MAX_SAFE_INTEGER;
+              const bb = b.sortTs ?? Number.MAX_SAFE_INTEGER;
+              return aa - bb;
+            });
+
+            if (mounted) {
+              setActivities(sorted);
+            }
+          } catch (err: any) {
+            console.error('Error refreshing trip:', err);
+          }
+        }
       };
 
       checkUpdates();
@@ -178,12 +315,11 @@ export default function TripDetails() {
       return () => {
         mounted = false;
       };
-    }, [])
+    }, [tripId, params, t])
   );
 
   const onEdit = (a: Activity) => {
-    const encodedTitle = encodeURIComponent(a.title);
-    router.push(`/add-activity?mode=edit&title=${encodedTitle}&key=${a.key}`);
+    router.push(`/edit-activity?tripId=${tripId}&placeId=${a.key}`);
   };
 
   const confirmAndDelete = () => {
@@ -371,6 +507,14 @@ export default function TripDetails() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      <FloatingActionButton
+        onPress={() => router.push(`/add-activity?tripId=${tripId}`)}
+        accessibilityLabel={t('tripDetails.addActivity')}
+        bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
+        right={20}
+      />
+
       {showShareModal && (
         <ShareTripButton 
           tripId={tripId} 

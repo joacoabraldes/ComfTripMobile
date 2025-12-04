@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,11 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
-import { apiGet, apiPost } from '@/helpers/api';
+import { apiGet, apiPut, apiDelete } from '@/helpers/api';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
+import TextButton from '@/components/buttons/TextButton';
 
 interface CalendarDay {
   date: number;
@@ -40,29 +41,27 @@ interface Location {
   country?: string;
   address?: string;
   descripcion?: string;
-  latitude?: number | string;
-  longitude?: number | string;
-  latitud?: number | string;
-  longitud?: number | string;
 }
 
-export default function AddActivity() {
+export default function EditActivity() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { t } = useTranslation();
   const tripId = params.tripId ? Number(params.tripId) : NaN;
+  const placeId = params.placeId ? Number(params.placeId) : NaN;
 
   const [loading, setLoading] = useState(true);
   const [trip, setTrip] = useState<any>(null);
+  const [place, setPlace] = useState<any>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [selectedLocation, setSelectedLocation] = useState<number | null>(null);
   const [date, setDate] = useState<string>('');
   const [startHour, setStartHour] = useState<string>('');
   const [endHour, setEndHour] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
-  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showAllLocations, setShowAllLocations] = useState(false);
 
   // Calendar state
   const today = new Date();
@@ -143,15 +142,11 @@ export default function AddActivity() {
   const bookedDates = useMemo(() => {
     if (!trip?.places) return new Set<string>();
     return new Set(
-      (trip.places || []).map((p: any) => (p.date ? p.date.split('T')[0] : ''))
+      (trip.places || [])
+        .filter((p: any) => p.id !== placeId)
+        .map((p: any) => (p.date ? p.date.split('T')[0] : ''))
     );
-  }, [trip?.places]);
-
-  const handleDateSelect = (day: number) => {
-    const selectedDate = new Date(currentYear, currentMonth, day);
-    const isoDate = selectedDate.toISOString().split('T')[0];
-    setDate(isoDate);
-  };
+  }, [trip?.places, placeId]);
 
   const handlePrevMonth = () => {
     setCurrentMonth((prev) => {
@@ -176,24 +171,24 @@ export default function AddActivity() {
   const occupiedSlots = useMemo(() => {
     if (!trip?.places || !date) return [];
     return trip.places
-      .filter((p: any) => p.date && p.date.split('T')[0] === date)
+      .filter((p: any) => p.id !== placeId && p.date && p.date.split('T')[0] === date)
       .map((p: any) => ({
         start: p.start_hour || '',
         end: p.end_hour || null,
       }));
-  }, [trip?.places, date]);
+  }, [trip?.places, date, placeId]);
 
   const nextOccupiedStart = occupiedSlots
     .map((s: { start: string; end: string | null }) => s.start)
     .filter((t: string) => t > startHour)
     .sort()[0];
 
-  // Load trip and locations
+  // Load trip and place
   useEffect(() => {
     let mounted = true;
     (async () => {
-      if (!Number.isFinite(tripId) || tripId <= 0) {
-        setError(t('addActivity.invalidTripId'));
+      if (!Number.isFinite(tripId) || tripId <= 0 || !Number.isFinite(placeId) || placeId <= 0) {
+        setError(t('editActivity.placeNotFound'));
         setLoading(false);
         return;
       }
@@ -205,21 +200,49 @@ export default function AddActivity() {
         const locs = await apiGet('/locations');
 
         if (!mounted) return;
-        setTrip(tripRes?.data || tripRes);
+        const tripData = tripRes?.data || tripRes;
+        setTrip(tripData);
         setLocations(Array.isArray(locs) ? locs : (Array.isArray(locs?.data) ? locs.data : []));
 
-        if (tripRes?.data || tripRes) {
-          const tripData = tripRes?.data || tripRes;
-          setStartDate(normalizeDate(tripData.start_date));
-          setEndDate(normalizeDate(tripData.end_date));
+        const p = tripData.places?.find((pl: any) => Number(pl.id) === Number(placeId));
+        if (!p) {
+          setError(t('editActivity.placeNotFound'));
+        } else {
+          setPlace(p);
+          const dateStr = p.date ? p.date.split('T')[0] : '';
+          setDate(dateStr);
+          // Normalize hours to have 00 or 30 minutes
+          const normalizeTime = (time: string) => {
+            if (!time) return '';
+            const parts = time.split(':');
+            if (parts.length < 2) return time;
+            const h = parts[0];
+            const m = parseInt(parts[1] || '0', 10);
+            return `${h}:${m < 30 ? '00' : '30'}`;
+          };
+          setStartHour(normalizeTime(p.start_hour || ''));
+          setEndHour(normalizeTime(p.end_hour || ''));
+          setNotes(p.notes || '');
+          setSelectedLocation(p.fk_location || p.location?.id || null);
 
-          const start = tripData.start_date ? new Date(tripData.start_date) : new Date();
-          setCurrentYear(start.getFullYear());
-          setCurrentMonth(start.getMonth());
+          if (tripData.start_date) {
+            setStartDate(normalizeDate(tripData.start_date));
+          }
+          if (tripData.end_date) {
+            setEndDate(normalizeDate(tripData.end_date));
+          }
+
+          if (p.date) {
+            const dateObj = normalizeDate(p.date);
+            if (dateObj) {
+              setCurrentYear(dateObj.getFullYear());
+              setCurrentMonth(dateObj.getMonth());
+            }
+          }
         }
       } catch (err: any) {
         console.error('Error loading trip:', err);
-        setError(err?.message || t('addActivity.loading'));
+        setError(err?.message || t('editActivity.loadTripError'));
       } finally {
         if (mounted) setLoading(false);
       }
@@ -227,11 +250,18 @@ export default function AddActivity() {
     return () => {
       mounted = false;
     };
-  }, [tripId, t]);
+  }, [tripId, placeId, t]);
 
+  // Only reset hours if date actually changed (not on initial load)
   useEffect(() => {
-    setStartHour('');
-    setEndHour('');
+    if (date && place?.date) {
+      const currentDateStr = place.date.split('T')[0];
+      if (date !== currentDateStr) {
+        // Date changed, reset hours
+        setStartHour('');
+        setEndHour('');
+      }
+    }
   }, [date]);
 
   useEffect(() => {
@@ -242,46 +272,81 @@ export default function AddActivity() {
     }
   }, [startHour, endHour]);
 
-  const handleAddPlace = async () => {
-    if (!selectedLocation) {
-      Alert.alert(t('addActivity.selectLocation'));
-      return;
-    }
+  const handleSave = async () => {
     if (!date) {
-      Alert.alert(t('addActivity.selectDate'));
+      Alert.alert(t('editActivity.selectDate'));
       return;
     }
-    if (!startHour || !startHour.split(':')[1]) {
-      Alert.alert(t('addActivity.selectStartTime'));
-      return;
-    }
-    if (!endHour || !endHour.split(':')[1]) {
-      Alert.alert(t('addActivity.selectEndTime'));
+    if (!startHour || !endHour || !startHour.split(':')[1] || !endHour.split(':')[1]) {
+      Alert.alert(t('editActivity.selectStartAndEndTime'));
       return;
     }
 
-    setAdding(true);
+    setSaving(true);
     setError(null);
     try {
-      const payload = {
-        places: [
-          {
-            fk_location: Number(selectedLocation),
-            date,
-            start_hour: startHour || null,
-            end_hour: endHour || null,
-            notes: notes || null,
-          },
-        ],
-      };
-      await apiPost(`/trips/${tripId}/places`, payload);
+      const updatedPlaces = trip.places.map((p: any) =>
+        Number(p.id) === Number(placeId)
+          ? {
+              ...p,
+              fk_location: selectedLocation || p.fk_location || p.location?.id,
+              date,
+              start_hour: startHour,
+              end_hour: endHour,
+              notes,
+            }
+          : p
+      );
+
+      await apiPut(`/trips/${tripId}`, {
+        destination: trip.destination,
+        start_date: trip.start_date,
+        end_date: trip.end_date,
+        budget: trip.budget,
+        notes: trip.notes,
+        places: updatedPlaces.map((p: any) => ({
+          fk_location: p.fk_location ?? p.location?.id,
+          date: p.date,
+          start_hour: p.start_hour,
+          end_hour: p.end_hour,
+          notes: p.notes,
+        })),
+      });
+
       router.back();
     } catch (err: any) {
-      console.error('Add place error:', err);
-      setError(err?.message || t('addActivity.addPlaceError'));
+      console.error('Error updating place:', err);
+      setError(err?.message || t('editActivity.saveError'));
     } finally {
-      setAdding(false);
+      setSaving(false);
     }
+  };
+
+  const handleDelete = () => {
+    Alert.alert(
+      t('editActivity.delete'),
+      t('editActivity.deleteConfirm'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.delete'),
+          style: 'destructive',
+          onPress: async () => {
+            if (deleting) return;
+            setDeleting(true);
+            try {
+              await apiDelete(`/trips/${tripId}/places/${placeId}`);
+              router.back();
+            } catch (err: any) {
+              console.error('Error deleting place:', err);
+              Alert.alert(t('common.error'), err?.message || t('editActivity.deleteError'));
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const monthNames = [
@@ -311,30 +376,33 @@ export default function AddActivity() {
 
   if (loading) {
     return (
-      <SecondaryLayout title={t('addActivity.title')}>
+      <SecondaryLayout title={t('editActivity.title')}>
         <View style={styles.center}>
           <ActivityIndicator size="large" color={AppColors.primary} />
-          <Text style={{ marginTop: 16 }}>{t('addActivity.loading')}</Text>
+          <Text style={{ marginTop: 16 }}>{t('editActivity.loading')}</Text>
         </View>
       </SecondaryLayout>
     );
   }
 
-  if (error && !trip) {
+  if (error || !place) {
     return (
-      <SecondaryLayout title={t('addActivity.title')}>
+      <SecondaryLayout title={t('editActivity.title')}>
         <View style={styles.center}>
-          <Text style={{ color: AppColors.error, marginBottom: 8 }}>{error}</Text>
+          <Text style={{ color: AppColors.error, marginBottom: 8 }}>{error || t('editActivity.placeNotFound')}</Text>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-            <Text style={{ color: AppColors.white }}>{t('addActivity.backToTrips')}</Text>
+            <Text style={{ color: AppColors.white }}>{t('common.back')}</Text>
           </TouchableOpacity>
         </View>
       </SecondaryLayout>
     );
   }
 
+  const selectedLocationData = locations.find((l) => Number(l.id) === Number(selectedLocation));
+  const currentLocationData = place.location || locations.find((l) => Number(l.id) === Number(place.fk_location || place.location?.id));
+
   return (
-    <SecondaryLayout title={t('addActivity.title')}>
+    <SecondaryLayout title={t('editActivity.title')}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
         <Text style={styles.subtitle}>{trip?.destination || ''}</Text>
         {trip?.start_date && trip?.end_date && (
@@ -344,23 +412,20 @@ export default function AddActivity() {
         )}
 
         <View style={styles.section}>
-          <Text style={styles.label}>{t('addActivity.location')}</Text>
+          <Text style={styles.label}>{t('editActivity.changeLocation')}</Text>
+          <Text style={styles.currentLocation}>{currentLocationData?.titulo || t('editActivity.title')}</Text>
           <LocationSelector
             locations={locations}
             selectedLocation={selectedLocation}
             onSelectLocation={setSelectedLocation}
-            placeholder={filteredLocations.length ? t('addActivity.searchLocation') : t('addActivity.noLocationsFound', { destination: trip?.destination || '' })}
-            noLocationsMessage={filteredLocations.length === 0 && locations.length > 0 && !showAllLocations
-              ? t('addActivity.noMatchingLocations')
-              : t('addActivity.noLocationsFound', { destination: trip?.destination || '' })}
-            showAllLocations={showAllLocations}
-            onShowAllLocations={() => setShowAllLocations(true)}
+            placeholder={t('addActivity.searchLocation')}
+            noLocationsMessage={t('addActivity.noLocationsFound', { destination: trip?.destination || '' })}
             filteredLocations={filteredLocations}
           />
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>{t('addActivity.date')}</Text>
+          <Text style={styles.label}>{t('editActivity.date')}</Text>
           <View style={styles.calendarContainer}>
             <View style={styles.calendarHeader}>
               <Text style={styles.monthYear}>
@@ -407,7 +472,7 @@ export default function AddActivity() {
                         isBooked && styles.bookedDay,
                       ]}
                       disabled={isPast || isAfter}
-                      onPress={() => handleDateSelect(day.date)}
+                      onPress={() => setDate(isoDate)}
                     >
                       <Text
                         style={[
@@ -428,7 +493,7 @@ export default function AddActivity() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>{t('addActivity.startTime')}</Text>
+          <Text style={styles.label}>{t('editActivity.startTime')}</Text>
           <TimePicker
             value={startHour}
             onChange={setStartHour}
@@ -438,7 +503,7 @@ export default function AddActivity() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>{t('addActivity.endTime')}</Text>
+          <Text style={styles.label}>{t('editActivity.endTime')}</Text>
           <TimePicker
             value={endHour}
             onChange={setEndHour}
@@ -450,12 +515,12 @@ export default function AddActivity() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.label}>{t('addActivity.notes')}</Text>
+          <Text style={styles.label}>{t('editActivity.notes')}</Text>
           <TextInput
             style={styles.notesInput}
             value={notes}
             onChangeText={setNotes}
-            placeholder={t('addActivity.notes')}
+            placeholder={t('editActivity.notes')}
             multiline
             numberOfLines={3}
             textAlignVertical="top"
@@ -465,10 +530,17 @@ export default function AddActivity() {
         {error && <Text style={styles.errorText}>{error}</Text>}
 
         <PrimaryButton
-          title={adding ? t('addActivity.adding') : t('addActivity.addToItinerary')}
-          onPress={handleAddPlace}
-          disabled={adding || !selectedLocation || !date || !startHour || !endHour}
+          title={saving ? t('editActivity.saving') : t('editActivity.saveChanges')}
+          onPress={handleSave}
+          disabled={saving || !date || !startHour || !endHour}
           style={{ marginTop: 24 }}
+        />
+
+        <TextButton
+          title={t('editActivity.delete')}
+          onPress={handleDelete}
+          textStyle={{ color: AppColors.error }}
+          style={{ marginTop: 16, alignSelf: 'center' }}
         />
       </ScrollView>
     </SecondaryLayout>
@@ -510,6 +582,17 @@ const styles = StyleSheet.create({
     color: AppColors.text,
     marginBottom: 12,
   },
+  currentLocation: {
+    fontSize: 14,
+    color: AppColors.textSecondary,
+    marginBottom: 8,
+    fontStyle: 'italic',
+  },
+  arrow: {
+    fontSize: 24,
+    color: AppColors.text,
+    fontWeight: '600',
+  },
   calendarContainer: {
     borderRadius: 12,
     padding: 16,
@@ -531,11 +614,6 @@ const styles = StyleSheet.create({
   arrows: {
     flexDirection: 'row',
     gap: 20,
-  },
-  arrow: {
-    fontSize: 24,
-    color: AppColors.text,
-    fontWeight: '600',
   },
   calendar: {
     marginTop: 8,
@@ -612,4 +690,3 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 });
-

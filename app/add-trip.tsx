@@ -31,6 +31,7 @@ export default function AddTrip() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [saving, setSaving] = useState(false);
+  const [existingTrips, setExistingTrips] = useState<any[]>([]);
   const router = useRouter();
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -53,6 +54,31 @@ export default function AddTrip() {
     const today = new Date();
     today.setHours(0,0,0,0);
     return currentDate < today;
+  };
+
+  // Get all dates that are already booked by existing trips
+  const getBookedDates = useCallback(() => {
+    const booked = new Set<string>();
+    existingTrips.forEach((trip) => {
+      if (trip.start_date && trip.end_date) {
+        const start = new Date(trip.start_date);
+        const end = new Date(trip.end_date);
+        const current = new Date(start);
+        while (current <= end) {
+          booked.add(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
+        }
+      }
+    });
+    return booked;
+  }, [existingTrips]);
+
+  const bookedDates = getBookedDates();
+
+  const isDateBooked = (day: number) => {
+    const currentDate = new Date(currentYear, currentMonth, day);
+    const isoDate = currentDate.toISOString().split('T')[0];
+    return bookedDates.has(isoDate);
   };
 
   const { days, firstDayOfMonth } = generateCalendarDays();
@@ -177,6 +203,28 @@ export default function AddTrip() {
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  // Load existing trips to check for booked dates
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { apiGet } = await import('@/helpers/api');
+        const res = await apiGet('/trips');
+        const data = res?.data ?? res;
+        const tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        if (mounted) {
+          setExistingTrips(tripsData);
+        }
+      } catch (err) {
+        console.warn('Error loading existing trips:', err);
+        // Continue without blocking if this fails
+      }
+    })();
+    return () => {
+      mounted = false;
     };
   }, []);
 
@@ -333,6 +381,7 @@ export default function AddTrip() {
 
           {days.map((day) => {
             const past = isPastDate(day.date);
+            const booked = isDateBooked(day.date);
 
             return (
                 <TouchableOpacity
@@ -340,14 +389,16 @@ export default function AddTrip() {
                     style={[
                       styles.day,
                       isDateInRange(day.date) && styles.selectedDay,
+                      booked && styles.bookedDay,
                     ]}
-                    disabled={past}
+                    disabled={past || booked}
                     onPress={() => handleDateSelect(day.date)}
                 >
                   <Text
                       style={[
                         styles.dayText,
                         past && styles.pastDayText,
+                        booked && styles.bookedDayText,
                         isDateInRange(day.date) && styles.selectedDayText
                       ]}
                   >
@@ -498,6 +549,13 @@ const styles = StyleSheet.create({
   },
   pastDayText: {
     color: AppColors.textDisabled,
+  },
+  bookedDay: {
+    backgroundColor: AppColors.backgroundTertiary,
+    opacity: 0.6,
+  },
+  bookedDayText: {
+    color: AppColors.textSecondary,
   },
   dateRange: {
     textAlign: 'center',

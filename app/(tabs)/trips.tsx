@@ -26,6 +26,41 @@ export default function TripsScreen() {
 
   const cardWidth = Math.min(340, Math.round(width - 40));
 
+  // Helper to parse images from location imagenes field
+  const safeParseImages = (im: any): string[] => {
+    if (!im) return [];
+    if (Array.isArray(im)) {
+      return im
+        .map((it) => {
+          if (!it) return null;
+          if (typeof it === 'string') return it;
+          if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+          return String(it);
+        })
+        .filter(Boolean) as string[];
+    }
+    if (typeof im === 'string') {
+      try {
+        const parsed = JSON.parse(im);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+            .filter(Boolean);
+        }
+        return [String(parsed)];
+      } catch (e) {
+        if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+        return [im];
+      }
+    }
+    if (typeof im === 'object' && im !== null) {
+      if (Array.isArray((im as any).urls)) return (im as any).urls;
+      if ((im as any).url) return [(im as any).url];
+      if ((im as any).src) return [(im as any).src];
+    }
+    return [];
+  };
+
   const fetchTrips = useCallback(async () => {
     setError(null);
     try {
@@ -33,8 +68,20 @@ export default function TripsScreen() {
       const data = res?.data ?? res;
       const tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []) as Trip[];
       
+      // Enrich trips with first place image (only if places are already included)
+      const enrichedTrips = tripsData.map((trip) => {
+        const places = trip.places || [];
+        if (places.length > 0 && places[0]?.location?.imagenes) {
+          const images = safeParseImages(places[0].location.imagenes);
+          if (images.length > 0 && typeof images[0] === 'string') {
+            return { ...trip, firstPlaceImage: images[0] };
+          }
+        }
+        return trip;
+      });
+      
       // Sort trips by status: upcoming > current > past
-      const sortedTrips = sortTripsByStatus(tripsData);
+      const sortedTrips = sortTripsByStatus(enrichedTrips);
       setTrips(sortedTrips);
     } catch (err: any) {
       console.error('Error fetching trips', err);
@@ -43,7 +90,7 @@ export default function TripsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchTrips();
@@ -69,8 +116,8 @@ export default function TripsScreen() {
       past: t('trips.status.past'),
     };
 
-    // Try to guess a fallback flag image: if trip has flag_url use it, else placeholder
-    const imageSource = item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7'; // small flag placeholder
+    // Use first place image, fallback to flag_url, then placeholder
+    const imageSource = (item as any).firstPlaceImage || item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7';
 
     return (
       <TouchableOpacity
