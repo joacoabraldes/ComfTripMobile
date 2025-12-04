@@ -489,7 +489,6 @@ const es = {
     statusLabel: 'Estado: {status}',
     datesNotSpecified: 'Fechas no especificadas',
     ownerId: 'Owner id: {id}',
-      unknownUser: 'Usuario desconocido'
   },
 
   // Change Password

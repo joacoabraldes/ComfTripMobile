@@ -2,7 +2,7 @@
 import { apiGet } from '@/helpers/api';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +15,11 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
+import { ShadowColors } from '@/constants/Colors';
+import { useCategoryTranslation } from '@/helpers/categoryTranslations';
+import { useAppColors } from '@/hooks/useAppColors';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -118,6 +122,9 @@ function sortByRelevanceDesc(arr?: Location[]) {
 export default function ExploreScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const translateCategory = useCategoryTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // server-driven
   const [categories, setCategories] = useState<Category[]>([]);
@@ -236,8 +243,8 @@ export default function ExploreScreen() {
     });
   };
 
-  const popularExperiences = useMemo(() => mapToExperiences(popularLocations), [popularLocations]);
-  const filteredExperiences = useMemo(() => mapToExperiences(locationsFiltered), [locationsFiltered]);
+  const popularExperiences = useMemo(() => mapToExperiences(popularLocations), [popularLocations, t]);
+  const filteredExperiences = useMemo(() => mapToExperiences(locationsFiltered), [locationsFiltered, t]);
 
   const onCategoryClick = (cat: Category | null) => {
     if (!cat) {
@@ -257,7 +264,7 @@ export default function ExploreScreen() {
   const handleCreateTrip = () => {
     setShowDetailModal(false);
     router.push({
-      pathname: '/add-trip',
+      pathname: '/(trips)/add-trip',
       params: { destination: selectedExperience?.title ?? '' },
     });
   };
@@ -270,13 +277,13 @@ export default function ExploreScreen() {
   // skeleton card for mobile while loading locations
   const renderSkeletonCard = (key: number) => (
     <View style={styles.experienceCard} key={`sk-${key}`}>
-      <View style={[styles.cardImageContainer, { backgroundColor: '#EEE' }]}>
+      <View style={[styles.cardImageContainer, { backgroundColor: AppColors.borderLight }]}>
         <View style={{ flex: 1 }} />
       </View>
       <View style={styles.cardContent}>
-        <View style={{ height: 18, width: '60%', backgroundColor: '#EEE', borderRadius: 8, marginBottom: 10 }} />
-        <View style={{ height: 12, width: '40%', backgroundColor: '#EEE', borderRadius: 6, marginBottom: 6 }} />
-        <View style={{ height: 12, width: '80%', backgroundColor: '#EEE', borderRadius: 6 }} />
+        <View style={{ height: 18, width: '60%', backgroundColor: AppColors.borderLight, borderRadius: 8, marginBottom: 10 }} />
+        <View style={{ height: 12, width: '40%', backgroundColor: AppColors.borderLight, borderRadius: 6, marginBottom: 6 }} />
+        <View style={{ height: 12, width: '80%', backgroundColor: AppColors.borderLight, borderRadius: 6 }} />
       </View>
     </View>
   );
@@ -285,22 +292,20 @@ export default function ExploreScreen() {
   if (initialLoading) {
     // show a minimal page while categories load
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <PrimaryLayout title={t('explore.title')}>
         <View style={styles.container}>
-          <Text style={styles.title}>{t('explore.loadingTitle')}</Text>
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#FF3951" />
+            <ActivityIndicator size="large" color={AppColors.primary} />
             <Text style={styles.loadingText}>{t('explore.loading')}</Text>
           </View>
         </View>
-      </SafeAreaView>
+      </PrimaryLayout>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <PrimaryLayout title={t('explore.title')}>
       <View style={styles.container}>
-        <Text style={styles.title}>{t('explore.title')}</Text>
 
         {/* categories */}
         <ScrollView
@@ -326,7 +331,7 @@ export default function ExploreScreen() {
               activeOpacity={0.7}
             >
               <Text style={[styles.categoryChipText, selectedCategorySlug === cat.slug && styles.categoryChipTextSelected]}>
-                {cat.title}
+                {translateCategory(cat.slug, cat.title)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -335,7 +340,16 @@ export default function ExploreScreen() {
         {/* Results */}
         <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{selectedCategorySlug === 'todo' ? t('explore.results') : t('explore.resultsWithCategory', { category: selectedCategorySlug })}</Text>
+            <Text style={styles.sectionTitle}>
+              {selectedCategorySlug === 'todo' 
+                ? t('explore.results') 
+                : t('explore.resultsWithCategory', { 
+                    category: selectedCategoryId 
+                      ? translateCategory(categories.find(c => c.id === selectedCategoryId)?.slug, selectedCategorySlug)
+                      : selectedCategorySlug 
+                  })
+              }
+            </Text>
             <Text style={styles.resultCount}>{t('explore.resultCount', { count: filteredExperiences.length })}</Text>
           </View>
 
@@ -448,52 +462,51 @@ export default function ExploreScreen() {
           )}
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+    </PrimaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC', marginBottom:40, },
-  container: { flex: 1, paddingHorizontal: 16 },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', marginBottom: 20, marginTop: 10, textAlign: 'center' },
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
+  loadingText: { marginTop: 16, fontSize: 16, color: AppColors.textSecondary },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  errorText: { fontSize: 16, color: '#FF3951', textAlign: 'center' },
+  errorText: { fontSize: 16, color: AppColors.primary, textAlign: 'center' },
 
   categoriesContainer: { marginBottom: 0, height: 44, maxHeight: 44 },
   categoriesContent: { paddingHorizontal: 4, height: 44, alignItems: 'center' },
   categoryChip: {
-    backgroundColor: '#F5F5F5',
+    backgroundColor: AppColors.backgroundTertiary,
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 16,
     marginRight: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: AppColors.border,
     height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  categoryChipSelected: { backgroundColor: '#FF3951', borderColor: '#FF3951' },
-  categoryChipText: { fontSize: 14, fontWeight: '600', color: '#333' },
-  categoryChipTextSelected: { color: '#FFF' },
+  categoryChipSelected: { backgroundColor: AppColors.primary, borderColor: AppColors.primary },
+  categoryChipText: { fontSize: 14, fontWeight: '600', color: AppColors.text },
+  categoryChipTextSelected: { color: AppColors.white },
 
   resultsContainer: { flex: 1 },
   sectionHeader: { marginBottom: 16, marginTop: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: '#000' },
-  resultCount: { fontSize: 14, color: '#666', marginTop: 4 },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: AppColors.text },
+  resultCount: { fontSize: 14, color: AppColors.textSecondary, marginTop: 4 },
 
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 16, color: '#666', textAlign: 'center' },
+  emptyText: { fontSize: 16, color: AppColors.textSecondary, textAlign: 'center' },
 
   experiencesList: { paddingBottom: 20 },
 
   experienceCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 12,
     marginBottom: 16,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.08,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
@@ -502,28 +515,28 @@ const styles = StyleSheet.create({
   },
   cardImageContainer: { height: 200, width: '100%' },
   cardImage: { width: '100%', height: '100%' },
-  noImageContainer: { width: '100%', height: '100%', backgroundColor: '#F0F0F0', justifyContent: 'center', alignItems: 'center' },
-  noImageText: { color: '#999', fontSize: 14 },
+  noImageContainer: { width: '100%', height: '100%', backgroundColor: AppColors.backgroundHover, justifyContent: 'center', alignItems: 'center' },
+  noImageText: { color: AppColors.textMutedDark, fontSize: 14 },
 
   cardContent: { padding: 12 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: '#000', marginBottom: 8, lineHeight: 24 },
-  cardDescription: { fontSize: 14, color: '#666', lineHeight: 20, marginBottom: 12 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: AppColors.text, marginBottom: 8, lineHeight: 24 },
+  cardDescription: { fontSize: 14, color: AppColors.textSecondary, lineHeight: 20, marginBottom: 12 },
 
   categoryBadge: { alignSelf: 'flex-start', backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   categoryBadgeText: { fontSize: 12, fontWeight: '600', color: '#1976D2' },
 
-  modalContainer: { flex: 1, backgroundColor: '#FFF' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  modalContainer: { flex: 1, backgroundColor: AppColors.backgroundPrimary },
+  modalHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: AppColors.border },
   modalCloseButton: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-  modalCloseText: { fontSize: 24, color: '#666' },
+  modalCloseText: { fontSize: 24, color: AppColors.textSecondary },
   modalContent: { flex: 1 },
   modalImage: { width: '100%', height: 250 },
   modalDetails: { padding: 20 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#000', marginBottom: 12 },
-  modalDescription: { fontSize: 16, color: '#666', lineHeight: 24, marginBottom: 24 },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: AppColors.text, marginBottom: 12 },
+  modalDescription: { fontSize: 16, color: AppColors.textSecondary, lineHeight: 24, marginBottom: 24 },
   modalActions: { flexDirection: 'row', gap: 12 },
-  createTripButton: { flex: 1, backgroundColor: '#FF3951', paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  createTripButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
-  shareButton: { flex: 1, backgroundColor: '#F5F5F5', paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: '#E0E0E0' },
-  shareButtonText: { color: '#333', fontSize: 16, fontWeight: '600' },
+  createTripButton: { flex: 1, backgroundColor: AppColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  createTripButtonText: { color: AppColors.white, fontSize: 16, fontWeight: '700' },
+  shareButton: { flex: 1, backgroundColor: AppColors.backgroundTertiary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: AppColors.border },
+  shareButtonText: { color: AppColors.text, fontSize: 16, fontWeight: '600' },
 });

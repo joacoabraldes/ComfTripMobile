@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
-import BackButton from '@/components/BackButton';
-import { CommonStyles } from '@/constants/Styles';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
+import { useAppColors } from '@/hooks/useAppColors';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -13,9 +12,11 @@ interface CalendarDay {
 
 export default function AddTrip() {
   const { t } = useTranslation();
-  const [destination, setDestination] =  useState<string | null>(null);
-  const [country, setCountry]=useState<string | null>(null);
-  const [city, setCity]=useState<string | null>(null);
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  const [destination, setDestination] = useState<string | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
 
   // búsqueda con Nominatim
@@ -32,6 +33,7 @@ export default function AddTrip() {
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [saving, setSaving] = useState(false);
+  const [existingTrips, setExistingTrips] = useState<any[]>([]);
   const router = useRouter();
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -54,6 +56,31 @@ export default function AddTrip() {
     const today = new Date();
     today.setHours(0,0,0,0);
     return currentDate < today;
+  };
+
+  // Get all dates that are already booked by existing trips
+  const getBookedDates = useCallback(() => {
+    const booked = new Set<string>();
+    existingTrips.forEach((trip) => {
+      if (trip.start_date && trip.end_date) {
+        const start = new Date(trip.start_date);
+        const end = new Date(trip.end_date);
+        const current = new Date(start);
+        while (current <= end) {
+          booked.add(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
+        }
+      }
+    });
+    return booked;
+  }, [existingTrips]);
+
+  const bookedDates = getBookedDates();
+
+  const isDateBooked = (day: number) => {
+    const currentDate = new Date(currentYear, currentMonth, day);
+    const isoDate = currentDate.toISOString().split('T')[0];
+    return bookedDates.has(isoDate);
   };
 
   const { days, firstDayOfMonth } = generateCalendarDays();
@@ -181,6 +208,28 @@ export default function AddTrip() {
     };
   }, []);
 
+  // Load existing trips to check for booked dates
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { apiGet } = await import('@/helpers/api');
+        const res = await apiGet('/trips');
+        const data = res?.data ?? res;
+        const tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        if (mounted) {
+          setExistingTrips(tripsData);
+        }
+      } catch (err) {
+        console.warn('Error loading existing trips:', err);
+        // Continue without blocking if this fails
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const handleSelectSuggestion = (item: any) => {
     setDestination(item.display_name);
     setQuery(item.display_name);
@@ -232,7 +281,7 @@ export default function AddTrip() {
 
       // Navegar a load-trip y pasar el payload como query param (url-encoded JSON)
       const qs = encodeURIComponent(JSON.stringify(payload));
-      router.push(`/load-trip?payload=${qs}`);
+      router.push(`/(trips)/load-trip?payload=${qs}`);
 
     } catch (err: any) {
       console.error('Error preparando payload:', err);
@@ -244,16 +293,13 @@ export default function AddTrip() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <Text style={styles.header}>{t('addTrip.selectDestination')}</Text>
+    <SecondaryLayout title={t('addTrip.selectDestination')}>
+      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
       {/* BARRA DE BÚSQUEDA (Nominatim) */}
       <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
         <TextInput
-          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? "#252525" : "rgba(0,0,0,0.5)"}]}
+          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? AppColors.text : AppColors.textMuted}]}
           placeholder={t('addTrip.searchPlaceholder')}
           value={query}
           onChangeText={onChangeQuery}
@@ -264,19 +310,17 @@ export default function AddTrip() {
 
       {openSuggestions && suggestions.length > 0 && (
         <View style={styles.dropdown}>
-          <FlatList
-            data={suggestions}
-            keyExtractor={(item) => item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
+          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {suggestions.map((item) => (
               <TouchableOpacity
+                key={item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
                 style={styles.item}
                 onPress={() => handleSelectSuggestion(item)}
               >
                 <Text>{item.display_name}</Text>
               </TouchableOpacity>
-            )}
-          />
+            ))}
+          </ScrollView>
         </View>
       )}
 
@@ -339,6 +383,7 @@ export default function AddTrip() {
 
           {days.map((day) => {
             const past = isPastDate(day.date);
+            const booked = isDateBooked(day.date);
 
             return (
                 <TouchableOpacity
@@ -346,14 +391,16 @@ export default function AddTrip() {
                     style={[
                       styles.day,
                       isDateInRange(day.date) && styles.selectedDay,
+                      booked && styles.bookedDay,
                     ]}
-                    disabled={past}
+                    disabled={past || booked}
                     onPress={() => handleDateSelect(day.date)}
                 >
                   <Text
                       style={[
                         styles.dayText,
                         past && styles.pastDayText,
+                        booked && styles.bookedDayText,
                         isDateInRange(day.date) && styles.selectedDayText
                       ]}
                   >
@@ -383,28 +430,33 @@ export default function AddTrip() {
       >
         <Text style={styles.createTripButtonText}>{t('addTrip.createTrip')}</Text>
       </TouchableOpacity>
-    </SafeAreaView>
+      </ScrollView>
+    </SecondaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 50 : 50,
-    backgroundColor: 'white',
+    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    backgroundColor: AppColors.backgroundPrimary,
+  },
+  contentContainer: {
+    paddingBottom: 32,
   },
   mapButton: {
     marginTop: 8,
     alignSelf: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: '#000000',
+    borderColor: AppColors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
   },
-  mapButtonText: { color: '#000000', fontWeight: '600' },
+  mapButtonText: { color: AppColors.text, fontWeight: '600' },
   mapContainer: {
     marginTop: 12,
     width: '100%',
@@ -418,16 +470,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: AppColors.overlay,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 8,
   },
-  closeMapBtnText: { color: '#fff' },
+  closeMapBtnText: { color: AppColors.white },
   header: {
     fontSize: 16,
     marginBottom: 10,
-    color: '#666',
+    color: AppColors.textSecondary,
     textAlign: 'center',
   },
   destinationInput: {
@@ -436,14 +488,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: 15,
     borderRadius: 25,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: AppColors.backgroundTertiary,
   },
   destinationText: {
     fontSize: 16,
+    color: AppColors.text,
   },
   closeIcon: {
     fontSize: 24,
-    color: '#666',
+    color: AppColors.textSecondary,
   },
   calendarHeader: {
     flexDirection: 'row',
@@ -454,6 +507,7 @@ const styles = StyleSheet.create({
   monthYear: {
     fontSize: 16,
     fontWeight: '600',
+    color: AppColors.text,
   },
   arrows: {
     flexDirection: 'row',
@@ -461,7 +515,7 @@ const styles = StyleSheet.create({
   },
   arrow: {
     fontSize: 20,
-    color: '#FF3951',
+    color: AppColors.primary,
   },
   calendar: {
     marginTop: 10,
@@ -472,7 +526,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   weekDay: {
-    color: '#999',
+    color: AppColors.textMutedDark,
     fontSize: 12,
   },
   daysGrid: {
@@ -491,37 +545,45 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 16,
+    color: AppColors.text,
   },
   selectedDay: {
-    backgroundColor: '#FFE5E8',
+    backgroundColor: AppColors.primaryLight,
   },
   selectedDayText: {
-    color: '#FF3951',
+    color: AppColors.primary,
   },
   pastDayText: {
-    color: '#CCC',
+    color: AppColors.textDisabled,
+  },
+  bookedDay: {
+    backgroundColor: AppColors.backgroundTertiary,
+    opacity: 0.6,
+  },
+  bookedDayText: {
+    color: AppColors.textSecondary,
   },
   dateRange: {
     textAlign: 'center',
     marginTop: 20,
-    color: '#666',
+    color: AppColors.textSecondary,
   },
   createTripButton: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     padding: 15,
     borderRadius: 25,
     alignItems: 'center',
     marginTop: 20,
   },
   createTripButtonText: {
-    color: 'white',
+    color: AppColors.white,
     fontSize: 16,
   },
 
   dropdown: { left: 0, right: 0,
-    backgroundColor: "#fff",
+    backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: AppColors.borderLight,
     borderRadius: 10,
     marginTop: 4,
     marginBottom: 20,
@@ -529,7 +591,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
     elevation: 10 },
 
-  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: "#fff" },
-  itemHover: { backgroundColor: "#f0f0f0" },
-  itemSelected: { backgroundColor: "#d0d0d0" },
+  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: AppColors.backgroundPrimary },
+  itemHover: { backgroundColor: AppColors.backgroundHover },
+  itemSelected: { backgroundColor: AppColors.backgroundHover },
 });

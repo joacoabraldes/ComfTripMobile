@@ -161,10 +161,8 @@ const en = {
     noOwnTrips: 'No own trips found to share. You can only share trips you own.',
     sharing: 'Sharing...',
     shareSelected: 'Share ({count})',
-    shareSuccess: 'Successfully shared {count} {trip}.\n',
-    shareErrors: 'Errors in {count} {trips}:\n',
-      trip: 'trip.',
-      trips: 'trips'
+    shareSuccess: 'Successfully shared {count} trip(s).\n',
+    shareErrors: 'Errors in {count} trip(s):\n',
   },
 
   // Profile
@@ -491,7 +489,6 @@ const en = {
     statusLabel: 'Status: {status}',
     datesNotSpecified: 'Dates not specified',
     ownerId: 'Owner id: {id}',
-      unknownUser: 'Unknown user'
   },
 
   // Change Password
@@ -536,4 +533,3 @@ const en = {
 };
 
 export default en;
-

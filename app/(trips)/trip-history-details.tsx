@@ -1,20 +1,18 @@
-import { apiDelete, apiGet } from '@/helpers/api';
+import { apiGet } from '@/helpers/api';
 import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
 import { getTripStatus, isTripCompleted } from '@/helpers/tripUtils';
 import { Activity, Trip, TripReview } from '@/types';
 import { MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import BackButton from '@/components/BackButton';
-import { CommonStyles } from '@/constants/Styles';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewForm from '@/components/trip/ReviewForm';
-import ShareTripButton from '@/components/trip/ShareTripButton';
 import { useTranslation } from '@/i18n';
+import { ShadowColors, StateColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Params = {
   id?: string;
@@ -24,10 +22,12 @@ type Params = {
   flag_url?: string;
 };
 
-export default function TripDetails() {
+export default function TripHistoryDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? t('tripSummary.destination');
@@ -38,7 +38,6 @@ export default function TripDetails() {
   const [review, setReview] = useState<TripReview | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState<boolean>(false);
   const [showReviewForm, setShowReviewForm] = useState<boolean>(false);
 
   const tripId = params.id ? Number(params.id) : NaN;
@@ -84,10 +83,46 @@ export default function TripDetails() {
         // Expecting trip object with places array, like the web
         const places: any[] = tripData.places || [];
 
+        // Helper to parse images
+        const safeParseImages = (im: any): string[] => {
+          if (!im) return [];
+          if (Array.isArray(im)) {
+            return im
+              .map((it) => {
+                if (!it) return null;
+                if (typeof it === 'string') return it;
+                if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+                return String(it);
+              })
+              .filter(Boolean) as string[];
+          }
+          if (typeof im === 'string') {
+            try {
+              const parsed = JSON.parse(im);
+              if (Array.isArray(parsed)) {
+                return parsed
+                  .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+                  .filter(Boolean);
+              }
+              return [String(parsed)];
+            } catch (e) {
+              if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+              return [im];
+            }
+          }
+          if (typeof im === 'object' && im !== null) {
+            if (Array.isArray((im as any).urls)) return (im as any).urls;
+            if ((im as any).url) return [(im as any).url];
+            if ((im as any).src) return [(im as any).src];
+          }
+          return [];
+        };
+
         const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
           const loc = p.location || {};
           const title = loc?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
-          const firstImg = Array.isArray(loc?.imagenes) && loc.imagenes.length > 0 ? loc.imagenes[0] : null;
+          const images = safeParseImages(loc?.imagenes);
+          const firstImg = images.length > 0 ? images[0] : null;
 
           // Build sortable timestamp from date + start_hour
           let ts = Number.NaN;
@@ -128,10 +163,13 @@ export default function TripDetails() {
               setReview(reviewData);
             }
           } catch (err: any) {
-            // Review doesn't exist yet, that's okay
-            if (err?.status !== 404) {
-              console.error('Error loading review:', err);
+            // Review doesn't exist yet, that's okay (404 or endpoint not found)
+            const status = err?.status || (typeof err === 'string' && err.includes('Cannot GET') ? 404 : null);
+            if (status !== 404 && status !== null) {
+              // Only log non-404 errors
+              console.error('Error loading review:', err?.message || err);
             }
+            // Silently ignore 404s and endpoint not found errors
           }
         }
       } catch (err: any) {
@@ -143,31 +181,107 @@ export default function TripDetails() {
     return () => { mounted = false; };
   }, [params.id, tripId]);
 
-  // Preserve local edit sync (if any)
+  // Refresh on focus
   useFocusEffect(
     React.useCallback(() => {
       let mounted = true;
       const checkUpdates = async () => {
-        try {
-          const raw = await AsyncStorage.getItem('updatedActivity');
-          if (!raw) return;
-          const parsed = JSON.parse(raw) as { key: string; newTitle?: string; imageUri?: string } | null;
-          if (!parsed || !mounted) return;
+        if (mounted && Number.isFinite(tripId) && tripId > 0) {
+          try {
+            const res = await apiGet(`/trips/${tripId}`);
+            const data = res?.data ?? res;
 
-          setActivities((prev) =>
-            prev.map((a) =>
-              a.key === parsed.key
-                ? {
-                    ...a,
-                    title: parsed.newTitle ?? a.title,
-                    img: parsed.imageUri !== undefined ? parsed.imageUri : a.img ?? null,
+            const tripData: Trip = {
+              id: data.id || tripId,
+              user_id: data.user_id || 0,
+              destination: data.destination || params.destination || t('tripSummary.destination'),
+              start_date: data.start_date || params.start_date || '',
+              end_date: data.end_date || params.end_date || '',
+              flag_url: data.flag_url || params.flag_url || null,
+              notes: data.notes || null,
+              budget: data.budget || null,
+              created_at: data.created_at || null,
+              places: Array.isArray(data?.places) ? data.places : (Array.isArray(data?.data?.places) ? data.data.places : []),
+            };
+
+            if (mounted) {
+              setTrip(tripData);
+            }
+
+            const places: any[] = tripData.places || [];
+
+            const safeParseImages = (im: any): string[] => {
+              if (!im) return [];
+              if (Array.isArray(im)) {
+                return im
+                  .map((it) => {
+                    if (!it) return null;
+                    if (typeof it === 'string') return it;
+                    if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+                    return String(it);
+                  })
+                  .filter(Boolean) as string[];
+              }
+              if (typeof im === 'string') {
+                try {
+                  const parsed = JSON.parse(im);
+                  if (Array.isArray(parsed)) {
+                    return parsed
+                      .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+                      .filter(Boolean);
                   }
-                : a
-            )
-          );
+                  return [String(parsed)];
+                } catch (e) {
+                  if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+                  return [im];
+                }
+              }
+              if (typeof im === 'object' && im !== null) {
+                if (Array.isArray((im as any).urls)) return (im as any).urls;
+                if ((im as any).url) return [(im as any).url];
+                if ((im as any).src) return [(im as any).src];
+              }
+              return [];
+            };
 
-          await AsyncStorage.removeItem('updatedActivity');
-        } catch {}
+            const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
+              const loc = p.location || {};
+              const title = loc?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
+              const images = safeParseImages(loc?.imagenes);
+              const firstImg = images.length > 0 ? images[0] : null;
+
+              let ts = Number.NaN;
+              if (p.date) {
+                const base = (typeof p.date === 'string' && p.date.includes('T')) ? p.date : `${p.date}T00:00:00`;
+                const start = p.start_hour ? `${base.split('T')[0]}T${p.start_hour}:00` : base;
+                const d = new Date(start);
+                ts = d.getTime();
+              }
+
+              const dateStr = `${formatDate(p.date)} ${formatTime(p.start_hour)}${p.end_hour ? ` - ${formatTime(p.end_hour)}` : ''}`.trim();
+
+              return {
+                key: String(p.id ?? idx),
+                title,
+                img: firstImg,
+                dateStr,
+                sortTs: isNaN(ts) ? undefined : ts,
+              };
+            });
+
+            const sorted = mapped.slice().sort((a, b) => {
+              const aa = a.sortTs ?? Number.MAX_SAFE_INTEGER;
+              const bb = b.sortTs ?? Number.MAX_SAFE_INTEGER;
+              return aa - bb;
+            });
+
+            if (mounted) {
+              setActivities(sorted);
+            }
+          } catch (err: any) {
+            console.error('Error refreshing trip:', err);
+          }
+        }
       };
 
       checkUpdates();
@@ -175,46 +289,8 @@ export default function TripDetails() {
       return () => {
         mounted = false;
       };
-    }, [])
+    }, [tripId, params, t])
   );
-
-  const onEdit = (a: Activity) => {
-    const encodedTitle = encodeURIComponent(a.title);
-    router.push(`/add-activity?mode=edit&title=${encodedTitle}&key=${a.key}`);
-  };
-
-  const confirmAndDelete = () => {
-    if (!Number.isFinite(tripId) || tripId <= 0) {
-      Alert.alert(t('common.error'), t('tripDetails.invalidId'));
-      return;
-    }
-
-    Alert.alert(
-      t('tripDetails.deleteTitle'),
-      t('tripDetails.deleteMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            if (deleting) return;
-            setDeleting(true);
-            try {
-              await apiDelete(`/trips/${tripId}`);
-              Alert.alert(t('common.success'), t('tripDetails.deleteSuccess'));
-              router.back();
-            } catch (e: any) {
-              const msg = e?.message || t('tripDetails.deleteError');
-              Alert.alert(t('common.error'), msg);
-            } finally {
-              setDeleting(false);
-            }
-          }
-        }
-      ]
-    );
-  };
 
   const handleReviewSaved = async () => {
     setShowReviewForm(false);
@@ -226,23 +302,24 @@ export default function TripDetails() {
         setReview(reviewData);
       }
     } catch (err: any) {
-      // Review doesn't exist, ignore
-      console.error('Error reloading review:', err);
+      // Review doesn't exist or endpoint not found, ignore (don't log expected errors)
+      const status = err?.status || (typeof err === 'string' && err.includes('Cannot GET') ? 404 : null);
+      if (status !== 404 && status !== null) {
+        // Only log non-404 errors
+        console.error('Error reloading review:', err?.message || err);
+      }
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
+    <SecondaryLayout title={destination}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
           <Text style={styles.subtitle}>{dateRangeStr}</Text>
           {isCompleted && (
             <View style={styles.completedBadge}>
-              <MaterialIcons name="check-circle" size={16} color="#4CAF50" />
+              <MaterialIcons name="check-circle" size={16} color={AppColors.success} />
               <Text style={styles.completedBadgeText}>{t('tripDetails.completedBadge')}</Text>
             </View>
           )}
@@ -267,7 +344,7 @@ export default function TripDetails() {
                     <MaterialIcons
                       name={review ? 'edit' : 'add-circle-outline'}
                       size={20}
-                      color="#FF3951"
+                      color={AppColors.primary}
                     />
                     <Text style={styles.editReviewButtonText}>
                       {review ? t('common.edit') : t('common.add')}
@@ -282,7 +359,7 @@ export default function TripDetails() {
                           key={star}
                           name={star <= (review.rating || 0) ? 'star' : 'star-border'}
                           size={20}
-                          color={star <= (review.rating || 0) ? '#FFD700' : '#CCC'}
+                          color={star <= (review.rating || 0) ? '#FFD700' : AppColors.textDisabled}
                         />
                       ))}
                       <Text style={styles.reviewRatingText}>
@@ -318,16 +395,16 @@ export default function TripDetails() {
 
         {loading ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 20 }}>
-            <ActivityIndicator size="small" color="#FF3951" />
-            <Text style={{ marginTop: 8, color: '#777' }}>{t('tripDetails.loadingActivities')}</Text>
+            <ActivityIndicator size="small" color={AppColors.primary} />
+            <Text style={{ marginTop: 8, color: AppColors.textSecondary }}>{t('tripDetails.loadingActivities')}</Text>
           </View>
         ) : error ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
-            <Text style={{ color: '#B00020' }}>{error}</Text>
+            <Text style={{ color: AppColors.error }}>{error}</Text>
           </View>
         ) : activities.length === 0 ? (
           <View style={{ width: '100%', alignItems: 'center', paddingVertical: 16 }}>
-            <Text style={{ color: '#777' }}>{t('tripDetails.noActivities')}</Text>
+            <Text style={{ color: AppColors.textSecondary }}>{t('tripDetails.noActivities')}</Text>
           </View>
         ) : (
           activities.map((a) => (
@@ -335,51 +412,34 @@ export default function TripDetails() {
               {a.img ? (
                 <Image source={{ uri: a.img }} style={styles.activityImage} resizeMode="cover" />
               ) : (
-                <View style={[styles.activityImage, { backgroundColor: '#CFCFCF' }]} />
+                <View style={[styles.activityImage, { backgroundColor: AppColors.borderLight }]} />
               )}
 
               <View style={styles.activityContent}>
                 <Text style={styles.activityTitle}>{a.title}</Text>
                 <Text style={styles.activityDate}>{a.dateStr}</Text>
               </View>
-              <TouchableOpacity style={styles.pencil} onPress={() => onEdit(a)}>
-                <MaterialIcons name="edit" size={20} color="#555" />
-              </TouchableOpacity>
             </View>
           ))
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
-      <View style={styles.actionButtons}>
-        {isCompleted && Number.isFinite(tripId) && (
-          <ShareTripButton tripId={tripId} tripDestination={destination} />
-        )}
-        <TouchableOpacity
-          style={[styles.deleteBtn, deleting && { opacity: 0.6 }]}
-          onPress={confirmAndDelete}
-          disabled={deleting}
-          accessibilityRole="button"
-          accessibilityLabel={t('tripDetails.deleteButton')}
-        >
-          <MaterialIcons name="delete-outline" size={22} color="#2d2d2dff" />
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+    </SecondaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FCFCFC' },
-  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 50 : 50, alignItems: 'center' },
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+  scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: '800', color: '#000' },
-  subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },
+  title: { fontSize: 26, fontWeight: '800', color: AppColors.text },
+  subtitle: { marginTop: 8, fontSize: 16, color: AppColors.textTertiary },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: StateColors.successLight,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -388,16 +448,16 @@ const styles = StyleSheet.create({
   completedBadgeText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#4CAF50',
+    color: AppColors.success,
   },
-  sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: '#111' },
+  sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: AppColors.text },
   reviewSection: {
     width: '100%',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -417,7 +477,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   editReviewButtonText: {
-    color: '#FF3951',
+    color: AppColors.primary,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -434,78 +494,42 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     fontSize: 14,
     fontWeight: '600',
-    color: '#333',
+    color: AppColors.text,
   },
   reviewTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111',
+    color: AppColors.text,
     marginBottom: 8,
   },
   reviewComment: {
     fontSize: 15,
-    color: '#666',
+    color: AppColors.textSecondary,
     lineHeight: 22,
   },
   noReviewText: {
     fontSize: 14,
-    color: '#999',
+    color: AppColors.textMutedDark,
     fontStyle: 'italic',
     textAlign: 'center',
     paddingVertical: 20,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    position: 'absolute',
-    right: 18,
-    top: 36,
-    gap: 8,
-      paddingTop: Platform.OS === 'android' ? 0 : 20,
-  },
-
   activityCard: {
     width: '100%',
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 14,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: AppColors.backgroundTertiary,
     marginTop: 10,
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.04,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  activityImage: { width: 56, height: 56, borderRadius: 10, marginRight: 12, backgroundColor: '#ddd' },
+  activityImage: { width: 56, height: 56, borderRadius: 10, marginRight: 12, backgroundColor: AppColors.borderLight },
   activityContent: { flex: 1 },
-  activityTitle: { fontSize: 16, fontWeight: '700', color: '#111' },
-  activityDate: { marginTop: 4, fontSize: 13, color: '#777' },
-
-  pencil: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  addBtn: {
-    width: '100%',
-    backgroundColor: '#FF3951',
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 18,
-  },
-  addBtnText: { color: '#fff', fontSize: 18, fontWeight: '700' },
-
-  deleteBtn: {
-    backgroundColor: '#edededff',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    elevation: 6,
-  },
+  activityTitle: { fontSize: 16, fontWeight: '700', color: AppColors.text },
+  activityDate: { marginTop: 4, fontSize: 13, color: AppColors.textSecondary },
 });

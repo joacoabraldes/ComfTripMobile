@@ -1,29 +1,75 @@
 import { apiGet } from '@/helpers/api';
 import { formatDateRange } from '@/helpers/dateUtils';
-import { sortTripsByStatus, getTripStatus, getTripStatusValue } from '@/helpers/tripUtils';
+import { sortTripsByStatus, getTripStatus, getTripStatusValue, isTripCompleted } from '@/helpers/tripUtils';
 import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import {
-    ActivityIndicator,
-    FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View
-} from 'react-native';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import PrimaryLayout from '@/components/layouts/PrimaryLayout';
+import { Ionicons } from '@expo/vector-icons';
+import { ShadowColors } from '@/constants/Colors';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
+import ContextMenu from '@/components/ui/ContextMenu';
+import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function TripsScreen() {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const AppColors = useAppColors();
 
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSortModal, setShowSortModal] = useState<boolean>(false);
+  const [sortOption, setSortOption] = useState<SortOption>('date');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Generate dynamic styles
+  const styles = getStyles(AppColors);
 
   const cardWidth = Math.min(340, Math.round(width - 40));
+
+  // Helper to parse images from location imagenes field
+  const safeParseImages = (im: any): string[] => {
+    if (!im) return [];
+    if (Array.isArray(im)) {
+      return im
+        .map((it) => {
+          if (!it) return null;
+          if (typeof it === 'string') return it;
+          if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
+          return String(it);
+        })
+        .filter(Boolean) as string[];
+    }
+    if (typeof im === 'string') {
+      try {
+        const parsed = JSON.parse(im);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
+            .filter(Boolean);
+        }
+        return [String(parsed)];
+      } catch (e) {
+        if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
+        return [im];
+      }
+    }
+    if (typeof im === 'object' && im !== null) {
+      if (Array.isArray((im as any).urls)) return (im as any).urls;
+      if ((im as any).url) return [(im as any).url];
+      if ((im as any).src) return [(im as any).src];
+    }
+    return [];
+  };
 
   const fetchTrips = useCallback(async () => {
     setError(null);
@@ -32,9 +78,21 @@ export default function TripsScreen() {
       const data = res?.data ?? res;
       const tripsData = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []) as Trip[];
       
+      // Enrich trips with first place image (only if places are already included)
+      const enrichedTrips = tripsData.map((trip) => {
+        const places = trip.places || [];
+        if (places.length > 0 && places[0]?.location?.imagenes) {
+          const images = safeParseImages(places[0].location.imagenes);
+          if (images.length > 0 && typeof images[0] === 'string') {
+            return { ...trip, firstPlaceImage: images[0] };
+          }
+        }
+        return trip;
+      });
+      
       // Sort trips by status: upcoming > current > past
-      const sortedTrips = sortTripsByStatus(tripsData);
-      setTrips(sortedTrips);
+      const sortedTrips = sortTripsByStatus(enrichedTrips);
+      setAllTrips(sortedTrips);
     } catch (err: any) {
       console.error('Error fetching trips', err);
       setError(err?.message || t('trips.failedToLoad'));
@@ -42,7 +100,7 @@ export default function TripsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchTrips();
@@ -53,14 +111,61 @@ export default function TripsScreen() {
     fetchTrips();
   }, [fetchTrips]);
 
+  // Filter only current and upcoming trips
+  const currentAndUpcomingTrips = useMemo(() => {
+    return allTrips.filter(trip => !isTripCompleted(trip));
+  }, [allTrips]);
+
+  // Sort trips based on selected option
+  const sortedTrips = useMemo(() => {
+    const trips = [...currentAndUpcomingTrips];
+    
+    trips.sort((a, b) => {
+      let comparison = 0;
+      
+      if (sortOption === 'date') {
+        const aDate = new Date(a.start_date || '').getTime();
+        const bDate = new Date(b.start_date || '').getTime();
+        comparison = aDate - bDate;
+      } else if (sortOption === 'name') {
+        const aName = (a.destination || '').toLowerCase();
+        const bName = (b.destination || '').toLowerCase();
+        comparison = aName.localeCompare(bName);
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return trips;
+  }, [currentAndUpcomingTrips, sortOption, sortOrder]);
+
+  const handleSortChange = (sort: SortOption, order: SortOrder) => {
+    setSortOption(sort);
+    setSortOrder(order);
+    setShowSortModal(false);
+  };
+
+  const menuOptions = [
+    {
+      label: t('trips.viewHistory'),
+      icon: 'time-outline' as const,
+      onPress: () => router.push('../(trips)/trip-history'),
+    },
+    {
+      label: t('trips.sortTrips'),
+      icon: 'swap-vertical-outline' as const,
+      onPress: () => setShowSortModal(true),
+    },
+  ];
+
 
   const renderItem = ({ item }: { item: Trip }) => {
     const status = getTripStatus(item.start_date, item.end_date);
     const statusValue = getTripStatusValue(item.start_date, item.end_date);
     
-    const bgColor = statusValue === 2 ? '#F8F1EF' : (statusValue === 1 ? '#FFFFFF' : '#F1F1F1');
-    const accent = statusValue === 2 ? '#FFD8D8' : (statusValue === 1 ? '#FF3951' : '#CACACA');
-    const badgeTextColor = statusValue === 1 ? '#FFFFFF' : '#333';
+    const bgColor = statusValue === 2 ? AppColors.accentCard : (statusValue === 1 ? AppColors.backgroundPrimary : AppColors.backgroundTertiary);
+    const accent = statusValue === 2 ? AppColors.accent : (statusValue === 1 ? AppColors.primary : AppColors.textDisabled);
+    const badgeTextColor = statusValue === 1 ? AppColors.white : AppColors.text;
     
     const statusLabels: Record<'upcoming' | 'current' | 'past', string> = {
       upcoming: t('trips.status.upcoming'),
@@ -68,8 +173,8 @@ export default function TripsScreen() {
       past: t('trips.status.past'),
     };
 
-    // Try to guess a fallback flag image: if trip has flag_url use it, else placeholder
-    const imageSource = item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7'; // small flag placeholder
+    // Use first place image, fallback to flag_url, then placeholder
+    const imageSource = (item as any).firstPlaceImage || item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7';
 
     return (
       <TouchableOpacity
@@ -78,7 +183,7 @@ export default function TripsScreen() {
         onPress={() => {
           // Navegar a detalles pasando los campos importantes como params
           router.push({
-            pathname: '../trip-details',
+            pathname: '/(trips)/trip-details',
             params: {
               id: String(item.id),
               destination: item.destination,
@@ -107,34 +212,36 @@ export default function TripsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.screen}>
-          <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#FF3951" />
-              <Text style={styles.loadingText}>{t('trips.loading')}</Text>
-          </View>
-      </View>
+      <PrimaryLayout title={t('trips.title')}>
+        <View style={styles.center}>
+          <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
+        </View>
+      </PrimaryLayout>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.center}>
-        <Text style={{ color: '#B00020', marginBottom: 8 }}>{t('common.error')}: {error}</Text>
-        <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
-          <Text style={{ color: '#fff' }}>{t('common.retry')}</Text>
-        </TouchableOpacity>
-      </View>
+      <PrimaryLayout title={t('trips.title')}>
+        <View style={styles.center}>
+          <Text style={{ color: AppColors.error, marginBottom: 8 }}>{t('common.error')}: {error}</Text>
+          <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
+            <Text style={{ color: AppColors.white }}>{t('common.retry')}</Text>
+          </TouchableOpacity>
+        </View>
+      </PrimaryLayout>
     );
   }
 
   return (
-    <View style={[styles.screen]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{t('trips.title')}</Text>
-      </View>
+    <PrimaryLayout 
+      title={t('trips.title')}
+      rightActions={<ContextMenu options={menuOptions} />}
+    >
+      <View style={styles.screen}>
 
       <FlatList
-        data={trips}
+        data={sortedTrips}
         keyExtractor={(trip) => String(trip.id)}
         renderItem={renderItem}
         style={{ flex: 1, width: '100%' }}
@@ -143,30 +250,33 @@ export default function TripsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text style={{ color: '#777' }}>{t('trips.empty')}</Text>
+            <Text style={{ color: AppColors.textSecondary }}>{t('trips.empty')}</Text>
           </View>
         }
       />
 
-      <TouchableOpacity
-        style={[
-          styles.fab,
-          { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
-        ]}
-        onPress={() => router.push('/add-trip')}
-        accessibilityLabel={t('trips.addTrip')}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
-    </View>
+        <FloatingActionButton
+          onPress={() => router.push('/(trips)/add-trip')}
+          accessibilityLabel={t('trips.addTrip')}
+          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
+          right={20}
+        />
+      </View>
+
+      <SortTripsModal
+        visible={showSortModal}
+        onClose={() => setShowSortModal(false)}
+        currentSort={sortOption}
+        currentOrder={sortOrder}
+        onSortChange={handleSortChange}
+      />
+    </PrimaryLayout>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 40, alignItems: 'center', position: 'relative', overflow: 'visible' },
-  header: { width: '100%', alignItems: 'center', marginTop: 28, marginBottom: 6 },
-  title: { color: '#252525', fontSize: 30, fontWeight: '800' },
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+  screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
 
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
 
@@ -175,8 +285,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
+    backgroundColor: AppColors.backgroundCard,
     // shadow
-    shadowColor: '#000',
+    shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -188,12 +299,12 @@ const styles = StyleSheet.create({
     height: 76,
     borderRadius: 12,
     marginRight: 12,
-    backgroundColor: '#ddd',
+    backgroundColor: AppColors.borderLight,
   },
 
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: '#000', fontWeight: '600' },
-  dates: { fontSize: 14, color: '#757575', marginTop: 4 },
+  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
+  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
 
   badge: {
     paddingHorizontal: 8,
@@ -203,32 +314,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     minWidth: 64,
   },
-  badgeText: { fontSize: 12, color: '#333', fontWeight: '700' },
+  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 8,
   },
-  fab: {
-    position: 'absolute',
-    right: 30,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#FF3951',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    zIndex: 9999,
-  },
-  fabText: { color: '#fff', fontSize: 32, lineHeight: 34, fontWeight: '600' },
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
 });

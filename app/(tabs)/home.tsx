@@ -6,13 +6,12 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -167,7 +166,6 @@ export default function HomeScreen() {
   // load trips
   useEffect(() => {
     let mounted = true;
-    setLoadingTrips(true);
     (async () => {
       try {
         const res = await apiGet('/trips');
@@ -477,17 +475,6 @@ export default function HomeScreen() {
 
   const showHeaderSection = (!!ongoingTrip || (!!upcomingTrip && !ongoingTrip)) && !loadingTrips;
 
-    if (loadingTrips) {
-        return (
-            <View style={styles.safeArea}>
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#FF3951" />
-                    <Text style={styles.loadingText}>{t('common.loading')}</Text>
-                </View>
-            </View>
-        );
-    }
-
   return (
     <PrimaryLayout title={t('tabs.home')}>
       <View style={styles.root}>
@@ -738,7 +725,4 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     color: AdditionalColors.lightGray,
     lineHeight: 18,
   },
-
-    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-    loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
 });

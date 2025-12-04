@@ -1,6 +1,6 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import { IconSymbol } from "@/components/ui/IconSymbol";
-import BackButton from "@/components/BackButton";
+import { Ionicons } from "@expo/vector-icons";
+import SecondaryLayout from "@/components/layouts/SecondaryLayout";
 import { apiGet, tokenStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
@@ -13,11 +13,17 @@ import {
   TouchableOpacity,
   useWindowDimensions,
   View,
+  ScrollView,
+  Modal,
+  Pressable,
 } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from "@react-navigation/native";
-import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from "@/i18n";
+import { ShadowColors } from "@/constants/Colors";
+import { getResponsiveValues, responsiveSize } from "@/helpers/responsive";
+import TextButton from "@/components/buttons/TextButton";
+import { useTheme, ThemeMode } from "@/hooks/useTheme";
+import { useAppColors } from "@/hooks/useAppColors";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -63,16 +69,19 @@ export default function ProfileScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const { t, language, setLanguage } = useTranslation();
+  const { themeMode, setThemeMode } = useTheme();
+  const AppColors = useAppColors();
   
   // Tamaños relativos basados en el tamaño de pantalla
-  const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.14)));
-  const btnRadius = Math.round(btnHeight * 0.22);
-  const avatarSize = Math.round(Math.max(80, Math.min(100, width * 0.25)));
-  const avatarHaloSize = Math.round(avatarSize * 1.2);
-  const iconSize = Math.round(Math.max(16, Math.min(20, width * 0.045)));
+  const responsive = getResponsiveValues(width, height);
+  const btnHeight = responsive.heights.button;
+  const btnRadius = responsive.borderRadius.button;
+  const iconSize = responsiveSize(width, 0.045, 16, 20);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showThemeModal, setShowThemeModal] = useState(false);
 
   // helper: try to read token a few times (handles small race where login sets token just before navigation)
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
@@ -224,8 +233,11 @@ export default function ProfileScreen() {
     ]);
   }
 
+  // Generate dynamic styles early so they're available everywhere
+  const styles = getStyles(AppColors);
+
   function handleEdit() {
-    router.push("../(profile)/edit");
+    router.push("../(profile)/edit-profile");
   }
   function handleChangePassword() {
     router.push("../(profile)/change-password");
@@ -233,11 +245,11 @@ export default function ProfileScreen() {
 
   if (loading || !profile) {
     return (
-      <SafeAreaView style={CommonStyles.safeArea}>
+      <SecondaryLayout title={t('profile.profile')}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
         </View>
-      </SafeAreaView>
+      </SecondaryLayout>
     );
   }
 
@@ -274,20 +286,20 @@ export default function ProfileScreen() {
   const displayBirthdate = formatDateOnly(profile.birthdate);
 
   // Tamaños relativos para textos y espaciados
-  const fontSizeSmall = Math.round(Math.max(12, Math.min(14, width * 0.033)));
-  const fontSizeMedium = Math.round(Math.max(14, Math.min(16, width * 0.038)));
-  const fontSizeLarge = Math.round(Math.max(16, Math.min(18, width * 0.043)));
-  const paddingSmall = Math.round(Math.max(10, Math.min(12, width * 0.03)));
-  const paddingMedium = Math.round(Math.max(12, Math.min(14, width * 0.035)));
-  const paddingLarge = Math.round(Math.max(14, Math.min(16, width * 0.04)));
-  const borderRadius = Math.round(Math.max(10, Math.min(12, width * 0.03)));
+  const fontSizeSmall = responsive.fontSizes.small;
+  const fontSizeMedium = responsive.fontSizes.medium;
+  const fontSizeLarge = responsive.fontSizes.large;
+  const paddingSmall = responsive.padding.small;
+  const paddingMedium = responsive.padding.medium;
+  const paddingLarge = responsive.padding.large;
+  const borderRadius = responsive.borderRadius.default;
 
-  function InfoRow({ label, value, iconName, iconSize }: { label: string; value: string; iconName?: string; iconSize?: number }) {
+  function InfoRow({ label, value, iconName, iconSize }: { label: string; value: string; iconName?: keyof typeof Ionicons.glyphMap; iconSize?: number }) {
     return (
       <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
         <View style={styles.infoLeft}>
-          {iconName ? <IconSymbol name={iconName as any} size={iconSize || 18} color="#666" /> : null}
-          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>{label}</Text>
+          {iconName ? <Ionicons name={iconName} size={iconSize || 18} color={AppColors.textSecondary} /> : null}
+          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: iconName ? responsive.spacing.small : 0 }]}>{label}</Text>
         </View>
         <Text style={[styles.infoValue, { fontSize: fontSizeMedium }]}>{value}</Text>
       </View>
@@ -295,143 +307,298 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView style={CommonStyles.safeArea}>
-      <View style={CommonStyles.backButtonContainer}>
-        <BackButton />
-      </View>
-      <View style={styles.container}>
-        <View style={[styles.avatarWrap, { height: Math.round(height * 0.15) }]}>
-          <View style={[styles.avatarHalo, { width: avatarHaloSize, height: avatarHaloSize }]} />
-          <TouchableOpacity activeOpacity={0.8} style={[styles.avatar, { width: avatarSize, height: avatarSize }]}>
-            <IconSymbol name="person.fill" size={Math.round(avatarSize * 0.65)} color="#1E1E1E" />
-          </TouchableOpacity>
-        </View>
-
+    <SecondaryLayout title={t('profile.profile')}>
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Card */}
         <View style={[styles.infoCard, { 
           borderRadius: borderRadius,
           paddingVertical: paddingMedium,
           paddingHorizontal: paddingMedium,
-          marginTop: Math.round(height * 0.008)
+          marginTop: 16,
+          marginHorizontal: 16,
         }]}>
-          <InfoRow label={t('profile.user')} value={displayName} iconName="person.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.phone')} value={displayPhone} iconName="phone" iconSize={iconSize} />
-          <InfoRow label={t('profile.nationality')} value={displayNationality} iconName="flag.fill" iconSize={iconSize} />
-          <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="birthday.cake.fill" iconSize={iconSize} />
+          {/* Profile Photo */}
+          <View style={styles.profilePhotoContainer}>
+            <View style={[styles.profilePhoto, { width: responsiveSize(width, 0.25, 80, 120), height: responsiveSize(width, 0.25, 80, 120), borderRadius: responsiveSize(width, 0.125, 40, 60) }]}>
+              <Ionicons name="person" size={responsiveSize(width, 0.12, 40, 60)} color={AppColors.textSecondary} />
+            </View>
+          </View>
+          
+          <InfoRow label={t('profile.user')} value={displayName} iconName="person" iconSize={iconSize} />
+          <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail" iconSize={iconSize} />
+          <InfoRow label={t('profile.phone')} value={displayPhone} iconName="call" iconSize={iconSize} />
+          <InfoRow label={t('profile.nationality')} value={displayNationality} iconName="flag" iconSize={iconSize} />
+          <InfoRow label={t('profile.birthdate')} value={displayBirthdate} iconName="calendar" iconSize={iconSize} />
           
           {/* Language Selector */}
-          <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
+          <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
             <View style={styles.infoLeft}>
-              <IconSymbol name="globe" size={iconSize} color="#666" />
-              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>
+              <Ionicons name="globe" size={iconSize} color={AppColors.textSecondary} />
+              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: responsive.spacing.small }]}>
                 {t('profile.language')}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <TouchableOpacity
+              onPress={() => setShowLanguageModal(true)}
+              style={styles.languageButton}
+            >
+              <Text style={[styles.languageButtonText, { fontSize: fontSizeMedium }]}>
+                {language === 'es' ? t('profile.spanish') : t('profile.english')}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textSecondary} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Theme Selector */}
+          <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
+            <View style={styles.infoLeft}>
+              <Ionicons name="color-palette" size={iconSize} color={AppColors.textSecondary} />
+              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: responsive.spacing.small }]}>
+                {t('profile.theme')}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowThemeModal(true)}
+              style={styles.languageButton}
+            >
+              <Text style={[styles.languageButtonText, { fontSize: fontSizeMedium }]}>
+                {themeMode === 'light' ? t('profile.themeLight') : 
+                 themeMode === 'dark' ? t('profile.themeDark') : 
+                 t('profile.themeAuto')}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textSecondary} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsContainer}>
+          {/* Row with Edit Profile and Change Password */}
+          <View style={styles.textButtonRow}>
+            <TextButton
+              title={t('profile.editProfile')}
+              onPress={handleEdit}
+              textStyle={styles.smallTextButton}
+              style={styles.leftTextButton}
+            />
+            <TextButton
+              title={t('profile.changePassword')}
+              onPress={handleChangePassword}
+              textStyle={styles.smallTextButton}
+              style={styles.rightTextButton}
+            />
+          </View>
+
+          {/* Logout Button */}
+          <View style={[styles.buttonRow, { marginTop: 32 }]}>
+            <PrimaryButton
+              title={t('profile.logout')}
+              onPress={handleLogout}
+              height={btnHeight}
+              borderRadius={btnRadius}
+              style={[styles.actionButton, { width: '100%' }]}
+            />
+          </View>
+        </View>
+      </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { fontSize: fontSizeLarge }]}>
+                {t('profile.selectLanguage')}
+              </Text>
               <TouchableOpacity
-                onPress={() => setLanguage('es')}
+                onPress={() => setShowLanguageModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalOptions}>
+              <TouchableOpacity
                 style={[
-                  styles.languageButton,
-                  language === 'es' && styles.languageButtonActive,
-                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
+                  styles.modalOption,
+                  language === 'es' && styles.modalOptionSelected,
                 ]}
+                onPress={() => {
+                  setLanguage('es');
+                  setShowLanguageModal(false);
+                }}
               >
                 <Text style={[
-                  { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'es' ? { color: '#fff' } : { color: '#666' }
+                  styles.modalOptionText,
+                  { fontSize: fontSizeMedium },
+                  language === 'es' && styles.modalOptionTextSelected,
                 ]}>
                   {t('profile.spanish')}
                 </Text>
+                {language === 'es' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
               </TouchableOpacity>
+              
               <TouchableOpacity
-                onPress={() => setLanguage('en')}
                 style={[
-                  styles.languageButton,
-                  language === 'en' && styles.languageButtonActive,
-                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
+                  styles.modalOption,
+                  language === 'en' && styles.modalOptionSelected,
                 ]}
+                onPress={() => {
+                  setLanguage('en');
+                  setShowLanguageModal(false);
+                }}
               >
                 <Text style={[
-                  { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'en' ? { color: '#fff' } : { color: '#666' }
+                  styles.modalOptionText,
+                  { fontSize: fontSizeMedium },
+                  language === 'en' && styles.modalOptionTextSelected,
                 ]}>
                   {t('profile.english')}
                 </Text>
+                {language === 'en' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
-        <View style={[styles.actions, { 
-          marginTop: Math.round(height * 0.018),
-          paddingHorizontal: paddingLarge
-        }]}>
-          <View style={styles.buttonRow}>
-            <PrimaryButton
-              title={t('profile.editProfile')}
-              onPress={handleEdit}
-              height={btnHeight}
-              borderRadius={btnRadius}
-              style={{ width: Math.round(width * 0.6) }}
-            />
-          </View>
+      {/* Theme Selection Modal */}
+      <Modal
+        visible={showThemeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemeModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowThemeModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { fontSize: fontSizeLarge }]}>
+                {t('profile.selectTheme')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowThemeModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'light' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('light');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="sunny" size={20} color={themeMode === 'light' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'light' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeLight')}
+                  </Text>
+                </View>
+                {themeMode === 'light' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'dark' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('dark');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="moon" size={20} color={themeMode === 'dark' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'dark' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeDark')}
+                  </Text>
+                </View>
+                {themeMode === 'dark' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
 
-          <View style={[styles.buttonRow, { marginTop: Math.round(height * 0.018) }]}>
-            <PrimaryButton
-              title={t('profile.changePassword')}
-              onPress={handleChangePassword}
-              height={btnHeight}
-              borderRadius={btnRadius}
-              style={{ width: Math.round(width * 0.6) }}
-            />
-          </View>
-        </View>
-
-        <View style={[styles.logoutWrap, { bottom: Math.round(height * 0.018) }]}>
-          <PrimaryButton
-            title={t('profile.logout')}
-            onPress={handleLogout}
-            height={Math.round(btnHeight)}
-            borderRadius={Math.round(btnRadius)}
-            style={{ width: Math.round(width * 0.6), backgroundColor: "#eee"}}
-            textStyle={{color: "#000000" }}
-          />
-        </View>
-      </View>
-    </SafeAreaView>
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  themeMode === 'auto' && styles.modalOptionSelected,
+                ]}
+                onPress={async () => {
+                  await setThemeMode('auto');
+                  setShowThemeModal(false);
+                }}
+              >
+                <View style={styles.modalOptionLeft}>
+                  <Ionicons name="phone-portrait" size={20} color={themeMode === 'auto' ? AppColors.primary : AppColors.textSecondary} />
+                  <Text style={[
+                    styles.modalOptionText,
+                    { fontSize: fontSizeMedium },
+                    themeMode === 'auto' && styles.modalOptionTextSelected,
+                  ]}>
+                    {t('profile.themeAuto')}
+                  </Text>
+                </View>
+                {themeMode === 'auto' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </SecondaryLayout>
   );
 }
 
-const RED = "#FF3951";
-
-const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: Platform.OS === 'ios' ? 50 : 40 },
-
-  avatarWrap: {
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-      marginBottom: 20
+// Create dynamic styles function
+const getStyles = (colors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+  scrollView: {
+    flex: 1,
   },
-  avatarHalo: {
-    position: "absolute",
-    borderRadius: 9999,
-    backgroundColor: "rgba(255,57,81,0.15)",
-    top: Math.round(8),
+  scrollContent: {
+    paddingBottom: 32,
   },
-  avatar: {
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "hidden",
-  },
-
   infoCard: {
-    width: "85%",
-    backgroundColor: "#fff",
+    backgroundColor: colors.backgroundPrimary,
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: ShadowColors.black,
         shadowOpacity: 0.08,
         shadowRadius: 8,
         shadowOffset: { width: 0, height: 3 },
@@ -446,52 +613,150 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#EEE",
+    borderBottomColor: colors.borderLight,
   },
   infoLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  infoLabel: { color: "#888", fontWeight: "500" },
-  infoValue: { color: "#111", fontWeight: "600" },
+  infoLabel: { color: colors.textSecondary, fontWeight: "500" },
+  infoValue: { color: colors.text, fontWeight: "600" },
   languageButton: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    backgroundColor: "#f5f5f5",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.backgroundInputMuted,
   },
-  languageButtonActive: {
-    backgroundColor: RED,
-    borderColor: RED,
+  languageButtonText: {
+    color: colors.text,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: colors.backgroundPrimary,
+    borderRadius: 16,
+    width: "85%",
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.borderLight,
+  },
+  modalTitle: {
+    color: colors.text,
+    fontWeight: "700",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalOptions: {
+    padding: 8,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginVertical: 4,
+    backgroundColor: colors.backgroundTertiary,
+  },
+  modalOptionLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  modalOptionSelected: {
+    backgroundColor: colors.primaryLight,
+  },
+  modalOptionText: {
+    color: colors.text,
+    fontWeight: "500",
+  },
+  modalOptionTextSelected: {
+    color: colors.primary,
+    fontWeight: "600",
   },
 
   sectionTitle: {
     fontSize: 14,
     fontWeight: "700",
-    color: "#111",
+    color: colors.text,
     marginBottom: 6,
     marginTop: 6,
   },
   interestsText: {
     textAlign: "center",
-    color: "#555",
+    color: colors.textSecondary,
     fontSize: 14,
     paddingHorizontal: 12,
   },
 
-  actions: {
-    marginTop: 14,
+  profilePhotoContainer: {
     alignItems: "center",
-    width: "100%",
+    marginBottom: 24,
+  },
+  profilePhoto: {
+    backgroundColor: colors.backgroundInputMuted,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: colors.borderLight,
+  },
+  actionsContainer: {
+    marginTop: 24,
     paddingHorizontal: 16,
+    width: "100%",
+  },
+  textButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  leftTextButton: {
+    alignSelf: "flex-start",
+  },
+  rightTextButton: {
+    alignSelf: "flex-end",
+  },
+  smallTextButton: {
+    fontSize: 14,
   },
   buttonRow: {
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-
-  logoutWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
+  actionButton: {
+    minWidth: 0,
   },
-
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  centered: { 
+    flex: 1, 
+    alignItems: "center", 
+    justifyContent: "center",
+    paddingTop: 100,
+  },
 });
