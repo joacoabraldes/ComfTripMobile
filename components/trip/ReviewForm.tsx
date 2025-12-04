@@ -6,8 +6,6 @@ import { useTranslation } from '@/i18n';
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ShadowColors } from '@/constants/Colors';
-import { useAppColors } from '@/hooks/useAppColors';
 
 interface ReviewFormProps {
   tripId: number;
@@ -22,8 +20,6 @@ interface ReviewFormProps {
 
 export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFormProps) {
   const { t } = useTranslation();
-  const AppColors = useAppColors();
-  const styles = getStyles(AppColors);
   const [rating, setRating] = useState<number>(existingReview?.rating || 0);
   const [title, setTitle] = useState<string>(existingReview?.title || '');
   const [comment, setComment] = useState<string>(existingReview?.comment || '');
@@ -114,7 +110,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
   if (loading) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="small" color={AppColors.primary} />
+        <ActivityIndicator size="small" color="#FF3951" />
         <Text style={styles.loadingText}>{t('review.loadingReview')}</Text>
       </View>
     );
@@ -137,7 +133,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
               <MaterialIcons
                 name={star <= rating ? 'star' : 'star-border'}
                 size={32}
-                color={star <= rating ? '#FFD700' : AppColors.textDisabled}
+                color={star <= rating ? '#FFD700' : '#CCC'}
               />
             </TouchableOpacity>
           ))}
@@ -154,7 +150,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
           value={title}
           onChangeText={setTitle}
           placeholder={t('review.placeholder.title')}
-          placeholderTextColor={AppColors.textMutedDark}
+          placeholderTextColor="#999"
           maxLength={100}
           editable={!saving}
         />
@@ -167,7 +163,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
           value={comment}
           onChangeText={setComment}
           placeholder={t('review.placeholder.comment')}
-          placeholderTextColor={AppColors.textMutedDark}
+          placeholderTextColor="#999"
           multiline
           numberOfLines={5}
           textAlignVertical="top"
@@ -183,7 +179,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
         disabled={saving}
       >
         {saving ? (
-          <ActivityIndicator size="small" color={AppColors.white} />
+          <ActivityIndicator size="small" color="#FFF" />
         ) : (
           <Text style={styles.saveButtonText}>
             {existingReview ? t('review.updateButton') : t('review.saveButton')}
@@ -194,15 +190,14 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
   );
 }
 
-// Create dynamic styles function
-const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: AppColors.backgroundCard,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
-    shadowColor: ShadowColors.black,
+    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -210,13 +205,13 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   loadingText: {
     marginTop: 8,
-    color: AppColors.textSecondary,
+    color: '#777',
     fontSize: 14,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
-    color: AppColors.text,
+    color: '#111',
     marginBottom: 20,
   },
   ratingContainer: {
@@ -224,7 +219,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   label: {
     fontSize: 15,
-    color: AppColors.text,
+    color: '#333',
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -239,20 +234,20 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   ratingText: {
     fontSize: 14,
-    color: AppColors.textTertiary,
+    color: '#757575',
     fontStyle: 'italic',
   },
   inputContainer: {
     marginBottom: 16,
   },
   input: {
-    backgroundColor: AppColors.backgroundTertiary,
+    backgroundColor: '#F5F5F5',
     borderRadius: 10,
     padding: 12,
     fontSize: 16,
-    color: AppColors.text,
+    color: '#111',
     borderWidth: 1,
-    borderColor: AppColors.borderLight,
+    borderColor: '#E5E5E5',
   },
   textArea: {
     minHeight: 100,
@@ -260,12 +255,12 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   charCount: {
     fontSize: 12,
-    color: AppColors.textMutedDark,
+    color: '#999',
     textAlign: 'right',
     marginTop: 4,
   },
   saveButton: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: '#FF3951',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
@@ -277,7 +272,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     opacity: 0.6,
   },
   saveButtonText: {
-    color: AppColors.white,
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },

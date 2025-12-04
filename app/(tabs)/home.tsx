@@ -1,6 +1,7 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import PrimaryLayout from '@/components/layouts/PrimaryLayout';
-import { Ionicons } from '@expo/vector-icons';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
+import MapSvg from '@/components/icons/MapSvg';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 import { apiGet } from '@/helpers/api';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -14,14 +15,10 @@ import {
     useWindowDimensions,
     View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/i18n';
-import LogoSvg from '@/components/icons/LogoSvg';
-import { ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
-import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
-import FloatingActionButton from '@/components/buttons/FloatingActionButton';
-import { useAppColors } from '@/hooks/useAppColors';
 
 type Trip = {
   id: number;
@@ -115,28 +112,26 @@ export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const bottomInset = insets?.bottom ?? 0;
+  const topInset = insets?.top ?? 0;
   const router = useRouter();
   const { t } = useTranslation();
-  const AppColors = useAppColors();
-  const styles = getStyles(AppColors);
 
   // Estimated tab bar height (adjust if your tab bar is taller)
   const TABBAR_HEIGHT = 64;
 
   // measurements
-  const responsive = getResponsiveValues(width, height);
-  const horizontalPadding = responsiveSize(width, 0.06, 16, 32);
+  const horizontalPadding = Math.round(Math.max(16, Math.min(32, width * 0.06)));
   const contentMaxWidth = Math.round(width - horizontalPadding * 2);
   const baseSvgWidth = 321;
   const baseSvgHeight = 251;
   const svgAspect = baseSvgHeight / baseSvgWidth;
-  const btnWidth = responsive.widths.button;
-  const btnHeight = responsive.heights.buttonSmall;
+  const btnWidth = Math.round(Math.max(240, Math.min(320, width * 0.83)));
+  const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.13)));
   const btnRadius = 8;
   const ctaBottomBase = 20 + bottomInset + TABBAR_HEIGHT;
   const ctaBottom = ctaBottomBase + 20;
 
-  const contentTop = 24; // TopBar ya maneja el safe area
+  const contentTop = topInset + 24;
   const contentBottom = height - (ctaBottom + 40);
   const availableContentHeight = Math.max(260, contentBottom - contentTop);
   const maxSvgHeightFromWidth = Math.round(
@@ -148,7 +143,7 @@ export default function HomeScreen() {
   const svgMaxHeight = Math.min(maxSvgHeightFromWidth, Math.round(availableContentHeight * 0.55));
   const svgMaxWidth = Math.round(svgMaxHeight / svgAspect);
 
-  const copyFontSize = responsive.fontSizes.copy;
+  const copyFontSize = Math.round(Math.max(14, Math.min(20, width * 0.048)));
   const contentPaddingBottom = btnHeight + bottomInset + TABBAR_HEIGHT + 32;
 
   const [ongoingPlaces, setOngoingPlaces] = useState<Place[]>([]);
@@ -264,10 +259,10 @@ export default function HomeScreen() {
         <Text style={styles.upcomingLabel}>{t('home.upcomingTrip')}</Text>
         <TouchableOpacity
           activeOpacity={0.8}
-          style={[styles.card, { backgroundColor: AppColors.accentCard }]}
+          style={[styles.card, { backgroundColor: '#F8F1EF' }]}
           onPress={() => {
             router.push({
-              pathname: '/(trips)/trip-details',
+              pathname: '../trip-details',
               params: {
                 id: String(trip.id),
                 destination: trip.destination,
@@ -287,8 +282,8 @@ export default function HomeScreen() {
             <Text style={styles.destination}>{trip.destination}</Text>
             <Text style={styles.dates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
           </View>
-          <View style={[styles.badge, { backgroundColor: AppColors.accent }]}>
-            <Text style={[styles.badgeText, { color: AppColors.text }]}>{t('home.upcoming')}</Text>
+          <View style={[styles.badge, { backgroundColor: '#FFD8D8' }]}>
+            <Text style={[styles.badgeText, { color: '#333' }]}>{t('home.upcoming')}</Text>
           </View>
         </TouchableOpacity>
       </View>
@@ -359,7 +354,7 @@ export default function HomeScreen() {
               timeRemainingText = t('home.timeRemainingMinutesOnly', { minutes: mins, minutesText });
             }
             return (
-              <Text style={{ marginTop: 10, color: AppColors.success, fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ marginTop: 10, color: '#2E7D32', fontWeight: '600', fontSize: 15 }}>
                 {timeRemainingText}
               </Text>
             );
@@ -457,7 +452,7 @@ export default function HomeScreen() {
           style={styles.viewDetailsBtn}
           onPress={() => {
             router.push({
-              pathname: '/(trips)/trip-details',
+              pathname: '../trip-details',
               params: {
                 id: String(trip.id),
                 destination: trip.destination,
@@ -469,7 +464,7 @@ export default function HomeScreen() {
           }}
           activeOpacity={0.9}
         >
-          <Text style={{ color: AppColors.white, fontWeight: '700' }}>{t('home.viewDetails')}</Text>
+          <Text style={{ color: '#fff', fontWeight: '700' }}>{t('home.viewDetails')}</Text>
         </TouchableOpacity>
       </>
     );
@@ -489,8 +484,17 @@ export default function HomeScreen() {
     }
 
   return (
-    <PrimaryLayout title={t('tabs.home')}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.root}>
+        {/* Profile button in top right corner */}
+        <TouchableOpacity
+          style={styles.profileButton}
+          onPress={() => router.push('/profile')}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name="person.fill" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+
         <View
           style={[
             styles.centerArea,
@@ -510,7 +514,9 @@ export default function HomeScreen() {
 
             {!showHeaderSection && (
               <>
-                <LogoSvg width={150} height={150} />
+                <View style={styles.svgWrapper}>
+                  <MapSvg width={svgMaxWidth} height={svgMaxHeight} />
+                </View>
                 <View style={styles.copyWrapper}>
                   <Text
                     style={[
@@ -530,21 +536,26 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* FAB positioned in bottom right corner */}
-        <FloatingActionButton
-          onPress={() => router.push('/(trips)/add-trip')}
-          accessibilityLabel={t('home.newTrip')}
-          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
-          right={20}
-        />
+        {/* PrimaryButton positioned above tab bar and raised by RAISE_UP */}
+        <View style={[styles.buttonWrapper, { bottom: ctaBottom }]}>
+          <PrimaryButton
+            title={t('home.newTrip')}
+            onPress={() => router.push('/add-trip')}
+            height={btnHeight}
+            borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FFFFFF" />}
+            style={{ width: btnWidth }}
+            activeOpacity={0.95}
+          />
+        </View>
       </View>
-    </PrimaryLayout>
+    </SafeAreaView>
   );
 }
 
-// Create dynamic styles function
-const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
-  root: { flex: 1, backgroundColor: AppColors.background, paddingTop: 8 },
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
+  root: { flex: 1, backgroundColor: '#FCFCFC' },
 
   centerArea: {
     width: '100%',
@@ -572,22 +583,52 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
 
   copyText: {
     textAlign: 'center',
-    color: AppColors.textMuted,
+    color: 'rgba(0,0,0,0.60)',
     fontFamily: Platform.select({ ios: 'Roboto', android: 'Roboto', default: 'System' }),
     fontWeight: '500' as any,
     letterSpacing: 0.18,
   },
 
+  buttonWrapper: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+
+  profileButton: {
+    position: 'absolute',
+    top: 30,
+    right: 25,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#cfcfcf',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+
   // Reuse card styles similar to trips.tsx
   upcomingWrap: { width: '100%', alignItems: 'center' },
-  upcomingLabel: { alignSelf: 'flex-start', marginBottom: 6, color: AppColors.text, fontWeight: '700' },
+  upcomingLabel: { alignSelf: 'flex-start', marginBottom: 6, color: '#252525', fontWeight: '700' },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
-    backgroundColor: AppColors.backgroundCard,
-    shadowColor: ShadowColors.black,
+    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
@@ -598,11 +639,11 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     height: 76,
     borderRadius: 12,
     marginRight: 12,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: '#ddd',
   },
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
-  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
+  destination: { fontSize: 20, color: '#000', fontWeight: '600' },
+  dates: { fontSize: 14, color: '#757575', marginTop: 4 },
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -611,33 +652,33 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     alignItems: 'center',
     minWidth: 64,
   },
-  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
+  badgeText: { fontSize: 12, color: '#333', fontWeight: '700' },
 
   // Ongoing summary styles
   ongoingWrap: {
     width: '100%',
-    backgroundColor: AppColors.backgroundCard,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 14,
-    shadowColor: ShadowColors.black,
+    shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  ongoingHeader: { fontSize: 22, color: AppColors.text, fontWeight: '800' },
-  ongoingDates: { marginTop: 4, color: AppColors.textTertiary },
+  ongoingHeader: { fontSize: 22, color: '#000', fontWeight: '800' },
+  ongoingDates: { marginTop: 4, color: '#757575' },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 10,
   },
-  activityRowLabel: { fontWeight: '800', color: AppColors.text, marginRight: 6 },
-  activityRowText: { flex: 1, color: AppColors.text },
-  activityRowTime: { color: AppColors.textSecondary, marginLeft: 8 },
+  activityRowLabel: { fontWeight: '800', color: '#111', marginRight: 6 },
+  activityRowText: { flex: 1, color: '#111' },
+  activityRowTime: { color: '#777', marginLeft: 8 },
   viewDetailsBtn: {
     marginTop: 12,
-    backgroundColor: AppColors.primary,
+    backgroundColor: '#FF3951',
     alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -647,15 +688,15 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   currentActivityPreview: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: StateColors.successLight,
+    backgroundColor: '#E8F5E8', // Slightly different background to distinguish from next
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: StateColors.successBorder,
+    borderColor: '#D4E6D4',
   },
   currentActivityLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: AppColors.success,
+    color: '#2E7D32', // Green color for current activity
     marginBottom: 8,
   },
   currentActivityContent: {
@@ -667,7 +708,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     height: 60,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: '#E9ECEF',
   },
   currentActivityInfo: {
     flex: 1,
@@ -676,18 +717,18 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   currentActivityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: '#212529',
     marginBottom: 2,
   },
   currentActivityTime: {
     fontSize: 12,
-    color: AppColors.success,
+    color: '#2E7D32',
     fontWeight: '500',
     marginBottom: 4,
   },
   currentActivityDescription: {
     fontSize: 13,
-    color: AdditionalColors.lightGray,
+    color: '#6C757D',
     lineHeight: 18,
   },
 
@@ -695,15 +736,15 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   nextActivityPreview: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: AppColors.backgroundSection,
+    backgroundColor: '#F8F9FA',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: AppColors.borderLight,
+    borderColor: '#E9ECEF',
   },
   nextActivityLabel: {
     fontSize: 14,
     fontWeight: '700',
-    color: AdditionalColors.darkGray,
+    color: '#495057',
     marginBottom: 8,
   },
   nextActivityContent: {
@@ -715,7 +756,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     height: 60,
     borderRadius: 8,
     marginRight: 12,
-    backgroundColor: AppColors.borderLight,
+    backgroundColor: '#E9ECEF',
   },
   nextActivityInfo: {
     flex: 1,
@@ -724,18 +765,18 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   nextActivityTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: '#212529',
     marginBottom: 2,
   },
   nextActivityTime: {
     fontSize: 12,
-    color: AdditionalColors.darkGray,
+    color: '#495057',
     fontWeight: '500',
     marginBottom: 4,
   },
   nextActivityDescription: {
     fontSize: 13,
-    color: AdditionalColors.lightGray,
+    color: '#6C757D',
     lineHeight: 18,
   },
 

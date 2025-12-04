@@ -1,14 +1,13 @@
 // ChangePasswordScreen.tsx
 import PrimaryButton from "@/components/buttons/PrimaryButton";
-import SecondaryLayout from "@/components/layouts/SecondaryLayout";
+import BackButton from "@/components/BackButton";
 import { apiPut, tokenStorage } from "@/helpers/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform, ScrollView, useWindowDimensions } from "react-native";
-import { useTranslation } from '@/i18n';
+import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform } from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
-import InputField from '@/components/forms/InputField';
-import { getResponsiveValues } from '@/helpers/responsive';
+import { useTranslation } from '@/i18n';
 
 function base64UrlDecode(input: string) {
   try {
@@ -46,21 +45,8 @@ export default function ChangePasswordScreen() {
   const [userId, setUserId] = useState<string | number | undefined>(paramId);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showOldPassword, setShowOldPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [initChecking, setInitChecking] = useState(true);
-  const { width } = useWindowDimensions();
-  const responsive = getResponsiveValues(width);
-  const inputHeight = responsive.heights.input;
-
-  // Validate form - all fields must be filled and passwords must match
-  const isFormValid = oldPassword.trim().length > 0 && 
-                      newPassword.trim().length >= 6 && 
-                      confirmPassword.trim().length >= 6 && 
-                      newPassword === confirmPassword;
 
   // if no id param, try to read it from token
   useEffect(() => {
@@ -102,12 +88,8 @@ export default function ChangePasswordScreen() {
       Alert.alert(t('common.error'), t('changePassword.userNotIdentified'));
       return;
     }
-    if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert(t('common.error'), t('changePassword.completeAllFields') || 'Por favor completa todos los campos');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Alert.alert(t('common.error'), t('changePassword.passwordsDoNotMatch') || 'Las contraseñas no coinciden');
+    if (!oldPassword || !newPassword) {
+      Alert.alert(t('common.error'), t('changePassword.completeBothFields'));
       return;
     }
     setLoading(true);
@@ -131,76 +113,42 @@ export default function ChangePasswordScreen() {
 
   if (initChecking) {
     return (
-      <SecondaryLayout title={t('changePassword.title')}>
-        <View style={styles.loadingContainer}>
+      <SafeAreaView style={CommonStyles.safeArea}>
+        <View style={CommonStyles.containerWithBackButton}>
           <ActivityIndicator size="large" />
         </View>
-      </SecondaryLayout>
+      </SafeAreaView>
     );
   }
 
   return (
-    <SecondaryLayout title={t('changePassword.title')}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-        <InputField
+    <SafeAreaView style={CommonStyles.safeArea}>
+      <View style={CommonStyles.backButtonContainer}>
+        <BackButton />
+      </View>
+      <View style={CommonStyles.containerWithBackButton}>
+        <Text style={CommonStyles.pageTitle}>{t('changePassword.title')}</Text>
+        <TextInput
+          style={CommonStyles.input}
           placeholder={t('changePassword.currentPassword')}
           value={oldPassword}
           onChangeText={setOldPassword}
-          secureTextEntry={!showOldPassword}
-          showPasswordToggle
-          showPassword={showOldPassword}
-          onTogglePassword={() => setShowOldPassword(!showOldPassword)}
-          containerStyle={{ height: inputHeight, marginBottom: 12 }}
+          secureTextEntry
           autoCapitalize="none"
-          autoCorrect={false}
         />
-        <InputField
+        <TextInput
+          style={CommonStyles.input}
           placeholder={t('changePassword.newPassword')}
           value={newPassword}
           onChangeText={setNewPassword}
-          secureTextEntry={!showNewPassword}
-          showPasswordToggle
-          showPassword={showNewPassword}
-          onTogglePassword={() => setShowNewPassword(!showNewPassword)}
-          containerStyle={{ height: inputHeight, marginBottom: 12 }}
+          secureTextEntry
           autoCapitalize="none"
-          autoCorrect={false}
         />
-        <InputField
-          placeholder={t('changePassword.confirmPassword') || 'Confirmar contraseña'}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          secureTextEntry={!showConfirmPassword}
-          showPasswordToggle
-          showPassword={showConfirmPassword}
-          onTogglePassword={() => setShowConfirmPassword(!showConfirmPassword)}
-          containerStyle={{ height: inputHeight,marginBottom: 12 }}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <PrimaryButton 
-          title={loading ? t('changePassword.changing') : t('changePassword.change')} 
-          onPress={handleChangePassword} 
-          style={{ marginTop: 24 }} 
-          disabled={!isFormValid || loading} 
-        />
-      </ScrollView>
-    </SecondaryLayout>
+        <PrimaryButton title={loading ? t('changePassword.changing') : t('changePassword.change')} onPress={handleChangePassword} style={{ marginTop: 24 }} disabled={loading} />
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  contentContainer: {
-    padding: 24,
-    paddingBottom: 32,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
 });

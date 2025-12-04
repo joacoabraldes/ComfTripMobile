@@ -82,12 +82,6 @@ async function request(path, options = {}) {
   }
 
   if (!res.ok) {
-    // Attach status for easier handling in UI
-    if (typeof data === "object" && data !== null) {
-      data.status = res.status;
-    } else {
-      data = { message: data, status: res.status };
-    }
     throw data;
   }
 

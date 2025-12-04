@@ -5,27 +5,20 @@ import { apiGet, apiPost } from '@/helpers/api';
 import { useTranslation } from '@/i18n';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import { Friend } from '@/types';
-import { ShadowColors } from '@/constants/Colors';
-import { useAppColors } from '@/hooks/useAppColors';
 
 interface ShareTripButtonProps {
   tripId: number;
   tripDestination: string;
-  showButton?: boolean;
-  initialVisible?: boolean;
-  onClose?: () => void;
 }
 
-export default function ShareTripButton({ tripId, tripDestination, showButton = true, initialVisible = false, onClose }: ShareTripButtonProps) {
+export default function ShareTripButton({ tripId, tripDestination }: ShareTripButtonProps) {
   const { t } = useTranslation();
-  const AppColors = useAppColors();
-  const styles = getStyles(AppColors);
   const router = useRouter();
-  const [showModal, setShowModal] = useState<boolean>(initialVisible);
+  const [showModal, setShowModal] = useState<boolean>(false);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [sharing, setSharing] = useState<boolean>(false);
@@ -136,37 +129,21 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
     );
   };
 
-  useEffect(() => {
-    if (initialVisible && !showModal) {
-      setShowModal(true);
-      if (friends.length === 0) {
-        loadFriends();
-      }
-    }
-  }, [initialVisible]);
-
-  const handleCloseModal = () => {
-    setShowModal(false);
-    if (onClose) onClose();
-  };
-
   return (
     <>
-      {showButton && (
-        <TouchableOpacity
-          style={styles.shareButton}
-          onPress={handleOpenModal}
-          accessibilityLabel={t('share.button')}
-        >
-          <MaterialIcons name="share" size={22} color={AppColors.text} />
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity
+        style={styles.shareButton}
+        onPress={handleOpenModal}
+        accessibilityLabel={t('share.button')}
+      >
+        <MaterialIcons name="share" size={22} color="#2d2d2d" />
+      </TouchableOpacity>
 
       <Modal
         visible={showModal}
         transparent
         animationType="fade"
-        onRequestClose={handleCloseModal}
+        onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -174,10 +151,10 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
               <Text style={styles.modalTitle}>{t('share.title')}</Text>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={handleCloseModal}
+                onPress={() => setShowModal(false)}
                 disabled={sharing}
               >
-                <MaterialIcons name="close" size={24} color={AppColors.textSecondary} />
+                <MaterialIcons name="close" size={24} color="#666" />
               </TouchableOpacity>
             </View>
 
@@ -186,7 +163,7 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
 
             {loading ? (
               <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color={AppColors.primary} />
+                <ActivityIndicator size="small" color="#FF3951" />
                 <Text style={styles.loadingText}>{t('share.loadingFriends')}</Text>
               </View>
             ) : friends.length === 0 ? (
@@ -195,7 +172,7 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
                 <TouchableOpacity
                   style={styles.communityButton}
                   onPress={() => {
-                    handleCloseModal();
+                    setShowModal(false);
                     router.push('/(tabs)/community');
                   }}
                 >
@@ -230,9 +207,9 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
                           </View>
                         </View>
                         {isSharing ? (
-                          <ActivityIndicator size="small" color={AppColors.primary} />
+                          <ActivityIndicator size="small" color="#FF3951" />
                         ) : (
-                          <MaterialIcons name="chevron-right" size={24} color={AppColors.textMutedDark} />
+                          <MaterialIcons name="chevron-right" size={24} color="#999" />
                         )}
                       </TouchableOpacity>
                     );
@@ -245,7 +222,7 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
                     onPress={handleShareAll}
                     disabled={sharing}
                   >
-                    <MaterialIcons name="group" size={20} color={AppColors.white} />
+                    <MaterialIcons name="group" size={20} color="#FFF" />
                     <Text style={styles.shareAllButtonText}>
                       {t('share.shareAllButton', { count: friends.length })}
                     </Text>
@@ -260,13 +237,12 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
   );
 }
 
-// Create dynamic styles function
-const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+const styles = StyleSheet.create({
   shareButton: {
     position: 'absolute',
     right: 60,
     top: 36,
-    backgroundColor: AppColors.backgroundTertiary,
+    backgroundColor: '#edededff',
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
@@ -274,20 +250,20 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: AppColors.overlay,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: '#FFF',
     borderRadius: 16,
     width: '100%',
     maxHeight: '80%',
     padding: 20,
     ...Platform.select({
       ios: {
-        shadowColor: ShadowColors.black,
+        shadowColor: '#000',
         shadowOpacity: 0.25,
         shadowRadius: 20,
         shadowOffset: { width: 0, height: 10 },
@@ -306,7 +282,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   modalTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: AppColors.text,
+    color: '#111',
   },
   closeButton: {
     padding: 4,
@@ -314,12 +290,12 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   modalSubtitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: '#333',
     marginBottom: 8,
   },
   modalHint: {
     fontSize: 14,
-    color: AppColors.textSecondary,
+    color: '#666',
     marginBottom: 16,
   },
   loadingContainer: {
@@ -328,7 +304,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   loadingText: {
     marginTop: 8,
-    color: AppColors.textSecondary,
+    color: '#777',
     fontSize: 14,
   },
   emptyContainer: {
@@ -336,19 +312,19 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     alignItems: 'center',
   },
   emptyText: {
-    color: AppColors.textSecondary,
+    color: '#777',
     fontSize: 15,
     marginBottom: 16,
     textAlign: 'center',
   },
   communityButton: {
-    backgroundColor: AppColors.primary,
+    backgroundColor: '#FF3951',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   communityButtonText: {
-    color: AppColors.white,
+    color: '#FFF',
     fontWeight: '600',
     fontSize: 14,
   },
@@ -363,7 +339,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 10,
-    backgroundColor: AppColors.backgroundTertiary,
+    backgroundColor: '#F8F8F8',
     marginBottom: 8,
   },
   friendItemDisabled: {
@@ -378,13 +354,13 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: AppColors.primary,
+    backgroundColor: '#FF3951',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   friendAvatarText: {
-    color: AppColors.white,
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -394,18 +370,18 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   friendName: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.text,
+    color: '#111',
   },
   friendEmail: {
     fontSize: 13,
-    color: AppColors.textSecondary,
+    color: '#666',
     marginTop: 2,
   },
   shareAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: AppColors.primary,
+    backgroundColor: '#FF3951',
     paddingVertical: 12,
     borderRadius: 10,
     gap: 8,
@@ -414,7 +390,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     opacity: 0.6,
   },
   shareAllButtonText: {
-    color: AppColors.white,
+    color: '#FFF',
     fontSize: 16,
     fontWeight: '700',
   },

@@ -6,39 +6,34 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCommonStyles } from '@/constants/Styles';
+import { CommonStyles } from '@/constants/Styles';
 import { useRouter } from 'expo-router';
-import LogoSvg from '@/components/icons/LogoSvg';
+import { LogoSvg } from '@/components/icons/LogoSvg';
+import { ArrowIcon } from '@/components/icons/ArrowIcon';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useTranslation } from '@/i18n';
-import { getResponsiveValues, responsiveValue, responsiveSize } from '@/helpers/responsive';
-import { useAppColors } from '@/hooks/useAppColors';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const { t } = useTranslation();
-  const AppColors = useAppColors();
-  const CommonStyles = useCommonStyles();
-  const styles = getStyles(AppColors);
 
   // measurements
-  const responsive = getResponsiveValues(width, height);
-  const btnHeight = responsiveSize(width, 0.14, 40, 56);
+  const btnHeight = Math.round(Math.max(40, Math.min(56, width * 0.14)));
   const btnRadius = Math.round(btnHeight * 0.22);
 
-  const illustrationWidth = responsiveValue(width, 0.52);
+  const illustrationWidth = Math.round(width * 0.52);
   const illustrationAspect = 201 / 153;
   const illustrationHeight = Math.round(illustrationWidth / illustrationAspect);
 
-  const titleFontSize = responsiveSize(width, 0.11, 28, 48);
-  const labelFontSize = responsive.fontSizes.label;
+  const titleFontSize = Math.round(Math.max(28, Math.min(48, width * 0.11)));
+  const labelFontSize = Math.round(Math.max(15, Math.min(20, width * 0.05)));
 
-  const horizontalPadding = responsive.padding.horizontal;
-  const verticalPadding = responsive.spacing.vertical || 16;
-  const bottomSpacing = responsive.spacing.bottom || 12;
+  const horizontalPadding = Math.round(width * 0.06);
+  const verticalPadding = Math.round(Math.max(16, Math.min(48, height * 0.04)));
+  const bottomSpacing = Math.round(Math.max(12, Math.min(40, height * 0.02)));
 
-  const topAreaMargin = responsiveValue(height, 0.2);
+  const topAreaMargin = Math.round(height * 0.2);
 
   return (
     <SafeAreaView style={CommonStyles.safeArea}>
@@ -54,7 +49,7 @@ export default function StartScreen() {
       >
         <View style={[styles.topArea, { marginTop: topAreaMargin }]}>
           <LogoSvg width={illustrationWidth} height={illustrationHeight} />
-          <Text style={[styles.brand, { fontSize: titleFontSize, marginTop: responsive.spacing.bottom || 12 }]}>ComfTrip</Text>
+          <Text style={[styles.brand, { fontSize: titleFontSize, marginTop: Math.round(height * 0.02) }]}>ComfTrip</Text>
         </View>
 
         <View style={[styles.actionsWrap, { marginBottom: bottomSpacing }]}>
@@ -63,7 +58,8 @@ export default function StartScreen() {
             onPress={() => router.push('/login')}
             height={btnHeight}
             borderRadius={btnRadius}
-            style={{ backgroundColor: AppColors.primary }}
+            rightIcon={<ArrowIcon color="#FFFFFF" style={{ marginLeft: 10 }} />}
+            style={{ backgroundColor: '#FF3951' }}
             textStyle={{ fontSize: labelFontSize }}
           />
 
@@ -72,13 +68,14 @@ export default function StartScreen() {
             onPress={() => router.push('/register')}
             height={btnHeight}
             borderRadius={btnRadius}
+            rightIcon={<ArrowIcon color="#FF3951" style={{ marginLeft: 10 }} />}
             style={{
               backgroundColor: 'transparent',
               borderWidth: 1,
-              borderColor: AppColors.primary,
-              marginTop: responsiveSize(height, 0.012, 8, 12),
+              borderColor: '#FF3951',
+              marginTop: Math.round(height * 0.012),
             }}
-            textStyle={{ color: AppColors.primary, fontSize: labelFontSize }}
+            textStyle={{ color: '#FF3951', fontSize: labelFontSize }}
           />
         </View>
       </View>
@@ -86,8 +83,7 @@ export default function StartScreen() {
   );
 }
 
-// Create dynamic styles function
-const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',
@@ -107,7 +103,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
 
   brand: {
-    color: AppColors.primary,
+    color: '#FF3951',
     fontWeight: '400',
     textAlign: 'center',
   },
@@ -121,7 +117,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     justifyContent: 'center',
   },
   actionText: {
-    color: AppColors.white,
+    color: '#FCFCFC',
     fontWeight: '600',
   },
 
@@ -129,11 +125,11 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: AppColors.primary,
+    borderColor: '#FF3951',
     backgroundColor: 'transparent',
   },
   actionTextOutline: {
-    color: AppColors.primary,
+    color: '#FF3951',
     fontWeight: '600',
   },
 
