@@ -229,7 +229,7 @@ export default function ProfileScreen() {
   }
 
   function handleEdit() {
-    router.push("../(profile)/edit");
+    router.push("../(profile)/edit-profile");
   }
   function handleChangePassword() {
     router.push("../(profile)/change-password");

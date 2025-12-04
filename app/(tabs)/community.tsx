@@ -16,6 +16,7 @@ import {
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Friend = {
   id: number;
@@ -44,6 +45,7 @@ type Trip = {
 
 export default function CommunityScreen() {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
@@ -326,9 +328,16 @@ export default function CommunityScreen() {
     );
   }
 
+  // Calculate padding bottom to account for tabbar
+  const TABBAR_HEIGHT = 64;
+  const paddingBottom = 32 + TABBAR_HEIGHT + (insets?.bottom || 0);
+
   return (
     <PrimaryLayout title={t('community.title')}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
+      <ScrollView 
+        style={styles.scrollView} 
+        contentContainerStyle={[styles.content, { paddingBottom }]}
+      >
 
         {/* Send Request Section */}
         <View style={styles.card}>
@@ -512,7 +521,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: 32,
     paddingTop: 8,
   },
   center: {

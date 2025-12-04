@@ -873,7 +873,8 @@ export default function MapScreen() {
             styles.filterOverlay,
             {
               top: 8, // TopBar ya maneja el safe area
-              left: 16,
+              left: 10,
+              right: 10,
             },
           ]}
         >
@@ -1109,7 +1110,7 @@ const styles = StyleSheet.create({
     }),
   },
   chipActive: {
-    backgroundColor: StateColors.info,
+    backgroundColor: AppColors.primary,
   },
   chipInactive: {
     backgroundColor: AppColors.white,
