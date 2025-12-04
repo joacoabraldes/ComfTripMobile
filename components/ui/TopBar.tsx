@@ -4,7 +4,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type TopBarProps = {
   // Para pantallas primarias (tabs)
@@ -34,6 +35,8 @@ export default function TopBar({
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // Obtener título de la ruta actual si no se proporciona (memoizado para evitar re-renders)
   const displayTitle = useMemo(() => {
@@ -110,7 +113,7 @@ export default function TopBar({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     backgroundColor: AppColors.backgroundPrimary,
     borderBottomWidth: StyleSheet.hairlineWidth,

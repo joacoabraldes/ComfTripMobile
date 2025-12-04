@@ -30,7 +30,7 @@ const es = {
 
   // Trips
   trips: {
-    title: 'Mis Viajes',
+    title: 'Viajes',
     loading: 'Cargando viajes...',
     empty: 'No hay viajes registrados.',
     failedToLoad: 'Error al cargar viajes',

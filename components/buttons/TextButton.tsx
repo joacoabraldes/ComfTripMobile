@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Props = {
   title: string;
@@ -26,6 +26,9 @@ export default function TextButton({
   disabled = false,
   activeOpacity = 0.7,
 }: Props) {
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -40,7 +43,7 @@ export default function TextButton({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   button: {
     paddingVertical: 8,
     paddingHorizontal: 12,

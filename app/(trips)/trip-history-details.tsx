@@ -11,7 +11,8 @@ import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewForm from '@/components/trip/ReviewForm';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { ShadowColors, StateColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Params = {
   id?: string;
@@ -25,6 +26,8 @@ export default function TripHistoryDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? t('tripSummary.destination');
@@ -426,10 +429,11 @@ export default function TripHistoryDetails() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: '800', color: AppColors.black },
+  title: { fontSize: 26, fontWeight: '800', color: AppColors.text },
   subtitle: { marginTop: 8, fontSize: 16, color: AppColors.textTertiary },
   completedBadge: {
     flexDirection: 'row',
@@ -449,7 +453,7 @@ const styles = StyleSheet.create({
   sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: AppColors.text },
   reviewSection: {
     width: '100%',
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Platform, Modal, Pressable } from 'react-native';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -22,6 +22,8 @@ export default function TimePicker({
   disabled = false,
 }: TimePickerProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   
   // Normalize value to have 00 or 30 minutes
   const normalizeValue = (val: string): { hour: string; minute: string } => {
@@ -270,7 +272,8 @@ export default function TimePicker({
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     width: '100%',
   },

@@ -8,7 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Props = {
   title: string;
@@ -35,6 +35,9 @@ export default function PrimaryButton({
   disabled = false,
   children,
 }: Props) {
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  
   function renderChildren(child: React.ReactNode) {
     if (typeof child === 'string' || typeof child === 'number') {
       return <Text style={[styles.title, textStyle]}>{child}</Text>;
@@ -78,7 +81,7 @@ export default function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   button: {
     width: '100%',
     backgroundColor: AppColors.primary,

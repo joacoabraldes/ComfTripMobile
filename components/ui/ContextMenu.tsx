@@ -2,7 +2,8 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, Platform, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type MenuOption = {
   label: string;
@@ -21,6 +22,8 @@ export default function ContextMenu({ options }: ContextMenuProps) {
   const buttonRef = useRef<View>(null);
   const { width: screenWidth } = useWindowDimensions();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   const handleButtonPress = () => {
     if (buttonRef.current) {
@@ -103,7 +106,7 @@ export default function ContextMenu({ options }: ContextMenuProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     position: 'relative',
   },

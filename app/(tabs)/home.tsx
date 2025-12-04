@@ -17,9 +17,10 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/i18n';
 import LogoSvg from '@/components/icons/LogoSvg';
-import { AppColors, ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
+import { ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
 import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Trip = {
   id: number;
@@ -115,6 +116,8 @@ export default function HomeScreen() {
   const bottomInset = insets?.bottom ?? 0;
   const router = useRouter();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // Estimated tab bar height (adjust if your tab bar is taller)
   const TABBAR_HEIGHT = 64;
@@ -526,7 +529,8 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   root: { flex: 1, backgroundColor: AppColors.background, paddingTop: 8 },
 
   centerArea: {
@@ -569,6 +573,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
+    backgroundColor: AppColors.backgroundCard,
     shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -583,7 +588,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.borderLight,
   },
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
+  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
   dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
   badge: {
     paddingHorizontal: 8,
@@ -598,7 +603,7 @@ const styles = StyleSheet.create({
   // Ongoing summary styles
   ongoingWrap: {
     width: '100%',
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 14,
     shadowColor: ShadowColors.black,
@@ -607,7 +612,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  ongoingHeader: { fontSize: 22, color: AppColors.black, fontWeight: '800' },
+  ongoingHeader: { fontSize: 22, color: AppColors.text, fontWeight: '800' },
   ongoingDates: { marginTop: 4, color: AppColors.textTertiary },
   activityRow: {
     flexDirection: 'row',

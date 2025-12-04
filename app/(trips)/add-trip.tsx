@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -12,6 +12,8 @@ interface CalendarDay {
 
 export default function AddTrip() {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const [destination, setDestination] = useState<string | null>(null);
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
@@ -433,7 +435,8 @@ export default function AddTrip() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
@@ -448,12 +451,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
-    borderColor: AppColors.black,
+    borderColor: AppColors.border,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 20,
   },
-  mapButtonText: { color: AppColors.black, fontWeight: '600' },
+  mapButtonText: { color: AppColors.text, fontWeight: '600' },
   mapContainer: {
     marginTop: 12,
     width: '100%',
@@ -489,6 +492,7 @@ const styles = StyleSheet.create({
   },
   destinationText: {
     fontSize: 16,
+    color: AppColors.text,
   },
   closeIcon: {
     fontSize: 24,
@@ -503,6 +507,7 @@ const styles = StyleSheet.create({
   monthYear: {
     fontSize: 16,
     fontWeight: '600',
+    color: AppColors.text,
   },
   arrows: {
     flexDirection: 'row',
@@ -540,6 +545,7 @@ const styles = StyleSheet.create({
   },
   dayText: {
     fontSize: 16,
+    color: AppColors.text,
   },
   selectedDay: {
     backgroundColor: AppColors.primaryLight,

@@ -6,7 +6,8 @@ import {
   ViewStyle,
   Platform,
 } from 'react-native';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
@@ -28,9 +29,9 @@ export default function FloatingActionButton({
   onPress,
   icon = 'add',
   iconSize = 32,
-  iconColor = AppColors.white,
+  iconColor,
   size = 64,
-  backgroundColor = AppColors.primary,
+  backgroundColor,
   style,
   bottom,
   right,
@@ -38,6 +39,11 @@ export default function FloatingActionButton({
   accessibilityLabel,
   activeOpacity = 0.85,
 }: Props) {
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  const finalIconColor = iconColor ?? AppColors.white;
+  const finalBackgroundColor = backgroundColor ?? AppColors.primary;
+  
   return (
     <TouchableOpacity
       style={[
@@ -46,7 +52,7 @@ export default function FloatingActionButton({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor,
+          backgroundColor: finalBackgroundColor,
           bottom,
           right,
           left,
@@ -57,12 +63,13 @@ export default function FloatingActionButton({
       accessibilityLabel={accessibilityLabel}
       activeOpacity={activeOpacity}
     >
-      <Ionicons name={icon} size={iconSize} color={iconColor} />
+      <Ionicons name={icon} size={iconSize} color={finalIconColor} />
     </TouchableOpacity>
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   fab: {
     position: 'absolute',
     justifyContent: 'center',

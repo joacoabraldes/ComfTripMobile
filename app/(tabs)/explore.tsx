@@ -17,8 +17,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
 import { useCategoryTranslation } from '@/helpers/categoryTranslations';
+import { useAppColors } from '@/hooks/useAppColors';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -122,6 +123,8 @@ export default function ExploreScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const translateCategory = useCategoryTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // server-driven
   const [categories, setCategories] = useState<Category[]>([]);
@@ -463,7 +466,8 @@ export default function ExploreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 16, fontSize: 16, color: AppColors.textSecondary },
@@ -490,7 +494,7 @@ const styles = StyleSheet.create({
 
   resultsContainer: { flex: 1 },
   sectionHeader: { marginBottom: 16, marginTop: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', color: AppColors.black },
+  sectionTitle: { fontSize: 20, fontWeight: '700', color: AppColors.text },
   resultCount: { fontSize: 14, color: AppColors.textSecondary, marginTop: 4 },
 
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 40 },
@@ -499,7 +503,7 @@ const styles = StyleSheet.create({
   experiencesList: { paddingBottom: 20 },
 
   experienceCard: {
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 12,
     marginBottom: 16,
     shadowColor: ShadowColors.black,
@@ -515,7 +519,7 @@ const styles = StyleSheet.create({
   noImageText: { color: AppColors.textMutedDark, fontSize: 14 },
 
   cardContent: { padding: 12 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: AppColors.black, marginBottom: 8, lineHeight: 24 },
+  cardTitle: { fontSize: 18, fontWeight: '700', color: AppColors.text, marginBottom: 8, lineHeight: 24 },
   cardDescription: { fontSize: 14, color: AppColors.textSecondary, lineHeight: 20, marginBottom: 12 },
 
   categoryBadge: { alignSelf: 'flex-start', backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
@@ -528,7 +532,7 @@ const styles = StyleSheet.create({
   modalContent: { flex: 1 },
   modalImage: { width: '100%', height: 250 },
   modalDetails: { padding: 20 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: AppColors.black, marginBottom: 12 },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: AppColors.text, marginBottom: 12 },
   modalDescription: { fontSize: 16, color: AppColors.textSecondary, lineHeight: 24, marginBottom: 24 },
   modalActions: { flexDirection: 'row', gap: 12 },
   createTripButton: { flex: 1, backgroundColor: AppColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },

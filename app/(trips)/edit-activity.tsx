@@ -13,12 +13,12 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
 import { apiGet, apiPut, apiDelete } from '@/helpers/api';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import TextButton from '@/components/buttons/TextButton';
+import { useAppColors } from '@/hooks/useAppColors';  
 
 interface CalendarDay {
   date: number;
@@ -69,6 +69,9 @@ export default function EditActivity() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [startDate, setStartDate] = useState<Date | null>(null);
   const [endDate, setEndDate] = useState<Date | null>(null);
+
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   // Helper functions
   const getTripCity = (dest: string) => {
@@ -547,7 +550,8 @@ export default function EditActivity() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.backgroundPrimary,

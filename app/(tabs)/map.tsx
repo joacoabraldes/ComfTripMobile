@@ -25,7 +25,8 @@ import PrimaryLayout from "@/components/layouts/PrimaryLayout";
 import { Ionicons } from "@expo/vector-icons";
 import { apiGet } from "@/helpers/api";
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { ShadowColors, StateColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 
 type Loc = {
@@ -98,6 +99,8 @@ export default function MapScreen() {
   const bottomInset = insets?.bottom ?? 0;
   const webRef = useRef<WebView | null>(null);
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const translateCategory = useCategoryTranslation();
 
   // Convert fk_interest slug (or any string) into display category (capitalize & replace - with space)
@@ -1018,7 +1021,8 @@ export default function MapScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
 
   // overlay wrapper (positioned dynamically)
   filterOverlay: {

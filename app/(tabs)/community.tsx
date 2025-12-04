@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Friend = {
   id: number;
@@ -45,6 +46,8 @@ type Trip = {
 
 export default function CommunityScreen() {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -516,7 +519,8 @@ export default function CommunityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   scrollView: {
     flex: 1,
   },

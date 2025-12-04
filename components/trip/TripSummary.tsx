@@ -6,7 +6,8 @@ import { formatDateRange } from '@/helpers/dateUtils';
 import { useTranslation } from '@/i18n';
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 interface TripSummaryProps {
   trip: Trip;
@@ -14,6 +15,8 @@ interface TripSummaryProps {
 
 export default function TripSummary({ trip }: TripSummaryProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const activitiesCount = trip.places?.length || 0;
   const hasBudget = trip.budget != null && trip.budget > 0;
   const hasNotes = trip.notes != null && trip.notes.trim().length > 0;
@@ -58,10 +61,11 @@ export default function TripSummary({ trip }: TripSummaryProps) {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,

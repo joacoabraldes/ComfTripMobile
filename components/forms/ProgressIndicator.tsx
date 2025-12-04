@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 
 interface ProgressIndicatorProps {
@@ -11,6 +11,8 @@ interface ProgressIndicatorProps {
 
 export default function ProgressIndicator({ currentStep, totalSteps, stepLabels }: ProgressIndicatorProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   
   const defaultLabels = stepLabels || [
     t('auth.register.step1') || 'Información',
@@ -73,7 +75,8 @@ export default function ProgressIndicator({ currentStep, totalSteps, stepLabels 
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     marginBottom: 24,
   },

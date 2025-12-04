@@ -6,7 +6,7 @@ import 'react-native-reanimated';
 
 import { TranslationProvider } from '@/i18n';
 import { ThemeProvider as CustomThemeProvider } from '@/hooks/useTheme';
-import { ThemedRootContent } from './ThemedRootContent';
+import ThemedRootContent from './ThemedRootContent';
 
 export default function RootLayout() {
   const [loaded] = useFonts({

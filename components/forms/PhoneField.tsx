@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { View, TextInput, TouchableOpacity, ScrollView, StyleSheet, Text, Platform } from 'react-native';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 import countries from 'world-countries';
 
@@ -30,6 +30,8 @@ export default function PhoneField({
   placeholder,
 }: PhoneFieldProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const [showCodePicker, setShowCodePicker] = useState(false);
   const [search, setSearch] = useState('');
   const defaultPlaceholder = placeholder || t('auth.register.phoneNumber');
@@ -190,7 +192,8 @@ export default function PhoneField({
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     width: '100%',
   },

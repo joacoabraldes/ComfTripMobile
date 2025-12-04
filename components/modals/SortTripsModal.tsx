@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Modal, Pressable, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
 import TextButton from '@/components/buttons/TextButton';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export type SortOption = 'date' | 'name';
 export type SortOrder = 'asc' | 'desc';
@@ -24,6 +25,8 @@ export default function SortTripsModal({
   onSortChange,
 }: SortTripsModalProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const [tempSort, setTempSort] = useState<SortOption>(currentSort);
   const [tempOrder, setTempOrder] = useState<SortOrder>(currentOrder);
 
@@ -161,10 +164,10 @@ export default function SortTripsModal({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: AppColors.overlay,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -286,7 +289,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: AppColors.black,
+    color: AppColors.text,
   },
 });
 

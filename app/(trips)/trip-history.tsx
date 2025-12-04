@@ -8,12 +8,15 @@ import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import ContextMenu from '@/components/ui/ContextMenu';
 import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
 
 export default function TripHistoryScreen() {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const { width } = useWindowDimensions();
   const router = useRouter();
 
@@ -245,7 +248,8 @@ export default function TripHistoryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 40 },
   card: {
@@ -253,6 +257,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
+    backgroundColor: AppColors.backgroundCard,
     shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
@@ -267,7 +272,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.borderLight,
   },
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
+  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
   dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
   badge: {
     paddingHorizontal: 8,

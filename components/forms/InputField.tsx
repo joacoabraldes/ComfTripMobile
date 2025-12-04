@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import { TextInput, View, TextInputProps, Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 interface InputFieldProps extends TextInputProps {
   containerStyle?: any;
@@ -12,6 +12,9 @@ interface InputFieldProps extends TextInputProps {
 
 const InputField = forwardRef<TextInput, InputFieldProps>(
   ({ containerStyle, showPasswordToggle, showPassword, onTogglePassword, style, ...props }, ref) => {
+    const AppColors = useAppColors();
+    const styles = getStyles(AppColors);
+    
     return (
       <View style={[styles.inputBox, containerStyle]}>
         <TextInput
@@ -41,7 +44,7 @@ const InputField = forwardRef<TextInput, InputFieldProps>(
 
 InputField.displayName = 'InputField';
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   inputBox: {
     width: '100%',
     backgroundColor: AppColors.backgroundInputMuted,

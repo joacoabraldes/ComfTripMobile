@@ -17,10 +17,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommonStyles } from '@/constants/Styles';
+import { useCommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
+import { useAppColors } from '@/hooks/useAppColors';
 import { getResponsiveValues } from '@/helpers/responsive';
 import TextButton from '@/components/buttons/TextButton';
 
@@ -28,6 +28,9 @@ export default function RecoverPasswordScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const CommonStyles = useCommonStyles();
+  const styles = getStyles(AppColors);
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -297,7 +300,8 @@ export default function RecoverPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'android' ? 8 : 0,

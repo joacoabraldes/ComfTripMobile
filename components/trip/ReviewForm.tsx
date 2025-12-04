@@ -6,7 +6,8 @@ import { useTranslation } from '@/i18n';
 import { MaterialIcons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 interface ReviewFormProps {
   tripId: number;
@@ -21,6 +22,8 @@ interface ReviewFormProps {
 
 export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFormProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const [rating, setRating] = useState<number>(existingReview?.rating || 0);
   const [title, setTitle] = useState<string>(existingReview?.title || '');
   const [comment, setComment] = useState<string>(existingReview?.comment || '');
@@ -191,10 +194,11 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,

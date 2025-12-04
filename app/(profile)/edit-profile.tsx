@@ -17,8 +17,9 @@ import {
   ScrollView,
 } from "react-native";
 import { useTranslation } from '@/i18n';
-import { CommonStyles } from '@/constants/Styles';
-import { AppColors } from '@/constants/Colors';
+import { useCommonStyles } from '@/constants/Styles';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useColorScheme } from '@/hooks/useColorScheme';
 import PhoneField from '@/components/forms/PhoneField';
 import NationalityField from '@/components/forms/NationalityField';
 import countries from 'world-countries';
@@ -68,6 +69,11 @@ function dateToISODate(d?: Date | null) {
 export default function EditProfileScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const CommonStyles = useCommonStyles();
+  const styles = getStyles(AppColors);
+  const colorScheme = useColorScheme();
+  const placeholderColor = colorScheme === 'dark' ? AppColors.white : AppColors.textMutedDark;
   // Get userId from token as in profile.tsx
   const [userId, setUserId] = useState<string | number | null>(null);
   const [name, setName] = useState("");
@@ -277,8 +283,8 @@ export default function EditProfileScreen() {
     <SecondaryLayout title={t('profile.editProfile')}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
-        <TextInput style={CommonStyles.input} placeholder={t('profile.name')} value={name} onChangeText={setName} />
-        <TextInput style={CommonStyles.input} placeholder={t('profile.email')} value={email} onChangeText={setEmail} />
+        <TextInput style={[CommonStyles.input, { color: AppColors.text }]} placeholder={t('profile.name')} value={name} onChangeText={setName} placeholderTextColor={placeholderColor} />
+        <TextInput style={[CommonStyles.input, { color: AppColors.text }]} placeholder={t('profile.email')} value={email} onChangeText={setEmail} placeholderTextColor={placeholderColor} />
         
         <View style={{ marginBottom: 12 }}>
           <PhoneField
@@ -302,7 +308,7 @@ export default function EditProfileScreen() {
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={() => setShowPicker(true)}
-          style={[CommonStyles.input, styles.dateInput]}
+          style={[CommonStyles.input, styles.dateInput, { backgroundColor: AppColors.backgroundInput }]}
         >
           <Text style={[styles.dateText, !birthdateDisplay && styles.placeholderText]}>
             {birthdateDisplay || t('profile.birthdate')}
@@ -326,7 +332,8 @@ export default function EditProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
   },

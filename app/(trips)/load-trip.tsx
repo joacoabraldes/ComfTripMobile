@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity } fr
 import { Stack, useRouter, useLocalSearchParams } from 'expo-router';
 import { apiPost } from '@/helpers/api';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function LoadTrip() {
   const router = useRouter();
@@ -11,6 +11,8 @@ export default function LoadTrip() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   useEffect(() => {
     let mounted = true;
@@ -74,7 +76,8 @@ export default function LoadTrip() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center', // Center vertically

@@ -13,7 +13,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import { apiGet, apiPost } from '@/helpers/api';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
@@ -50,6 +50,8 @@ export default function AddActivity() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const tripId = params.tripId ? Number(params.tripId) : NaN;
 
   const [loading, setLoading] = useState(true);
@@ -475,7 +477,8 @@ export default function AddActivity() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.backgroundPrimary,

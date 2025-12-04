@@ -9,7 +9,8 @@ import React, { useState, useEffect } from 'react';
 import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ActivityIndicator } from 'react-native';
 import { Friend } from '@/types';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 interface ShareTripButtonProps {
   tripId: number;
@@ -21,6 +22,8 @@ interface ShareTripButtonProps {
 
 export default function ShareTripButton({ tripId, tripDestination, showButton = true, initialVisible = false, onClose }: ShareTripButtonProps) {
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const router = useRouter();
   const [showModal, setShowModal] = useState<boolean>(initialVisible);
   const [friends, setFriends] = useState<Friend[]>([]);
@@ -257,7 +260,8 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   shareButton: {
     position: 'absolute',
     right: 60,

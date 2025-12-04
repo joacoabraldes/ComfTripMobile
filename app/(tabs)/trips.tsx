@@ -10,16 +10,18 @@ import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { Ionicons } from '@expo/vector-icons';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function TripsScreen() {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const AppColors = useAppColors();
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,6 +30,9 @@ export default function TripsScreen() {
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<SortOption>('date');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Generate dynamic styles
+  const styles = getStyles(AppColors);
 
   const cardWidth = Math.min(340, Math.round(width - 40));
 
@@ -269,7 +274,8 @@ export default function TripsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
 
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
@@ -279,6 +285,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
+    backgroundColor: AppColors.backgroundCard,
     // shadow
     shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
@@ -296,7 +303,7 @@ const styles = StyleSheet.create({
   },
 
   cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
+  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
   dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
 
   badge: {

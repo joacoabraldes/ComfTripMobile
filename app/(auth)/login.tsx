@@ -19,7 +19,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommonStyles } from '@/constants/Styles';
+import { useCommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
 import InputField from '@/components/forms/InputField';
 import { getResponsiveValues } from '@/helpers/responsive';
@@ -32,6 +32,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { t, language, setLanguage } = useTranslation();
   const AppColors = useAppColors();
+  const CommonStyles = useCommonStyles();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const [identifier, setIdentifier] = useState(''); // email or username
@@ -48,6 +49,7 @@ export default function LoginScreen() {
   const inputHeight = responsive.heights.input;
   const btnHeight = responsive.heights.button;
   const btnRadius = responsive.borderRadius.button;
+  const styles = getStyles(AppColors);
 
   // Validate form
   const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
@@ -83,7 +85,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={CommonStyles.safeArea}>
+    <SafeAreaView style={[CommonStyles.safeArea, { backgroundColor: AppColors.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -247,7 +249,8 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: { flexGrow: 1, paddingTop: Platform.OS === 'android' ? 8 : 0, justifyContent: 'space-between' },
   topArea: { alignItems: 'center', marginTop: Platform.OS === 'ios' ? 60 : 40 },
   titleContainer: {

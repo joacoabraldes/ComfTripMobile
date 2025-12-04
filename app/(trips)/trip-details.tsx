@@ -15,7 +15,8 @@ import ReviewForm from '@/components/trip/ReviewForm';
 import ShareTripButton from '@/components/trip/ShareTripButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { ShadowColors, StateColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 
 type Params = {
@@ -30,6 +31,8 @@ export default function TripDetails() {
   const router = useRouter();
   const params = useLocalSearchParams() as Params;
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
 
   // Header uses params (as in trips.tsx navigation)
@@ -458,10 +461,11 @@ export default function TripDetails() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 8, paddingBottom: 32, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
-  title: { fontSize: 26, fontWeight: '800', color: AppColors.black },
+  title: { fontSize: 26, fontWeight: '800', color: AppColors.text },
   subtitle: { marginTop: 8, fontSize: 16, color: AppColors.textTertiary },
   completedBadge: {
     flexDirection: 'row',

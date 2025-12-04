@@ -30,7 +30,7 @@ const en = {
 
   // Trips
   trips: {
-    title: 'My Trips',
+    title: 'Trips',
     loading: 'Loading trips...',
     empty: 'No trips registered.',
     failedToLoad: 'Failed to load trips',

@@ -6,18 +6,21 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommonStyles } from '@/constants/Styles';
+import { useCommonStyles } from '@/constants/Styles';
 import { useRouter } from 'expo-router';
 import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
 import { getResponsiveValues, responsiveValue, responsiveSize } from '@/helpers/responsive';
+import { useAppColors } from '@/hooks/useAppColors';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const CommonStyles = useCommonStyles();
+  const styles = getStyles(AppColors);
 
   // measurements
   const responsive = getResponsiveValues(width, height);
@@ -83,7 +86,8 @@ export default function StartScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     width: '100%',

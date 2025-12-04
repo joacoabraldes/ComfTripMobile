@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 const ICON_SIZE = 20;
 
@@ -30,6 +31,8 @@ function getIconName(routeName: string): keyof typeof Ionicons.glyphMap {
 export default function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets?.() ?? { bottom: 0, top: 0, left: 0, right: 0 };
   const bottomInset = insets.bottom || (Platform.OS === 'android' ? 16 : 0);
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
 
   const BAR_HEIGHT = 50 + bottomInset;
 
@@ -92,7 +95,7 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     position: 'absolute',
     left: 0,

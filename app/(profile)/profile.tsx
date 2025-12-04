@@ -245,7 +245,7 @@ export default function ProfileScreen() {
 
   if (loading || !profile) {
     return (
-      <SecondaryLayout title={t('profile.editProfile')}>
+      <SecondaryLayout title={t('profile.profile')}>
         <View style={styles.centered}>
           <ActivityIndicator size="large" />
         </View>

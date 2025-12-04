@@ -18,10 +18,10 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CommonStyles } from '@/constants/Styles';
+import { useCommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
-import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
+import { useAppColors } from '@/hooks/useAppColors';
 import PhoneField from '@/components/forms/PhoneField';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import NationalityField from '@/components/forms/NationalityField';
@@ -32,6 +32,9 @@ export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
   const router = useRouter();
   const { t } = useTranslation();
+  const AppColors = useAppColors();
+  const CommonStyles = useCommonStyles();
+  const styles = getStyles(AppColors);
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -371,7 +374,8 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flexGrow: 1,
     paddingTop: Platform.OS === 'android' ? 8 : 0,

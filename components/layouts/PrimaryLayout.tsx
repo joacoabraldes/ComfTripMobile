@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import TopBar from '@/components/ui/TopBar';
-import { AppColors } from '@/constants/Colors';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type PrimaryLayoutProps = {
   children: React.ReactNode;
@@ -23,6 +23,9 @@ export default function PrimaryLayout({
   leftActions,
   rightActions,
 }: PrimaryLayoutProps) {
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  
   return (
     <View style={styles.container}>
       <TopBar title={title} showProfileIcon={showProfileIcon} leftActions={leftActions} rightActions={rightActions} variant="primary" />
@@ -31,7 +34,7 @@ export default function PrimaryLayout({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: AppColors.background,

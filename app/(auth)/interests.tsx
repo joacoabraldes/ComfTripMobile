@@ -21,8 +21,9 @@ import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
-import { AppColors, ShadowColors } from '@/constants/Colors';
+import { ShadowColors } from '@/constants/Colors';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
+import { useAppColors } from '@/hooks/useAppColors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getResponsiveValues } from '@/helpers/responsive';
 import { useCategoryTranslation, useCategoryDescriptionTranslation } from '@/helpers/categoryTranslations';
@@ -90,6 +91,7 @@ const InterestCard = React.memo(function InterestCard({
   imageFailed,
   translateCategory,
   translateDescription,
+  styles,
 }: {
   item: ServerInterest;
   onToggle: (slug: string) => void;
@@ -97,6 +99,7 @@ const InterestCard = React.memo(function InterestCard({
   imageFailed?: boolean;
   translateCategory: (slug: string | null | undefined, fallback?: string) => string;
   translateDescription: (slug: string | null | undefined, fallback?: string) => string;
+  styles: ReturnType<typeof getStyles>;
 }) {
   const [imgLoading, setImgLoading] = useState(true);
   const imageSource = imageFailed ? defaultImage : getImageSource(item.slug);
@@ -157,6 +160,8 @@ export default function InterestsScreen() {
   const { width } = useWindowDimensions();
   const responsive = getResponsiveValues(width);
   const translateCategory = useCategoryTranslation();
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
   const translateDescription = useCategoryDescriptionTranslation();
   
   const titleFontSize = responsive.fontSizes.titleLarge;
@@ -287,9 +292,10 @@ export default function InterestsScreen() {
         imageFailed={Boolean(imageLoadFailed[item.slug])}
         translateCategory={translateCategory}
         translateDescription={translateDescription}
+        styles={styles}
       />
     ),
-    [selected, imageLoadFailed, toggleInterest, translateCategory, translateDescription]
+    [selected, imageLoadFailed, toggleInterest, translateCategory, translateDescription, styles]
   );
 
   const keyExtractor = useCallback((i: ServerInterest) => String(i.id ?? i.slug), []);
@@ -494,7 +500,8 @@ export default function InterestsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+// Create dynamic styles function
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: { flex: 1, padding: 20, paddingBottom: 0 },
   listContainer: { flex: 1, marginBottom: 16 },
   header: {
@@ -565,7 +572,7 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: AppColors.backgroundPrimary,
+    backgroundColor: AppColors.backgroundCard,
     borderRadius: 12,
     padding: 14,
     marginBottom: 14,
