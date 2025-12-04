@@ -43,7 +43,7 @@ export default function TopBar({
       '/map': t('tabs.map'),
       '/explore': t('tabs.explore'),
       '/community': t('tabs.community'),
-      '/profile': t('profile.editProfile'),
+      '/profile': t('profile.profile'),
     };
     
     return routeMap[pathname] || 'ComfTrip';

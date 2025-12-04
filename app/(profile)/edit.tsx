@@ -100,26 +100,68 @@ export default function EditProfileScreen() {
         setEmail(user.email || "");
         
         // Parse phone number to extract code and number
+        // Phone can be stored as: "+1234567890", "+52 1234567890", "+52-1234567890", etc.
         const phone = user.phone || "";
         if (phone) {
-          // Try to extract country code (assuming format like +1234567890 or +52 1234567890)
-          const phoneMatch = phone.match(/^(\+\d{1,4})\s*(.+)$/);
-          if (phoneMatch) {
-            setPhoneCode(phoneMatch[1]);
-            setPhoneNumber(phoneMatch[2]);
-          } else if (phone.startsWith('+')) {
-            // If it starts with + but no space, try to extract first 1-4 digits as code
-            const codeMatch = phone.match(/^(\+\d{1,4})/);
-            if (codeMatch) {
-              setPhoneCode(codeMatch[1]);
-              setPhoneNumber(phone.substring(codeMatch[1].length));
+          // Remove common separators (spaces, dashes, parentheses)
+          const cleaned = phone.replace(/[\s\-\(\)]/g, '');
+          
+          // Try to match country codes (1-4 digits after +)
+          // Common codes: +1 (US/CA), +52 (MX), +54 (AR), +57 (CO), etc.
+          const codePatterns = [
+            /^(\+\d{1,4})(\d{4,})/,  // +1234567890 or +521234567890
+            /^(\+\d{1,4})\s+(.+)/,   // +52 1234567890
+            /^(\+\d{1,4})-(.+)/,     // +52-1234567890
+          ];
+          
+          let matched = false;
+          for (const pattern of codePatterns) {
+            const match = phone.match(pattern);
+            if (match) {
+              const code = match[1];
+              const number = match[2].replace(/[\s\-\(\)]/g, ''); // Clean the number part
+              // Validate: code should be 1-4 digits, number should be at least 4 digits
+              if (code.length >= 2 && code.length <= 5 && number.length >= 4) {
+                setPhoneCode(code);
+                setPhoneNumber(number);
+                matched = true;
+                break;
+              }
+            }
+          }
+          
+          // If no pattern matched, try to extract from cleaned string
+          if (!matched && cleaned.startsWith('+')) {
+            // Try common country code lengths
+            for (let codeLen = 2; codeLen <= 4; codeLen++) {
+              const potentialCode = cleaned.substring(0, codeLen + 1); // +1, +52, +123, etc.
+              const potentialNumber = cleaned.substring(codeLen + 1);
+              // Validate potential code and number
+              if (potentialNumber.length >= 4 && /^\+\d+$/.test(potentialCode)) {
+                setPhoneCode(potentialCode);
+                setPhoneNumber(potentialNumber);
+                matched = true;
+                break;
+              }
+            }
+          }
+          
+          // Fallback: if still no match, use default code
+          if (!matched) {
+            if (cleaned.startsWith('+')) {
+              // If it has + but we couldn't parse, try to extract first 1-3 digits as code
+              const fallbackMatch = cleaned.match(/^(\+\d{1,3})(\d{4,})/);
+              if (fallbackMatch) {
+                setPhoneCode(fallbackMatch[1]);
+                setPhoneNumber(fallbackMatch[2]);
+              } else {
+                setPhoneCode('+1');
+                setPhoneNumber(cleaned.replace(/^\+/, ''));
+              }
             } else {
               setPhoneCode('+1');
-              setPhoneNumber(phone);
+              setPhoneNumber(cleaned);
             }
-          } else {
-            setPhoneCode('+1');
-            setPhoneNumber(phone);
           }
         } else {
           setPhoneCode('+1');

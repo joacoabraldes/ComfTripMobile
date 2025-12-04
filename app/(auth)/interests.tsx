@@ -23,6 +23,7 @@ import { useTranslation } from '@/i18n';
 import { AppColors, ShadowColors } from '@/constants/Colors';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getResponsiveValues } from '@/helpers/responsive';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -148,9 +149,10 @@ export default function InterestsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
+  const responsive = getResponsiveValues(width);
   
-  const titleFontSize = Math.round(Math.max(24, Math.min(32, width * 0.08)));
-  const subtitleFontSize = Math.round(Math.max(14, Math.min(16, width * 0.04)));
+  const titleFontSize = responsive.fontSizes.titleLarge;
+  const subtitleFontSize = responsive.fontSizes.subtitle;
 
   useEffect(() => {
     let mounted = true;

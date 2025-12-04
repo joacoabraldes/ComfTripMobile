@@ -20,6 +20,8 @@ import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
+import { getResponsiveValues } from '@/helpers/responsive';
+import TextButton from '@/components/buttons/TextButton';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -33,12 +35,13 @@ export default function LoginScreen() {
   const passwordRef = React.useRef<TextInput>(null);
 
   // measurements
-  const horizontalPadding = Math.round(width * 0.06);
-  const topIllustrationHeight = Math.round(Math.max(120, Math.min(220, height * 0.22)));
-  const titleFontSize = Math.round(Math.max(20, Math.min(28, width * 0.07)));
-  const inputHeight = Math.round(Math.max(44, Math.min(56, width * 0.12)));
-  const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
-  const btnRadius = Math.round(btnHeight * 0.22);
+  const responsive = getResponsiveValues(width, height);
+  const horizontalPadding = responsive.padding.horizontal;
+  const topIllustrationHeight = responsive.heights.illustration || 120;
+  const titleFontSize = responsive.fontSizes.title;
+  const inputHeight = responsive.heights.input;
+  const btnHeight = responsive.heights.button;
+  const btnRadius = responsive.borderRadius.button;
 
   // Validate form
   const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
@@ -124,9 +127,11 @@ export default function LoginScreen() {
             />
 
             <View style={styles.forgotWrap}>
-              <Text style={styles.forgotText} onPress={() => router.push('/recover-password')}>
-                {t('auth.login.forgotPassword')}
-              </Text>
+              <TextButton
+                title={t('auth.login.forgotPassword')}
+                onPress={() => router.push('/recover-password')}
+                textStyle={styles.forgotText}
+              />
             </View>
 
             <PrimaryButton
@@ -142,9 +147,11 @@ export default function LoginScreen() {
 
             <View style={styles.registerRow}>
               <Text style={styles.already}>{t('auth.login.notMember')}</Text>
-              <Text style={styles.registerLink} onPress={() => router.push('/register')}>
-                {t('auth.login.registerNow')}
-              </Text>
+              <TextButton
+                title={t('auth.login.registerNow')}
+                onPress={() => router.push('/register')}
+                textStyle={styles.registerLink}
+              />
             </View>
           </View>
         </ScrollView>
@@ -174,9 +181,9 @@ const styles = StyleSheet.create({
   form: { paddingBottom: 60 },
 
   forgotWrap: { alignSelf: 'flex-end', marginTop: 10 },
-  forgotText: { color: AppColors.primary, fontSize: 13 },
+  forgotText: { fontSize: 13 },
 
-  registerRow: { flexDirection: 'row', justifyContent: 'center', marginTop: 18 },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 18 },
   already: { color: AppColors.text, fontSize: 13, fontWeight: '500' },
-  registerLink: { color: AppColors.primary, fontSize: 13, fontWeight: '700', marginLeft: 6 },
+  registerLink: { fontSize: 13, fontWeight: '700', marginLeft: 6 },
 });

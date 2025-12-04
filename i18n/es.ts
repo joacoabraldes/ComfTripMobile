@@ -147,6 +147,7 @@ const es = {
 
   // Profile
   profile: {
+    profile: 'Perfil',
     user: 'Usuario',
     email: 'Correo',
     phone: 'Teléfono',

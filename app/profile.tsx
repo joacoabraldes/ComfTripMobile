@@ -18,6 +18,8 @@ import {
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "@/i18n";
 import { AppColors, ShadowColors } from "@/constants/Colors";
+import { getResponsiveValues, responsiveSize } from "@/helpers/responsive";
+import TextButton from "@/components/buttons/TextButton";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -65,9 +67,10 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useTranslation();
   
   // Tamaños relativos basados en el tamaño de pantalla
-  const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.14)));
-  const btnRadius = Math.round(btnHeight * 0.22);
-  const iconSize = Math.round(Math.max(16, Math.min(20, width * 0.045)));
+  const responsive = getResponsiveValues(width, height);
+  const btnHeight = responsive.heights.button;
+  const btnRadius = responsive.borderRadius.button;
+  const iconSize = responsiveSize(width, 0.045, 16, 20);
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -272,20 +275,20 @@ export default function ProfileScreen() {
   const displayBirthdate = formatDateOnly(profile.birthdate);
 
   // Tamaños relativos para textos y espaciados
-  const fontSizeSmall = Math.round(Math.max(12, Math.min(14, width * 0.033)));
-  const fontSizeMedium = Math.round(Math.max(14, Math.min(16, width * 0.038)));
-  const fontSizeLarge = Math.round(Math.max(16, Math.min(18, width * 0.043)));
-  const paddingSmall = Math.round(Math.max(10, Math.min(12, width * 0.03)));
-  const paddingMedium = Math.round(Math.max(12, Math.min(14, width * 0.035)));
-  const paddingLarge = Math.round(Math.max(14, Math.min(16, width * 0.04)));
-  const borderRadius = Math.round(Math.max(10, Math.min(12, width * 0.03)));
+  const fontSizeSmall = responsive.fontSizes.small;
+  const fontSizeMedium = responsive.fontSizes.medium;
+  const fontSizeLarge = responsive.fontSizes.large;
+  const paddingSmall = responsive.padding.small;
+  const paddingMedium = responsive.padding.medium;
+  const paddingLarge = responsive.padding.large;
+  const borderRadius = responsive.borderRadius.default;
 
   function InfoRow({ label, value, iconName, iconSize }: { label: string; value: string; iconName?: keyof typeof Ionicons.glyphMap; iconSize?: number }) {
     return (
       <View style={[styles.infoRow, { paddingVertical: paddingSmall }]}>
         <View style={styles.infoLeft}>
           {iconName ? <Ionicons name={iconName} size={iconSize || 18} color={AppColors.textSecondary} /> : null}
-          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: iconName ? Math.round(width * 0.02) : 0 }]}>{label}</Text>
+          <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: iconName ? responsive.spacing.small : 0 }]}>{label}</Text>
         </View>
         <Text style={[styles.infoValue, { fontSize: fontSizeMedium }]}>{value}</Text>
       </View>
@@ -293,7 +296,7 @@ export default function ProfileScreen() {
   }
 
   return (
-    <SecondaryLayout title={t('profile.editProfile')}>
+    <SecondaryLayout title={t('profile.profile')}>
       <ScrollView 
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -307,6 +310,13 @@ export default function ProfileScreen() {
           marginTop: 16,
           marginHorizontal: 16,
         }]}>
+          {/* Profile Photo */}
+          <View style={styles.profilePhotoContainer}>
+            <View style={[styles.profilePhoto, { width: responsiveSize(width, 0.25, 80, 120), height: responsiveSize(width, 0.25, 80, 120), borderRadius: responsiveSize(width, 0.125, 40, 60) }]}>
+              <Ionicons name="person" size={responsiveSize(width, 0.12, 40, 60)} color={AppColors.textSecondary} />
+            </View>
+          </View>
+          
           <InfoRow label={t('profile.user')} value={displayName} iconName="person" iconSize={iconSize} />
           <InfoRow label={t('profile.email')} value={displayEmail} iconName="mail" iconSize={iconSize} />
           <InfoRow label={t('profile.phone')} value={displayPhone} iconName="call" iconSize={iconSize} />
@@ -317,7 +327,7 @@ export default function ProfileScreen() {
           <View style={[styles.infoRow, { paddingVertical: paddingSmall, borderBottomWidth: 0 }]}>
             <View style={styles.infoLeft}>
               <Ionicons name="globe" size={iconSize} color={AppColors.textSecondary} />
-              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: Math.round(width * 0.02) }]}>
+              <Text style={[styles.infoLabel, { fontSize: fontSizeSmall, marginLeft: responsive.spacing.small }]}>
                 {t('profile.language')}
               </Text>
             </View>
@@ -359,31 +369,25 @@ export default function ProfileScreen() {
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           {/* Row with Edit Profile and Change Password */}
-          <View style={styles.buttonRow}>
-            <PrimaryButton
+          <View style={styles.textButtonRow}>
+            <TextButton
               title={t('profile.editProfile')}
               onPress={handleEdit}
-              height={btnHeight}
-              borderRadius={btnRadius}
-              style={[styles.actionButton, { flex: 1, marginRight: 8 }]}
             />
-            <PrimaryButton
+            <TextButton
               title={t('profile.changePassword')}
               onPress={handleChangePassword}
-              height={btnHeight}
-              borderRadius={btnRadius}
-              style={[styles.actionButton, { flex: 1, marginLeft: 8 }]}
             />
           </View>
 
           {/* Logout Button */}
-          <View style={[styles.buttonRow, { marginTop: 16 }]}>
+          <View style={[styles.buttonRow, { marginTop: 32 }]}>
             <PrimaryButton
               title={t('profile.logout')}
               onPress={handleLogout}
               height={btnHeight}
               borderRadius={btnRadius}
-              style={[styles.actionButton, { width: '100%', backgroundColor: AppColors.error }]}
+              style={[styles.actionButton, { width: '100%' }]}
             />
           </View>
         </View>
@@ -447,10 +451,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
 
+  profilePhotoContainer: {
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  profilePhoto: {
+    backgroundColor: AppColors.backgroundInputMuted,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: AppColors.borderLight,
+  },
   actionsContainer: {
     marginTop: 24,
     paddingHorizontal: 16,
     width: "100%",
+  },
+  textButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
   },
   buttonRow: {
     flexDirection: "row",

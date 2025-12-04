@@ -25,6 +25,8 @@ import InputField from '@/components/forms/InputField';
 import PhoneField from '@/components/forms/PhoneField';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import NationalityField from '@/components/forms/NationalityField';
+import { getResponsiveValues } from '@/helpers/responsive';
+import TextButton from '@/components/buttons/TextButton';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -56,12 +58,13 @@ export default function RegisterScreen() {
   const confirmPasswordRef = useRef<TextInput>(null);
 
   // measurements
-  const horizontalPadding = Math.round(width * 0.06);
-  const titleFontSize = Math.round(Math.max(24, Math.min(32, width * 0.08)));
-  const subtitleFontSize = Math.round(Math.max(14, Math.min(16, width * 0.04)));
-  const inputHeight = Math.round(Math.max(44, Math.min(56, width * 0.12)));
-  const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
-  const btnRadius = Math.round(btnHeight * 0.22);
+  const responsive = getResponsiveValues(width, height);
+  const horizontalPadding = responsive.padding.horizontal;
+  const titleFontSize = responsive.fontSizes.titleLarge;
+  const subtitleFontSize = responsive.fontSizes.subtitle;
+  const inputHeight = responsive.heights.input;
+  const btnHeight = responsive.heights.button;
+  const btnRadius = responsive.borderRadius.button;
 
   // Validate form
   const isFormValid = useMemo(() => {
@@ -332,9 +335,11 @@ export default function RegisterScreen() {
 
             <View style={styles.loginRow}>
               <Text style={styles.already}>{t('auth.register.alreadyMember')}</Text>
-              <Text style={styles.loginLink} onPress={() => router.push('/login')}>
-                {t('auth.register.loginLink')}
-              </Text>
+              <TextButton
+                title={t('auth.register.loginLink')}
+                onPress={() => router.push('/login')}
+                textStyle={styles.loginLink}
+              />
             </View>
           </View>
         </ScrollView>
@@ -415,7 +420,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loginLink: {
-    color: AppColors.primary,
     fontSize: 13,
     fontWeight: '700',
     marginLeft: 6,

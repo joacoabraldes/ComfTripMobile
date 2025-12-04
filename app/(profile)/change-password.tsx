@@ -8,6 +8,7 @@ import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform, 
 import { useTranslation } from '@/i18n';
 import { CommonStyles } from '@/constants/Styles';
 import InputField from '@/components/forms/InputField';
+import { getResponsiveValues } from '@/helpers/responsive';
 
 function base64UrlDecode(input: string) {
   try {
@@ -52,7 +53,8 @@ export default function ChangePasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [initChecking, setInitChecking] = useState(true);
   const { width } = useWindowDimensions();
-  const inputHeight = Math.round(Math.max(44, Math.min(56, width * 0.12)))
+  const responsive = getResponsiveValues(width);
+  const inputHeight = responsive.heights.input;
 
   // Validate form - all fields must be filled and passwords must match
   const isFormValid = oldPassword.trim().length > 0 && 

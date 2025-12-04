@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { Ionicons } from '@expo/vector-icons';
 import { AppColors, ShadowColors } from '@/constants/Colors';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 
 export default function TripsScreen() {
   const { t } = useTranslation();
@@ -147,17 +148,12 @@ export default function TripsScreen() {
         }
       />
 
-        <TouchableOpacity
-          style={[
-            styles.fab,
-            { bottom: (Platform.OS === 'android' ? 100 : 125) + insets.bottom },
-          ]}
+        <FloatingActionButton
           onPress={() => router.push('/add-trip')}
           accessibilityLabel={t('trips.addTrip')}
-          activeOpacity={0.85}
-        >
-          <Ionicons name="add" size={32} color={AppColors.white} />
-        </TouchableOpacity>
+          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
+          right={20}
+        />
       </View>
     </PrimaryLayout>
   );
@@ -209,21 +205,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 10,
     borderRadius: 8,
-  },
-  fab: {
-    position: 'absolute',
-    right: 30,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: AppColors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 14,
-    shadowColor: ShadowColors.black,
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    zIndex: 9999,
   },
 });

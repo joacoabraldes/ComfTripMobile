@@ -18,6 +18,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '@/i18n';
 import LogoSvg from '@/components/icons/LogoSvg';
 import { AppColors, ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
+import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 
 type Trip = {
   id: number;
@@ -118,13 +120,14 @@ export default function HomeScreen() {
   const TABBAR_HEIGHT = 64;
 
   // measurements
-  const horizontalPadding = Math.round(Math.max(16, Math.min(32, width * 0.06)));
+  const responsive = getResponsiveValues(width, height);
+  const horizontalPadding = responsiveSize(width, 0.06, 16, 32);
   const contentMaxWidth = Math.round(width - horizontalPadding * 2);
   const baseSvgWidth = 321;
   const baseSvgHeight = 251;
   const svgAspect = baseSvgHeight / baseSvgWidth;
-  const btnWidth = Math.round(Math.max(240, Math.min(320, width * 0.83)));
-  const btnHeight = Math.round(Math.max(44, Math.min(64, width * 0.13)));
+  const btnWidth = responsive.widths.button;
+  const btnHeight = responsive.heights.buttonSmall;
   const btnRadius = 8;
   const ctaBottomBase = 20 + bottomInset + TABBAR_HEIGHT;
   const ctaBottom = ctaBottomBase + 20;
@@ -141,7 +144,7 @@ export default function HomeScreen() {
   const svgMaxHeight = Math.min(maxSvgHeightFromWidth, Math.round(availableContentHeight * 0.55));
   const svgMaxWidth = Math.round(svgMaxHeight / svgAspect);
 
-  const copyFontSize = Math.round(Math.max(14, Math.min(20, width * 0.048)));
+  const copyFontSize = responsive.fontSizes.copy;
   const contentPaddingBottom = btnHeight + bottomInset + TABBAR_HEIGHT + 32;
 
   const [ongoingPlaces, setOngoingPlaces] = useState<Place[]>([]);
@@ -511,17 +514,13 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* PrimaryButton positioned above tab bar and raised by RAISE_UP */}
-        <View style={[styles.buttonWrapper, { bottom: ctaBottom }]}>
-          <PrimaryButton
-            title={t('home.newTrip')}
-            onPress={() => router.push('/add-trip')}
-            height={btnHeight}
-            borderRadius={btnRadius}
-            style={{ width: btnWidth }}
-            activeOpacity={0.95}
-          />
-        </View>
+        {/* FAB positioned in bottom right corner */}
+        <FloatingActionButton
+          onPress={() => router.push('/add-trip')}
+          accessibilityLabel={t('home.newTrip')}
+          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
+          right={20}
+        />
       </View>
     </PrimaryLayout>
   );
@@ -560,13 +559,6 @@ const styles = StyleSheet.create({
     fontFamily: Platform.select({ ios: 'Roboto', android: 'Roboto', default: 'System' }),
     fontWeight: '500' as any,
     letterSpacing: 0.18,
-  },
-
-  buttonWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
   },
 
   // Reuse card styles similar to trips.tsx

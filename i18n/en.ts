@@ -147,6 +147,7 @@ const en = {
 
   // Profile
   profile: {
+    profile: 'Profile',
     user: 'User',
     email: 'Email',
     phone: 'Phone',

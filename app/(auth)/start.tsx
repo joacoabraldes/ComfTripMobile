@@ -12,6 +12,7 @@ import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
+import { getResponsiveValues, responsiveValue, responsiveSize } from '@/helpers/responsive';
 
 export default function StartScreen() {
   const { width, height } = useWindowDimensions();
@@ -19,21 +20,22 @@ export default function StartScreen() {
   const { t } = useTranslation();
 
   // measurements
-  const btnHeight = Math.round(Math.max(40, Math.min(56, width * 0.14)));
+  const responsive = getResponsiveValues(width, height);
+  const btnHeight = responsiveSize(width, 0.14, 40, 56);
   const btnRadius = Math.round(btnHeight * 0.22);
 
-  const illustrationWidth = Math.round(width * 0.52);
+  const illustrationWidth = responsiveValue(width, 0.52);
   const illustrationAspect = 201 / 153;
   const illustrationHeight = Math.round(illustrationWidth / illustrationAspect);
 
-  const titleFontSize = Math.round(Math.max(28, Math.min(48, width * 0.11)));
-  const labelFontSize = Math.round(Math.max(15, Math.min(20, width * 0.05)));
+  const titleFontSize = responsiveSize(width, 0.11, 28, 48);
+  const labelFontSize = responsive.fontSizes.label;
 
-  const horizontalPadding = Math.round(width * 0.06);
-  const verticalPadding = Math.round(Math.max(16, Math.min(48, height * 0.04)));
-  const bottomSpacing = Math.round(Math.max(12, Math.min(40, height * 0.02)));
+  const horizontalPadding = responsive.padding.horizontal;
+  const verticalPadding = responsive.spacing.vertical || 16;
+  const bottomSpacing = responsive.spacing.bottom || 12;
 
-  const topAreaMargin = Math.round(height * 0.2);
+  const topAreaMargin = responsiveValue(height, 0.2);
 
   return (
     <SafeAreaView style={CommonStyles.safeArea}>
@@ -49,7 +51,7 @@ export default function StartScreen() {
       >
         <View style={[styles.topArea, { marginTop: topAreaMargin }]}>
           <LogoSvg width={illustrationWidth} height={illustrationHeight} />
-          <Text style={[styles.brand, { fontSize: titleFontSize, marginTop: Math.round(height * 0.02) }]}>ComfTrip</Text>
+          <Text style={[styles.brand, { fontSize: titleFontSize, marginTop: responsive.spacing.bottom || 12 }]}>ComfTrip</Text>
         </View>
 
         <View style={[styles.actionsWrap, { marginBottom: bottomSpacing }]}>
@@ -71,7 +73,7 @@ export default function StartScreen() {
               backgroundColor: 'transparent',
               borderWidth: 1,
               borderColor: AppColors.primary,
-              marginTop: Math.round(height * 0.012),
+              marginTop: responsiveSize(height, 0.012, 8, 12),
             }}
             textStyle={{ color: AppColors.primary, fontSize: labelFontSize }}
           />

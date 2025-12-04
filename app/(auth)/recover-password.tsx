@@ -21,6 +21,8 @@ import { CommonStyles } from '@/constants/Styles';
 import { useTranslation } from '@/i18n';
 import { AppColors } from '@/constants/Colors';
 import InputField from '@/components/forms/InputField';
+import { getResponsiveValues } from '@/helpers/responsive';
+import TextButton from '@/components/buttons/TextButton';
 
 export default function RecoverPasswordScreen() {
   const { width, height } = useWindowDimensions();
@@ -42,13 +44,14 @@ export default function RecoverPasswordScreen() {
   const confirmPasswordRef = useRef<TextInput>(null);
 
   // measurements
-  const horizontalPadding = Math.round(width * 0.06);
-  const topIllustrationHeight = Math.round(Math.max(120, Math.min(220, height * 0.22)));
-  const titleFontSize = Math.round(Math.max(20, Math.min(28, width * 0.07)));
-  const subtitleFontSize = Math.round(Math.max(14, Math.min(16, width * 0.04)));
-  const inputHeight = Math.round(Math.max(44, Math.min(56, width * 0.12)));
-  const btnHeight = Math.round(Math.max(44, Math.min(60, width * 0.14)));
-  const btnRadius = Math.round(btnHeight * 0.22);
+  const responsive = getResponsiveValues(width, height);
+  const horizontalPadding = responsive.padding.horizontal;
+  const topIllustrationHeight = responsive.heights.illustration || 120;
+  const titleFontSize = responsive.fontSizes.title;
+  const subtitleFontSize = responsive.fontSizes.subtitle;
+  const inputHeight = responsive.heights.input;
+  const btnHeight = responsive.heights.button;
+  const btnRadius = responsive.borderRadius.button;
 
   // Validate email format
   const isEmailValid = useMemo(() => {
@@ -281,9 +284,11 @@ export default function RecoverPasswordScreen() {
             </PrimaryButton>
 
             <View style={styles.backRow}>
-              <Text style={styles.backText} onPress={() => router.back()}>
-                {t('auth.recoverPassword.backToLogin')}
-              </Text>
+              <TextButton
+                title={t('auth.recoverPassword.backToLogin')}
+                onPress={() => router.back()}
+                textStyle={styles.backText}
+              />
             </View>
           </View>
         </ScrollView>
@@ -330,7 +335,6 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   backText: {
-    color: AppColors.primary,
     fontSize: 13,
     fontWeight: '600',
   },
