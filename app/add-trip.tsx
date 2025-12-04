@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    paddingTop: Platform.OS === 'ios' ? 80 : 60,
+    paddingTop: Platform.OS === 'ios' ? 50 : 50,
     backgroundColor: 'white',
   },
   mapButton: {

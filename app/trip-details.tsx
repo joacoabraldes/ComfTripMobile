@@ -371,7 +371,7 @@ export default function TripDetails() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FCFCFC' },
-  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 80 : 60, alignItems: 'center' },
+  scroll: { paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 50 : 50, alignItems: 'center' },
   header: { width: '100%', alignItems: 'center', marginBottom: 18 },
   title: { fontSize: 26, fontWeight: '800', color: '#000' },
   subtitle: { marginTop: 8, fontSize: 16, color: '#757575' },
@@ -461,6 +461,7 @@ const styles = StyleSheet.create({
     right: 18,
     top: 36,
     gap: 8,
+      paddingTop: Platform.OS === 'android' ? 0 : 20,
   },
 
   activityCard: {

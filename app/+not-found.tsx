@@ -13,7 +13,7 @@ export default function NotFoundScreen() {
       <Stack.Screen options={{ title: t('notFound.title') }} />
       <ThemedView style={styles.container}>
         <ThemedText type="title">{t('notFound.message')}</ThemedText>
-        <Link href="/" style={styles.link}>
+        <Link href="/(auth)/login" style={styles.link}>
           <ThemedText type="link">{t('notFound.goHome')}</ThemedText>
         </Link>
       </ThemedView>

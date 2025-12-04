@@ -6,7 +6,10 @@ import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import {
+    ActivityIndicator,
+    FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TripsScreen() {
@@ -105,7 +108,10 @@ export default function TripsScreen() {
   if (loading) {
     return (
       <View style={styles.screen}>
-        <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
+          <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#FF3951" />
+              <Text style={styles.loadingText}>{t('trips.loading')}</Text>
+          </View>
       </View>
     );
   }
@@ -122,7 +128,7 @@ export default function TripsScreen() {
   }
 
   return (
-    <View style={[styles.screen, { paddingTop: Platform.OS === 'android' ? 8 : 0 }]}>
+    <View style={[styles.screen]}>
       <View style={styles.header}>
         <Text style={styles.title}>{t('trips.title')}</Text>
       </View>
@@ -158,7 +164,7 @@ export default function TripsScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 0, alignItems: 'center', position: 'relative', overflow: 'visible' },
+  screen: { flex: 1, width: '100%', backgroundColor: '#FCFCFC', paddingTop: Platform.OS === 'android' ? 8 : 40, alignItems: 'center', position: 'relative', overflow: 'visible' },
   header: { width: '100%', alignItems: 'center', marginTop: 28, marginBottom: 6 },
   title: { color: '#252525', fontSize: 30, fontWeight: '800' },
 
@@ -223,4 +229,6 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   fabText: { color: '#fff', fontSize: 32, lineHeight: 34, fontWeight: '600' },
+    loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
 });

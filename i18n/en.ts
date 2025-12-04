@@ -139,8 +139,10 @@ export default {
     noOwnTrips: 'No own trips found to share. You can only share trips you own.',
     sharing: 'Sharing...',
     shareSelected: 'Share ({count})',
-    shareSuccess: 'Successfully shared {count} trip(s).\n',
-    shareErrors: 'Errors in {count} trip(s):\n',
+    shareSuccess: 'Successfully shared {count} {trip}.\n',
+    shareErrors: 'Errors in {count} {trips}:\n',
+      trip: 'trip.',
+      trips: 'trips'
   },
 
   // Profile
@@ -381,6 +383,7 @@ export default {
     statusLabel: 'Status: {status}',
     datesNotSpecified: 'Dates not specified',
     ownerId: 'Owner id: {id}',
+      unknownUser: 'Unknown user'
   },
 
   // Change Password

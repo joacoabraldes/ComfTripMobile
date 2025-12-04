@@ -268,12 +268,12 @@ export default function CommunityScreen() {
     setSharing(false);
     let msg = '';
     if (successes.length) {
-      const friendWord = successes.length === 1 ? t('share.friend') : t('share.friends');
-      msg += t('community.shareSuccess', { count: successes.length }) + '\n';
+      const friendWord = successes.length === 1 ? t('community.trip') : t('community.trips');
+      msg += t('community.shareSuccess', { count: successes.length, trip: friendWord});
     }
     if (failures.length) {
-      const errorWord = failures.length === 1 ? t('share.errorSingular') : t('share.errorsPlural');
-      msg += t('community.shareErrors', { count: failures.length }) + failures.map(f => ` - ${f.tripId}: ${f.message}`).join('\n');
+      const errorWord = failures.length === 1 ? t('community.trip') : t('community.trips');
+      msg += t('community.shareErrors', { count: failures.length, trip: errorWord}) + failures.map(f => ` - ${f.tripId}: ${f.message}`).join('\n');
     }
 
     Alert.alert(t('communityExtra.result'), msg || t('share.operationCompleted'));
@@ -295,16 +295,16 @@ export default function CommunityScreen() {
   function renderListItem(item: any, actions: React.ReactNode, showAvatar = false) {
     const title = item.requester_name || item.addressee_name || item.name || t('communityExtra.userNumber', { number: item.requester_id || item.addressee_id || item.id });
     const subtitle = item.requester_email || item.addressee_email || item.email || '';
-    const status = item.status;
+    //const status = item.status;
 
     return (
       <View key={item.id} style={styles.listItem}>
         <View style={styles.itemInfo}>
-          {showAvatar && renderAvatar(item.name, item.email)}
+          {showAvatar && renderAvatar(item.requester_name || item.addressee_name || item.name, item.requester_email || item.addressee_email || item.email)}
           <View style={[styles.itemText, !showAvatar && styles.itemTextNoAvatar]}>
             <Text style={styles.itemTitle}>{title}</Text>
             {subtitle ? <Text style={styles.itemSubtitle}>{subtitle}</Text> : null}
-            {status ? <Text style={styles.itemStatus}>{t('communityExtra.statusLabel', { status })}</Text> : null}
+              {/*{status ? <Text style={styles.itemStatus}>{t('communityExtra.statusLabel', { status })}</Text> : null}*/}
           </View>
         </View>
         <View style={styles.itemActions}>
@@ -358,6 +358,35 @@ export default function CommunityScreen() {
           <Text style={styles.hint}>{t('community.hint')}</Text>
         </View>
 
+          {/* Friends */}
+          <View style={styles.card}>
+              <Text style={styles.cardTitle}>{t('community.friends')}</Text>
+              {friends.length === 0 ? (
+                  <Text style={styles.emptyText}>{t('community.noFriends')}</Text>
+              ) : (
+                  <View>
+                      {friends.map(friend => renderListItem(
+                          friend,
+                          <View style={styles.actionButtons}>
+                              <TouchableOpacity
+                                  style={[styles.actionButton, styles.shareButton]}
+                                  onPress={() => openShareModal(friend)}
+                              >
+                                  <IconSymbol name="paperplane.fill" size={16} color="#2b8cff" />
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                  style={[styles.actionButton, styles.removeButton]}
+                                  onPress={() => removeFriend(friend.id)}
+                              >
+                                  <IconSymbol name="person.fill" size={16} color="#e74c3c" />
+                              </TouchableOpacity>
+                          </View>,
+                          true
+                      ))}
+                  </View>
+              )}
+          </View>
+
         {/* Incoming Requests */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>{t('community.incomingRequests')}</Text>
@@ -380,36 +409,7 @@ export default function CommunityScreen() {
                   >
                     <IconSymbol name="person.fill" size={16} color="#e74c3c" />
                   </TouchableOpacity>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Friends */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>{t('community.friends')}</Text>
-          {friends.length === 0 ? (
-            <Text style={styles.emptyText}>{t('community.noFriends')}</Text>
-          ) : (
-            <View>
-              {friends.map(friend => renderListItem(
-                friend,
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.shareButton]}
-                    onPress={() => openShareModal(friend)}
-                  >
-                    <IconSymbol name="paperplane.fill" size={16} color="#2b8cff" />
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.removeButton]}
-                    onPress={() => removeFriend(friend.id)}
-                  >
-                    <IconSymbol name="person.fill" size={16} color="#e74c3c" />
-                  </TouchableOpacity>
-                </View>,
-                true
+                </View>, true
               ))}
             </View>
           )}
@@ -422,7 +422,7 @@ export default function CommunityScreen() {
             <Text style={styles.emptyText}>{t('community.noOutgoing')}</Text>
           ) : (
             <View>
-              {outgoing.map(req => renderListItem(req, <View />))}
+              {outgoing.map(req => renderListItem(req, <View />, true))}
             </View>
           )}
         </View>
@@ -445,7 +445,7 @@ export default function CommunityScreen() {
             </TouchableOpacity>
             
             <Text style={styles.modalTitle}>
-              {t('community.shareTrips', { name: shareTargetFriend?.name || shareTargetFriend?.email || t('communityExtra.userNumber', { number: shareTargetFriend?.id }) })}
+              {t('community.shareTrips', { name: shareTargetFriend?.name || shareTargetFriend?.email || shareTargetFriend?.id ? t('communityExtra.userNumber', { number: shareTargetFriend?.id }) : t('communityExtra.unknownUser')})}
             </Text>
             <Text style={styles.modalHint}>
               {t('community.selectTrips')}
@@ -516,6 +516,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FCFCFC',
+      marginBottom: 30,
   },
   scrollView: {
     flex: 1,
@@ -525,7 +526,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 38,
+    paddingTop: 10,
     paddingBottom: 16,
   },
   title: {

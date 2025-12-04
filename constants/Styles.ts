@@ -13,7 +13,7 @@ export const CommonStyles = StyleSheet.create({
   // Contenedor para el botón de volver
   backButtonContainer: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 30 : 30,
+    top: Platform.OS === 'ios' ? 50 : 40,
     left: 16,
     zIndex: 10,
   },

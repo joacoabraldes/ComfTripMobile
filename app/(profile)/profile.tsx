@@ -382,18 +382,19 @@ export default function ProfileScreen() {
               onPress={handleChangePassword}
               height={btnHeight}
               borderRadius={btnRadius}
-              style={{ width: Math.round(width * 0.65) }}
+              style={{ width: Math.round(width * 0.6) }}
             />
           </View>
         </View>
 
-        <View style={[styles.logoutWrap, { bottom: Math.round(height * 0.18) }]}>
+        <View style={[styles.logoutWrap, { bottom: Math.round(height * 0.018) }]}>
           <PrimaryButton
             title={t('profile.logout')}
             onPress={handleLogout}
-            height={Math.round(btnHeight * 1.1)}
-            borderRadius={Math.round(btnRadius * 1.5)}
-            style={{ width: Math.round(width * 0.6) }}
+            height={Math.round(btnHeight)}
+            borderRadius={Math.round(btnRadius)}
+            style={{ width: Math.round(width * 0.6), backgroundColor: "#eee"}}
+            textStyle={{color: "#000000" }}
           />
         </View>
       </View>
@@ -404,12 +405,13 @@ export default function ProfileScreen() {
 const RED = "#FF3951";
 
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: Platform.OS === 'ios' ? 60 : 50 },
+  container: { flex: 1, alignItems: "center", justifyContent: "flex-start", paddingTop: Platform.OS === 'ios' ? 50 : 40 },
 
   avatarWrap: {
     alignItems: "center",
     justifyContent: "center",
     width: "100%",
+      marginBottom: 20
   },
   avatarHalo: {
     position: "absolute",
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
   },
 
   infoCard: {
-    width: "92%",
+    width: "85%",
     backgroundColor: "#fff",
     ...Platform.select({
       ios: {

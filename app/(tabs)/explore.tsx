@@ -453,9 +453,9 @@ export default function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FCFCFC' },
+  safeArea: { flex: 1, backgroundColor: '#FCFCFC', marginBottom:40, },
   container: { flex: 1, paddingHorizontal: 16 },
-  title: { fontSize: 28, fontWeight: '800', color: '#000', marginBottom: 20, marginTop: 38, textAlign: 'center' },
+  title: { fontSize: 28, fontWeight: '800', color: '#000', marginBottom: 20, marginTop: 10, textAlign: 'center' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 16, fontSize: 16, color: '#666' },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
