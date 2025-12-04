@@ -40,6 +40,23 @@ const en = {
       past: 'Past',
     },
     addTrip: 'Add trip',
+    viewHistory: 'View history',
+    sortTrips: 'Sort trips',
+    sortTitle: 'Sort trips',
+    sortBy: 'Sort by',
+    sortByDate: 'Date',
+    sortByName: 'Name',
+    sortOrder: 'Order',
+    ascending: 'Ascending',
+    descending: 'Descending',
+  },
+  
+  // Trip History
+  tripHistory: {
+    title: 'Trip History',
+    loading: 'Loading history...',
+    empty: 'No past trips.',
+    failedToLoad: 'Failed to load history',
   },
 
   // Trip Details

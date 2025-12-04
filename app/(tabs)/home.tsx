@@ -262,7 +262,7 @@ export default function HomeScreen() {
           style={[styles.card, { backgroundColor: AppColors.accentCard }]}
           onPress={() => {
             router.push({
-              pathname: '../trip-details',
+              pathname: '/(trips)/trip-details',
               params: {
                 id: String(trip.id),
                 destination: trip.destination,
@@ -452,7 +452,7 @@ export default function HomeScreen() {
           style={styles.viewDetailsBtn}
           onPress={() => {
             router.push({
-              pathname: '../trip-details',
+              pathname: '/(trips)/trip-details',
               params: {
                 id: String(trip.id),
                 destination: trip.destination,
@@ -516,7 +516,7 @@ export default function HomeScreen() {
 
         {/* FAB positioned in bottom right corner */}
         <FloatingActionButton
-          onPress={() => router.push('/add-trip')}
+          onPress={() => router.push('/(trips)/add-trip')}
           accessibilityLabel={t('home.newTrip')}
           bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
           right={20}

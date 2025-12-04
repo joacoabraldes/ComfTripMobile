@@ -319,7 +319,7 @@ export default function TripDetails() {
   );
 
   const onEdit = (a: Activity) => {
-    router.push(`/edit-activity?tripId=${tripId}&placeId=${a.key}`);
+    router.push(`/(trips)/edit-activity?tripId=${tripId}&placeId=${a.key}`);
   };
 
   const confirmAndDelete = () => {
@@ -396,77 +396,7 @@ export default function TripDetails() {
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
           <Text style={styles.subtitle}>{dateRangeStr}</Text>
-          {isCompleted && (
-            <View style={styles.completedBadge}>
-              <MaterialIcons name="check-circle" size={16} color={AppColors.success} />
-              <Text style={styles.completedBadgeText}>{t('tripDetails.completedBadge')}</Text>
-            </View>
-          )}
         </View>
-
-        {/* Trip Summary for completed trips */}
-        {isCompleted && trip && (
-          <TripSummary trip={trip} />
-        )}
-
-        {/* Review Section for completed trips */}
-        {isCompleted && Number.isFinite(tripId) && (
-          <>
-            {!showReviewForm ? (
-              <View style={styles.reviewSection}>
-                <View style={styles.reviewSectionHeader}>
-                  <Text style={styles.sectionTitle}>{t('review.title')}</Text>
-                  <TouchableOpacity
-                    style={styles.editReviewButton}
-                    onPress={() => setShowReviewForm(true)}
-                  >
-                    <MaterialIcons
-                      name={review ? 'edit' : 'add-circle-outline'}
-                      size={20}
-                      color={AppColors.primary}
-                    />
-                    <Text style={styles.editReviewButtonText}>
-                      {review ? t('common.edit') : t('common.add')}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                {review ? (
-                  <View style={styles.reviewDisplay}>
-                    <View style={styles.reviewRating}>
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <MaterialIcons
-                          key={star}
-                          name={star <= (review.rating || 0) ? 'star' : 'star-border'}
-                          size={20}
-                          color={star <= (review.rating || 0) ? '#FFD700' : AppColors.textDisabled}
-                        />
-                      ))}
-                      <Text style={styles.reviewRatingText}>
-                        {review.rating || 0}/5
-                      </Text>
-                    </View>
-                    {review.title && (
-                      <Text style={styles.reviewTitle}>{review.title}</Text>
-                    )}
-                    {review.comment && (
-                      <Text style={styles.reviewComment}>{review.comment}</Text>
-                    )}
-                  </View>
-                ) : (
-                  <Text style={styles.noReviewText}>
-                    {t('review.noReview')}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <ReviewForm
-                tripId={tripId}
-                existingReview={review}
-                onSaved={handleReviewSaved}
-              />
-            )}
-          </>
-        )}
 
         <Text style={styles.sectionTitle}>{t('tripDetails.itinerary')}</Text>
 
@@ -509,7 +439,7 @@ export default function TripDetails() {
       </ScrollView>
 
       <FloatingActionButton
-        onPress={() => router.push(`/add-activity?tripId=${tripId}`)}
+        onPress={() => router.push(`/(trips)/add-activity?tripId=${tripId}`)}
         accessibilityLabel={t('tripDetails.addActivity')}
         bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
         right={20}

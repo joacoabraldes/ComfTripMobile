@@ -40,6 +40,23 @@ const es = {
       past: 'Pasado',
     },
     addTrip: 'Agregar viaje',
+    viewHistory: 'Ver historial',
+    sortTrips: 'Ordenar viajes',
+    sortTitle: 'Ordenar viajes',
+    sortBy: 'Ordenar por',
+    sortByDate: 'Fecha',
+    sortByName: 'Nombre',
+    sortOrder: 'Orden',
+    ascending: 'Ascendente',
+    descending: 'Descendente',
+  },
+  
+  // Trip History
+  tripHistory: {
+    title: 'Historial de Viajes',
+    loading: 'Cargando historial...',
+    empty: 'No hay viajes pasados.',
+    failedToLoad: 'Error al cargar historial',
   },
 
   // Trip Details

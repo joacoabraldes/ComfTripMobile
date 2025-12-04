@@ -10,6 +10,7 @@ type TopBarProps = {
   // Para pantallas primarias (tabs)
   title?: string;
   showProfileIcon?: boolean;
+  leftActions?: React.ReactNode; // Botones adicionales a la izquierda (menú contextual, etc)
   
   // Para pantallas secundarias
   showBackButton?: boolean;
@@ -23,6 +24,7 @@ type TopBarProps = {
 export default function TopBar({
   title,
   showProfileIcon = false,
+  leftActions,
   showBackButton = false,
   onBackPress,
   rightActions,
@@ -75,6 +77,7 @@ export default function TopBar({
       <View style={styles.content}>
         {/* Left side */}
         <View style={styles.leftSection}>
+          {leftActions}
           {showBackButton && (
             <TouchableOpacity
               onPress={handleBackPress}

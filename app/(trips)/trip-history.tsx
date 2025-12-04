@@ -1,25 +1,21 @@
 import { apiGet } from '@/helpers/api';
 import { formatDateRange } from '@/helpers/dateUtils';
-import { sortTripsByStatus, getTripStatus, getTripStatusValue, isTripCompleted } from '@/helpers/tripUtils';
+import { getTripStatus, getTripStatusValue, isTripCompleted } from '@/helpers/tripUtils';
 import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import PrimaryLayout from '@/components/layouts/PrimaryLayout';
-import { Ionicons } from '@expo/vector-icons';
+import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { AppColors, ShadowColors } from '@/constants/Colors';
-import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
 
-export default function TripsScreen() {
+export default function TripHistoryScreen() {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -85,12 +81,10 @@ export default function TripsScreen() {
         return trip;
       });
       
-      // Sort trips by status: upcoming > current > past
-      const sortedTrips = sortTripsByStatus(enrichedTrips);
-      setAllTrips(sortedTrips);
+      setAllTrips(enrichedTrips);
     } catch (err: any) {
       console.error('Error fetching trips', err);
-      setError(err?.message || t('trips.failedToLoad'));
+      setError(err?.message || t('tripHistory.failedToLoad'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -106,14 +100,14 @@ export default function TripsScreen() {
     fetchTrips();
   }, [fetchTrips]);
 
-  // Filter only current and upcoming trips
-  const currentAndUpcomingTrips = useMemo(() => {
-    return allTrips.filter(trip => !isTripCompleted(trip));
+  // Filter only past trips
+  const pastTrips = useMemo(() => {
+    return allTrips.filter(trip => isTripCompleted(trip));
   }, [allTrips]);
 
   // Sort trips based on selected option
   const sortedTrips = useMemo(() => {
-    const trips = [...currentAndUpcomingTrips];
+    const trips = [...pastTrips];
     
     trips.sort((a, b) => {
       let comparison = 0;
@@ -132,7 +126,7 @@ export default function TripsScreen() {
     });
     
     return trips;
-  }, [currentAndUpcomingTrips, sortOption, sortOrder]);
+  }, [pastTrips, sortOption, sortOrder]);
 
   const handleSortChange = (sort: SortOption, order: SortOrder) => {
     setSortOption(sort);
@@ -142,25 +136,19 @@ export default function TripsScreen() {
 
   const menuOptions = [
     {
-      label: t('trips.viewHistory'),
-      icon: 'time-outline' as const,
-      onPress: () => router.push('../(trips)/trip-history'),
-    },
-    {
       label: t('trips.sortTrips'),
       icon: 'swap-vertical-outline' as const,
       onPress: () => setShowSortModal(true),
     },
   ];
 
-
   const renderItem = ({ item }: { item: Trip }) => {
     const status = getTripStatus(item.start_date, item.end_date);
     const statusValue = getTripStatusValue(item.start_date, item.end_date);
     
-    const bgColor = statusValue === 2 ? AppColors.accentCard : (statusValue === 1 ? AppColors.backgroundPrimary : AppColors.backgroundTertiary);
-    const accent = statusValue === 2 ? AppColors.accent : (statusValue === 1 ? AppColors.primary : AppColors.textDisabled);
-    const badgeTextColor = statusValue === 1 ? AppColors.white : AppColors.text;
+    const bgColor = AppColors.backgroundTertiary;
+    const accent = AppColors.textDisabled;
+    const badgeTextColor = AppColors.text;
     
     const statusLabels: Record<'upcoming' | 'current' | 'past', string> = {
       upcoming: t('trips.status.upcoming'),
@@ -176,9 +164,8 @@ export default function TripsScreen() {
         activeOpacity={0.8}
         style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
         onPress={() => {
-          // Navegar a detalles pasando los campos importantes como params
           router.push({
-            pathname: '/(trips)/trip-details',
+            pathname: '/(trips)/trip-history-details',
             params: {
               id: String(item.id),
               destination: item.destination,
@@ -207,54 +194,43 @@ export default function TripsScreen() {
 
   if (loading) {
     return (
-      <PrimaryLayout title={t('trips.title')}>
+      <SecondaryLayout title={t('tripHistory.title')} rightActions={<ContextMenu options={menuOptions} />}>
         <View style={styles.center}>
-          <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
+          <Text style={{ marginTop: 40 }}>{t('tripHistory.loading')}</Text>
         </View>
-      </PrimaryLayout>
+      </SecondaryLayout>
     );
   }
 
   if (error) {
     return (
-      <PrimaryLayout title={t('trips.title')}>
+      <SecondaryLayout title={t('tripHistory.title')} rightActions={<ContextMenu options={menuOptions} />}>
         <View style={styles.center}>
           <Text style={{ color: AppColors.error, marginBottom: 8 }}>{t('common.error')}: {error}</Text>
           <TouchableOpacity onPress={fetchTrips} style={styles.retryBtn}>
             <Text style={{ color: AppColors.white }}>{t('common.retry')}</Text>
           </TouchableOpacity>
         </View>
-      </PrimaryLayout>
+      </SecondaryLayout>
     );
   }
 
   return (
-    <PrimaryLayout 
-      title={t('trips.title')}
-      rightActions={<ContextMenu options={menuOptions} />}
-    >
+    <SecondaryLayout title={t('tripHistory.title')} rightActions={<ContextMenu options={menuOptions} />}>
       <View style={styles.screen}>
-
-      <FlatList
-        data={sortedTrips}
-        keyExtractor={(trip) => String(trip.id)}
-        renderItem={renderItem}
-        style={{ flex: 1, width: '100%' }}
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        ListEmptyComponent={
-          <View style={styles.center}>
-            <Text style={{ color: AppColors.textSecondary }}>{t('trips.empty')}</Text>
-          </View>
-        }
-      />
-
-        <FloatingActionButton
-          onPress={() => router.push('/(trips)/add-trip')}
-          accessibilityLabel={t('trips.addTrip')}
-          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
-          right={20}
+        <FlatList
+          data={sortedTrips}
+          keyExtractor={(trip) => String(trip.id)}
+          renderItem={renderItem}
+          style={{ flex: 1, width: '100%' }}
+          contentContainerStyle={styles.list}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <Text style={{ color: AppColors.textSecondary }}>{t('tripHistory.empty')}</Text>
+            </View>
+          }
         />
       </View>
 
@@ -265,28 +241,24 @@ export default function TripsScreen() {
         currentOrder={sortOrder}
         onSortChange={handleSortChange}
       />
-    </PrimaryLayout>
+    </SecondaryLayout>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
-
-  list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 140 },
-
+  list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 40 },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
     borderRadius: 20,
-    // shadow
     shadowColor: ShadowColors.black,
     shadowOpacity: 0.06,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-
   flag: {
     width: 76,
     height: 76,
@@ -294,11 +266,9 @@ const styles = StyleSheet.create({
     marginRight: 12,
     backgroundColor: AppColors.borderLight,
   },
-
   cardContent: { flex: 1, justifyContent: 'center' },
   destination: { fontSize: 20, color: AppColors.black, fontWeight: '600' },
   dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
-
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -308,7 +278,6 @@ const styles = StyleSheet.create({
     minWidth: 64,
   },
   badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
-
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
     backgroundColor: AppColors.primary,
@@ -317,3 +286,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
 });
+

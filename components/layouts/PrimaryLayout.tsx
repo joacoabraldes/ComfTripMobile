@@ -7,6 +7,8 @@ type PrimaryLayoutProps = {
   children: React.ReactNode;
   title?: string;
   showProfileIcon?: boolean;
+  leftActions?: React.ReactNode;
+  rightActions?: React.ReactNode;
 };
 
 /**
@@ -18,10 +20,12 @@ export default function PrimaryLayout({
   children,
   title,
   showProfileIcon = true,
+  leftActions,
+  rightActions,
 }: PrimaryLayoutProps) {
   return (
     <View style={styles.container}>
-      <TopBar title={title} showProfileIcon={showProfileIcon} variant="primary" />
+      <TopBar title={title} showProfileIcon={showProfileIcon} leftActions={leftActions} rightActions={rightActions} variant="primary" />
       <View style={styles.content}>{children}</View>
     </View>
   );

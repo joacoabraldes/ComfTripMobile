@@ -58,14 +58,14 @@ export default function LoadTrip() {
       {loading && !error && (
         <>
           <Text style={styles.text}>{t('loadTrip.calculating')}</Text>
-          <Image source={require('../assets/images/loading.gif')} style={styles.loadingImage} />
+          <Image source={require('../../assets/images/loading.gif')} style={styles.loadingImage} />
         </>
       )}
 
       {error && (
         <>
           <Text style={styles.textError}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => router.push('/add-trip')}>
+          <TouchableOpacity style={styles.retryButton} onPress={() => router.push('/(trips)/add-trip')}>
             <Text style={styles.retryButtonText}>{t('loadTrip.back')}</Text>
           </TouchableOpacity>
         </>

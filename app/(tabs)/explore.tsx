@@ -259,7 +259,7 @@ export default function ExploreScreen() {
   const handleCreateTrip = () => {
     setShowDetailModal(false);
     router.push({
-      pathname: '/add-trip',
+      pathname: '/(trips)/add-trip',
       params: { destination: selectedExperience?.title ?? '' },
     });
   };

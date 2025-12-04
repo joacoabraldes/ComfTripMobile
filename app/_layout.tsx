@@ -23,8 +23,8 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
-          <Stack.Screen name="add-trip" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(trips)" />
           <Stack.Screen name="(profile)" />
           <Stack.Screen name="+not-found" />
         </Stack>

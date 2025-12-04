@@ -12,9 +12,9 @@ interface CalendarDay {
 
 export default function AddTrip() {
   const { t } = useTranslation();
-  const [destination, setDestination] =  useState<string | null>(null);
-  const [country, setCountry]=useState<string | null>(null);
-  const [city, setCity]=useState<string | null>(null);
+  const [destination, setDestination] = useState<string | null>(null);
+  const [country, setCountry] = useState<string | null>(null);
+  const [city, setCity] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
 
   // búsqueda con Nominatim
@@ -279,7 +279,7 @@ export default function AddTrip() {
 
       // Navegar a load-trip y pasar el payload como query param (url-encoded JSON)
       const qs = encodeURIComponent(JSON.stringify(payload));
-      router.push(`/load-trip?payload=${qs}`);
+      router.push(`/(trips)/load-trip?payload=${qs}`);
 
     } catch (err: any) {
       console.error('Error preparando payload:', err);
