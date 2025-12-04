@@ -8,6 +8,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { useAppColors } from '@/hooks/useAppColors';
 
 type Props = {
   title: string;
@@ -34,6 +35,9 @@ export default function PrimaryButton({
   disabled = false,
   children,
 }: Props) {
+  const AppColors = useAppColors();
+  const styles = getStyles(AppColors);
+  
   function renderChildren(child: React.ReactNode) {
     if (typeof child === 'string' || typeof child === 'number') {
       return <Text style={[styles.title, textStyle]}>{child}</Text>;
@@ -53,10 +57,23 @@ export default function PrimaryButton({
       activeOpacity={activeOpacity}
       onPress={onPress}
       disabled={disabled}
-      style={[styles.button, { height, borderRadius }, style]}
+      style={[
+        styles.button,
+        { height, borderRadius },
+        disabled && styles.buttonDisabled,
+        style
+      ]}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, justifyContent: 'center' }}>
-        {title ? <Text style={[styles.title, textStyle]}>{title}</Text> : null}
+        {title ? (
+          <Text style={[
+            styles.title,
+            disabled && styles.titleDisabled,
+            textStyle
+          ]}>
+            {title}
+          </Text>
+        ) : null}
         {renderChildren(children)}
         {rightIcon ? <View style={styles.iconWrap}>{rightIcon}</View> : null}
       </View>
@@ -64,19 +81,26 @@ export default function PrimaryButton({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   button: {
     width: '100%',
-    backgroundColor: '#FF3951',
+    backgroundColor: AppColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     flexDirection: 'row',
     paddingHorizontal: 12,
   },
+  buttonDisabled: {
+    //backgroundColor: AppColors.backgroundInput,
+    opacity: 0.6,
+  },
   title: {
-    color: '#FCFCFC',
+    color: AppColors.white,
     fontSize: 20,
     fontWeight: '600',
+  },
+  titleDisabled: {
+    color: AppColors.textDisabled,
   },
   iconWrap: {
     marginLeft: 8,
