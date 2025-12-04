@@ -161,6 +161,7 @@ const es = {
     logoutCancel: 'Cancelar',
     language: 'Idioma',
     languageDescription: 'Selecciona tu idioma preferido',
+    selectLanguage: 'Seleccionar idioma',
     spanish: 'Español',
     english: 'English',
     profileUpdated: 'Perfil actualizado',

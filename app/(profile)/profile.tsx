@@ -14,6 +14,8 @@ import {
   useWindowDimensions,
   View,
   ScrollView,
+  Modal,
+  Pressable,
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "@/i18n";
@@ -74,6 +76,7 @@ export default function ProfileScreen() {
 
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // helper: try to read token a few times (handles small race where login sets token just before navigation)
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
@@ -331,38 +334,15 @@ export default function ProfileScreen() {
                 {t('profile.language')}
               </Text>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <TouchableOpacity
-                onPress={() => setLanguage('es')}
-                style={[
-                  styles.languageButton,
-                  language === 'es' && styles.languageButtonActive,
-                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
-                ]}
-              >
-                <Text style={[
-                  { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'es' ? { color: AppColors.white } : { color: AppColors.textSecondary }
-                ]}>
-                  {t('profile.spanish')}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setLanguage('en')}
-                style={[
-                  styles.languageButton,
-                  language === 'en' && styles.languageButtonActive,
-                  { paddingHorizontal: paddingSmall, paddingVertical: 4, borderRadius: 6 }
-                ]}
-              >
-                <Text style={[
-                  { fontSize: fontSizeSmall, fontWeight: '600' },
-                  language === 'en' ? { color: AppColors.white } : { color: AppColors.textSecondary }
-                ]}>
-                  {t('profile.english')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={() => setShowLanguageModal(true)}
+              style={styles.languageButton}
+            >
+              <Text style={[styles.languageButtonText, { fontSize: fontSizeMedium }]}>
+                {language === 'es' ? t('profile.spanish') : t('profile.english')}
+              </Text>
+              <Ionicons name="chevron-forward" size={16} color={AppColors.textSecondary} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -373,10 +353,14 @@ export default function ProfileScreen() {
             <TextButton
               title={t('profile.editProfile')}
               onPress={handleEdit}
+              textStyle={styles.smallTextButton}
+              style={styles.leftTextButton}
             />
             <TextButton
               title={t('profile.changePassword')}
               onPress={handleChangePassword}
+              textStyle={styles.smallTextButton}
+              style={styles.rightTextButton}
             />
           </View>
 
@@ -392,6 +376,79 @@ export default function ProfileScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={showLanguageModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowLanguageModal(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setShowLanguageModal(false)}
+        >
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { fontSize: fontSizeLarge }]}>
+                {t('profile.selectLanguage')}
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowLanguageModal(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={AppColors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalOptions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  language === 'es' && styles.modalOptionSelected,
+                ]}
+                onPress={() => {
+                  setLanguage('es');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  { fontSize: fontSizeMedium },
+                  language === 'es' && styles.modalOptionTextSelected,
+                ]}>
+                  {t('profile.spanish')}
+                </Text>
+                {language === 'es' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.modalOption,
+                  language === 'en' && styles.modalOptionSelected,
+                ]}
+                onPress={() => {
+                  setLanguage('en');
+                  setShowLanguageModal(false);
+                }}
+              >
+                <Text style={[
+                  styles.modalOptionText,
+                  { fontSize: fontSizeMedium },
+                  language === 'en' && styles.modalOptionTextSelected,
+                ]}>
+                  {t('profile.english')}
+                </Text>
+                {language === 'en' && (
+                  <Ionicons name="checkmark" size={20} color={AppColors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SecondaryLayout>
   );
 }
@@ -428,13 +485,80 @@ const styles = StyleSheet.create({
   infoLabel: { color: AppColors.textSecondary, fontWeight: "500" },
   infoValue: { color: AppColors.text, fontWeight: "600" },
   languageButton: {
-    borderWidth: 1,
-    borderColor: AppColors.border,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: AppColors.backgroundInputMuted,
+  },
+  languageButtonText: {
+    color: AppColors.text,
+    fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: AppColors.backgroundPrimary,
+    borderRadius: 16,
+    width: "85%",
+    maxWidth: 400,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#000",
+        shadowOpacity: 0.3,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+      },
+      android: {
+        elevation: 10,
+      },
+    }),
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: AppColors.borderLight,
+  },
+  modalTitle: {
+    color: AppColors.text,
+    fontWeight: "700",
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalOptions: {
+    padding: 8,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 8,
+    marginVertical: 4,
     backgroundColor: AppColors.backgroundTertiary,
   },
-  languageButtonActive: {
-    backgroundColor: AppColors.primary,
-    borderColor: AppColors.primary,
+  modalOptionSelected: {
+    backgroundColor: AppColors.primaryLight,
+  },
+  modalOptionText: {
+    color: AppColors.text,
+    fontWeight: "500",
+  },
+  modalOptionTextSelected: {
+    color: AppColors.primary,
+    fontWeight: "600",
   },
 
   sectionTitle: {
@@ -470,8 +594,17 @@ const styles = StyleSheet.create({
   textButtonRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    gap: 24,
+    justifyContent: "space-between",
+    width: "100%",
+  },
+  leftTextButton: {
+    alignSelf: "flex-start",
+  },
+  rightTextButton: {
+    alignSelf: "flex-end",
+  },
+  smallTextButton: {
+    fontSize: 14,
   },
   buttonRow: {
     flexDirection: "row",

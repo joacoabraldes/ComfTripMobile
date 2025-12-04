@@ -161,6 +161,7 @@ const en = {
     logoutCancel: 'Cancel',
     language: 'Language',
     languageDescription: 'Select your preferred language',
+    selectLanguage: 'Select language',
     spanish: 'Español',
     english: 'English',
     profileUpdated: 'Profile updated',
@@ -217,8 +218,8 @@ const en = {
       noNationalitiesFound: 'No nationalities found',
     },
     start: {
-      loginButton: 'Login',
-      registerButton: 'Register',
+      loginButton: 'Log in',
+      registerButton: 'Sign up',
     },
     interests: {
       title: 'Select your interests',

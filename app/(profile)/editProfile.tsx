@@ -21,6 +21,7 @@ import { CommonStyles } from '@/constants/Styles';
 import { AppColors } from '@/constants/Colors';
 import PhoneField from '@/components/forms/PhoneField';
 import NationalityField from '@/components/forms/NationalityField';
+import countries from 'world-countries';
 
 export const options = {
   headerShown: false,
@@ -103,41 +104,48 @@ export default function EditProfileScreen() {
         // Phone can be stored as: "+1234567890", "+52 1234567890", "+52-1234567890", etc.
         const phone = user.phone || "";
         if (phone) {
+          // Get valid country codes from world-countries
+          const validCodes = new Set<string>();
+          try {
+            if (Array.isArray(countries)) {
+              countries.forEach((country: any) => {
+                if (country.idd && country.idd.root) {
+                  const root = country.idd.root.replace(/^\+/, '');
+                  if (country.idd.suffixes && Array.isArray(country.idd.suffixes) && country.idd.suffixes.length > 0) {
+                    const firstSuffix = country.idd.suffixes[0];
+                    validCodes.add(`+${root}${firstSuffix}`);
+                  } else if (root) {
+                    validCodes.add(`+${root}`);
+                  }
+                }
+              });
+            }
+          } catch (e) {
+            console.warn('Error extracting country codes:', e);
+          }
+          
+          // Add common fallback codes
+          validCodes.add('+1');
+          validCodes.add('+52');
+          validCodes.add('+54');
+          validCodes.add('+55');
+          validCodes.add('+56');
+          validCodes.add('+57');
+          
           // Remove common separators (spaces, dashes, parentheses)
           const cleaned = phone.replace(/[\s\-\(\)]/g, '');
           
-          // Try to match country codes (1-4 digits after +)
-          // Common codes: +1 (US/CA), +52 (MX), +54 (AR), +57 (CO), etc.
-          const codePatterns = [
-            /^(\+\d{1,4})(\d{4,})/,  // +1234567890 or +521234567890
-            /^(\+\d{1,4})\s+(.+)/,   // +52 1234567890
-            /^(\+\d{1,4})-(.+)/,     // +52-1234567890
-          ];
-          
+          // Try to match country codes starting from longest to shortest
+          // This ensures we match +54 before +5411
           let matched = false;
-          for (const pattern of codePatterns) {
-            const match = phone.match(pattern);
-            if (match) {
-              const code = match[1];
-              const number = match[2].replace(/[\s\-\(\)]/g, ''); // Clean the number part
-              // Validate: code should be 1-4 digits, number should be at least 4 digits
-              if (code.length >= 2 && code.length <= 5 && number.length >= 4) {
-                setPhoneCode(code);
-                setPhoneNumber(number);
-                matched = true;
-                break;
-              }
-            }
-          }
-          
-          // If no pattern matched, try to extract from cleaned string
-          if (!matched && cleaned.startsWith('+')) {
-            // Try common country code lengths
-            for (let codeLen = 2; codeLen <= 4; codeLen++) {
-              const potentialCode = cleaned.substring(0, codeLen + 1); // +1, +52, +123, etc.
+          if (cleaned.startsWith('+')) {
+            // Try codes from longest to shortest (up to 4 digits after +)
+            for (let codeLen = 4; codeLen >= 1; codeLen--) {
+              const potentialCode = cleaned.substring(0, codeLen + 1); // +1, +52, +123, +1234
               const potentialNumber = cleaned.substring(codeLen + 1);
-              // Validate potential code and number
-              if (potentialNumber.length >= 4 && /^\+\d+$/.test(potentialCode)) {
+              
+              // Check if this is a valid country code
+              if (validCodes.has(potentialCode) && potentialNumber.length >= 4) {
                 setPhoneCode(potentialCode);
                 setPhoneNumber(potentialNumber);
                 matched = true;
@@ -146,10 +154,32 @@ export default function EditProfileScreen() {
             }
           }
           
+          // If no valid code found, try patterns with separators
+          if (!matched) {
+            const codePatterns = [
+              /^(\+\d{1,4})\s+(.+)/,   // +52 1234567890
+              /^(\+\d{1,4})-(.+)/,     // +52-1234567890
+            ];
+            
+            for (const pattern of codePatterns) {
+              const match = phone.match(pattern);
+              if (match) {
+                const code = match[1];
+                const number = match[2].replace(/[\s\-\(\)]/g, '');
+                if (validCodes.has(code) && number.length >= 4) {
+                  setPhoneCode(code);
+                  setPhoneNumber(number);
+                  matched = true;
+                  break;
+                }
+              }
+            }
+          }
+          
           // Fallback: if still no match, use default code
           if (!matched) {
             if (cleaned.startsWith('+')) {
-              // If it has + but we couldn't parse, try to extract first 1-3 digits as code
+              // Try to extract first 1-3 digits as code (fallback)
               const fallbackMatch = cleaned.match(/^(\+\d{1,3})(\d{4,})/);
               if (fallbackMatch) {
                 setPhoneCode(fallbackMatch[1]);
