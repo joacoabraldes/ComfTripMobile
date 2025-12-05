@@ -74,6 +74,8 @@ const es = {
     noActivities: 'Aún no hay puntos en el itinerario.',
     completedBadge: 'Viaje Completado',
     addActivity: 'Agregar actividad',
+    flight: 'Vuelo',
+    flightSaved: 'Guardado el',
   },
 
   // Trip Summary
@@ -194,6 +196,7 @@ const es = {
     updateError: 'No se pudo actualizar el perfil',
     name: 'Nombre',
     selectNationality: 'Seleccionar nacionalidad',
+    loading: 'Cargando perfil...',
   },
 
   // Auth
@@ -340,6 +343,10 @@ const es = {
     },
     destination: 'Destino',
     placeNumber: 'Lugar #{number}',
+    flights: 'Vuelos',
+    flightCodeLabel: 'Código de vuelo',
+    flightCodePlaceholder: 'Ej: AA123',
+    flightTime: 'Horario',
   },
 
   // Add Activity

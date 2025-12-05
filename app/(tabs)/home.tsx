@@ -8,6 +8,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Platform,
+    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
@@ -490,54 +491,55 @@ export default function HomeScreen() {
     }
   return (
     <PrimaryLayout title={t('tabs.home')}>
-      <View style={styles.root}>
-        <View
-          style={[
-            styles.centerArea,
-            {
-              paddingHorizontal: horizontalPadding,
-              paddingBottom: contentPaddingBottom,
-              minHeight: availableContentHeight + 40,
-            },
-          ]}
-        >
-          <View style={[styles.centeredContent, { height: availableContentHeight }]}>
-            {showHeaderSection && (
-              <View style={{ width: '100%', marginBottom: 12 }}>
-                {ongoingTrip ? renderOngoingSummary(ongoingTrip) : (upcomingTrip ? renderUpcomingCard(upcomingTrip) : null)}
-              </View>
-            )}
-
-            {!showHeaderSection && (
-              <>
-                <LogoSvg width={150} height={150} />
-                <View style={styles.copyWrapper}>
-                  <Text
-                    style={[
-                      styles.copyText,
-                      {
-                        fontSize: copyFontSize,
-                        lineHeight: Math.round(copyFontSize * 1.15),
-                      },
-                    ]}
-                  >
-                    {t('home.noActiveTrips')}{"\n"}
-                    {t('home.planNextTrip')}
-                  </Text>
+      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+        <View style={styles.root}>
+          <View
+            style={[
+              styles.centerArea,
+              {
+                paddingHorizontal: horizontalPadding,
+                paddingBottom: contentPaddingBottom,
+                minHeight: availableContentHeight + 40,
+              },
+            ]}
+          >
+            <View style={[styles.centeredContent, { height: availableContentHeight }]}>
+              {showHeaderSection && (
+                <View style={{ width: '100%', marginBottom: 12 }}>
+                  {ongoingTrip ? renderOngoingSummary(ongoingTrip) : (upcomingTrip ? renderUpcomingCard(upcomingTrip) : null)}
                 </View>
-              </>
-            )}
+              )}
+
+              {!showHeaderSection && (
+                <>
+                  <LogoSvg width={150} height={150} />
+                  <View style={styles.copyWrapper}>
+                    <Text
+                      style={[
+                        styles.copyText,
+                        {
+                          fontSize: copyFontSize,
+                          lineHeight: Math.round(copyFontSize * 1.15),
+                        },
+                      ]}
+                    >
+                      {t('home.noActiveTrips')}{"\n"}
+                      {t('home.planNextTrip')}
+                    </Text>
+                  </View>
+                </>
+              )}
+            </View>
           </View>
         </View>
-
-        {/* FAB positioned in bottom right corner */}
-        <FloatingActionButton
-          onPress={() => router.push('/(trips)/add-trip')}
-          accessibilityLabel={t('home.newTrip')}
-          bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
-          right={20}
-        />
-      </View>
+      </ScrollView>
+      {/* FAB positioned in bottom right corner */}
+      <FloatingActionButton
+        onPress={() => router.push('/(trips)/add-trip')}
+        accessibilityLabel={t('home.newTrip')}
+        bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
+        right={20}
+      />
     </PrimaryLayout>
   );
 }

@@ -51,7 +51,7 @@ export default function LocationSelector({
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const availableLocations = showAllLocations ? locations : (filteredLocations || locations);
@@ -81,7 +81,22 @@ export default function LocationSelector({
   const handleSelect = (locationId: number) => {
     onSelectLocation(locationId);
     setSearch('');
-    setIsDropdownOpen(false);
+    setIsOpen(false);
+  };
+
+  const handleFocus = () => {
+    if (!disabled) {
+      setIsOpen(true);
+    }
+  };
+
+  const handleToggle = () => {
+    if (!disabled) {
+      setIsOpen(!isOpen);
+      if (!isOpen) {
+        setSearch('');
+      }
+    }
   };
 
   const displayValue = selectedLocationData
@@ -92,47 +107,59 @@ export default function LocationSelector({
     <View style={styles.container}>
       <View
         style={[
-          styles.input,
+          styles.inputBox,
           {
-            backgroundColor: isDropdownOpen ? AppColors.backgroundPrimary : AppColors.backgroundInputMuted,
-            borderWidth: isDropdownOpen ? 2 : 0,
+            backgroundColor: isOpen ? AppColors.backgroundPrimary : AppColors.backgroundInputMuted,
+            borderWidth: isOpen ? 2 : 0,
             borderColor: AppColors.primary,
           },
           disabled && styles.inputDisabled,
         ]}
       >
         <TextInput
-          style={styles.textInput}
+          style={[
+            styles.textInput,
+            {
+              flex: 1,
+              color: selectedLocationData ? AppColors.text : AppColors.textMuted,
+            },
+          ]}
           placeholder={placeholder || t('addActivity.searchLocation')}
           placeholderTextColor={AppColors.textMuted}
-          value={isDropdownOpen ? search : displayValue}
+          value={isOpen ? search : displayValue}
           onChangeText={(text) => {
             setSearch(text);
-            if (!isDropdownOpen) {
-              setIsDropdownOpen(true);
+            if (!isOpen) {
+              setIsOpen(true);
             }
           }}
-          onFocus={() => !disabled && setIsDropdownOpen(true)}
+          onFocus={handleFocus}
           editable={!disabled}
+          returnKeyType="done"
+          onSubmitEditing={() => setIsOpen(false)}
         />
-        <TouchableOpacity
-          style={styles.arrowButton}
-          onPress={() => !disabled && setIsDropdownOpen(!isDropdownOpen)}
-          disabled={disabled}
-        >
-          <Text style={[styles.arrow, { transform: [{ rotate: isDropdownOpen ? '0deg' : '180deg' }] }]}>
+        <TouchableOpacity style={styles.arrowButton} onPress={handleToggle} disabled={disabled}>
+          <Text
+            style={[
+              styles.arrow,
+              {
+                transform: [{ rotate: isOpen ? '0deg' : '180deg' }],
+                color: AppColors.textSecondary,
+              },
+            ]}
+          >
             ▲
           </Text>
         </TouchableOpacity>
       </View>
 
-      {isDropdownOpen && !disabled && (
+      {isOpen && !disabled && (
         <View style={styles.dropdown}>
           <ScrollView
             nestedScrollEnabled={true}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={true}
-            style={styles.dropdownScroll}
+            style={styles.dropdownList}
           >
             {displayedLocations.length === 0 ? (
               <View style={styles.noResults}>
@@ -146,13 +173,13 @@ export default function LocationSelector({
                 )}
               </View>
             ) : (
-              displayedLocations.map((loc) => {
+              displayedLocations.map((loc, index) => {
                 const locationName = getLocationName(loc);
                 const cityName = getCityName(loc);
                 const isSelected = selectedLocation === loc.id;
                 return (
                   <TouchableOpacity
-                    key={loc.id}
+                    key={`${loc.id}-${index}`}
                     style={[styles.item, isSelected && styles.itemSelected]}
                     onPress={() => handleSelect(loc.id)}
                   >
@@ -176,13 +203,14 @@ export default function LocationSelector({
 // Create dynamic styles function
 const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: {
-    position: 'relative',
-    zIndex: 1000,
+    width: '100%',
   },
-  input: {
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
     borderRadius: 10,
+    justifyContent: 'center',
+    overflow: 'hidden',
     paddingHorizontal: 16,
     paddingVertical: 12,
     minHeight: 50,
@@ -191,48 +219,44 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     opacity: 0.5,
   },
   textInput: {
-    flex: 1,
     fontSize: 16,
-    color: AppColors.text,
+    paddingHorizontal: 6,
+    paddingVertical: 0,
+    height: '100%',
+    textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
+    minHeight: 24,
   },
   arrowButton: {
-    paddingLeft: 8,
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   arrow: {
-    fontSize: 12,
-    color: AppColors.textSecondary,
+    fontSize: 16,
   },
   dropdown: {
     position: 'absolute',
     top: '100%',
     left: 0,
     right: 0,
-    height: 200,
     backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
     borderColor: AppColors.borderLight,
     borderRadius: 10,
     marginTop: 4,
-    zIndex: 1001,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        shadowOffset: { width: 0, height: 4 },
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
+    maxHeight: 200,
+    zIndex: 1000,
+    elevation: 10,
   },
-  dropdownScroll: {
-    flex: 1,
+  dropdownList: {
+    maxHeight: 200,
   },
   item: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: AppColors.backgroundPrimary,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.borderLight,
   },
@@ -242,13 +266,15 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   itemText: {
     fontSize: 16,
     color: AppColors.text,
+    flex: 1,
   },
   itemTextSelected: {
     color: AppColors.primary,
     fontWeight: '600',
   },
   noResults: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   noResultsText: {
@@ -256,6 +282,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     color: AppColors.textSecondary,
     textAlign: 'center',
     marginBottom: 8,
+    fontStyle: 'italic',
   },
   showAllButton: {
     paddingHorizontal: 12,
@@ -270,4 +297,3 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     fontWeight: '600',
   },
 });
-

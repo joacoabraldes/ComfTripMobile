@@ -74,6 +74,8 @@ const en = {
     noActivities: 'No itinerary points yet.',
     completedBadge: 'Trip Completed',
     addActivity: 'Add activity',
+    flight: 'Flight',
+    flightSaved: 'Saved on',
   },
 
   // Trip Summary
@@ -194,7 +196,7 @@ const en = {
     updateError: 'Could not update profile',
     name: 'Name',
     selectNationality: 'Select nationality',
-      loading: 'Loading profile...'
+    loading: 'Loading profile...',
   },
 
   // Auth
@@ -341,6 +343,10 @@ const en = {
     },
     destination: 'Destination',
     placeNumber: 'Place #{number}',
+    flights: 'Flights',
+    flightCodeLabel: 'Flight code',
+    flightCodePlaceholder: 'E.g: AA123',
+    flightTime: 'Time',
   },
 
   // Add Activity

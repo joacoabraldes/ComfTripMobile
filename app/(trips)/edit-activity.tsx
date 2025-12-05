@@ -406,7 +406,10 @@ export default function EditActivity() {
 
   return (
     <SecondaryLayout title={t('editActivity.title')}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+      <ScrollView 
+      style={styles.container} 
+      contentContainerStyle={styles.contentContainer}
+      nestedScrollEnabled={true}>
         <Text style={styles.subtitle}>{trip?.destination || ''}</Text>
         {trip?.start_date && trip?.end_date && (
           <Text style={styles.dates}>
