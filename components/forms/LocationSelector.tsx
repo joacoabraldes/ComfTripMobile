@@ -6,6 +6,7 @@ import { useTranslation } from '@/i18n';
 interface Location {
   id: number;
   titulo?: string;
+  title?: string;
   city?: string;
   ciudad?: string;
   localidad?: string;
@@ -19,6 +20,7 @@ interface Location {
   country?: string;
   address?: string;
   descripcion?: string;
+  description?: string;
   latitude?: number | string;
   longitude?: number | string;
   latitud?: number | string;
@@ -60,18 +62,21 @@ export default function LocationSelector({
 
   const displayedLocations = useMemo(() => {
     if (!search.trim()) return availableLocations;
+    const searchLower = search.toLowerCase();
     return availableLocations.filter((loc) =>
-      loc.titulo?.toLowerCase().includes(search.toLowerCase()) ||
-      loc.address?.toLowerCase().includes(search.toLowerCase()) ||
-      loc.descripcion?.toLowerCase().includes(search.toLowerCase()) ||
-      loc.city?.toLowerCase().includes(search.toLowerCase()) ||
-      loc.ciudad?.toLowerCase().includes(search.toLowerCase()) ||
-      loc.localidad?.toLowerCase().includes(search.toLowerCase())
+      loc.titulo?.toLowerCase().includes(searchLower) ||
+      loc.title?.toLowerCase().includes(searchLower) ||
+      loc.address?.toLowerCase().includes(searchLower) ||
+      loc.descripcion?.toLowerCase().includes(searchLower) ||
+      loc.description?.toLowerCase().includes(searchLower) ||
+      loc.city?.toLowerCase().includes(searchLower) ||
+      loc.ciudad?.toLowerCase().includes(searchLower) ||
+      loc.localidad?.toLowerCase().includes(searchLower)
     );
   }, [availableLocations, search]);
 
   const getLocationName = (loc: Location) => {
-    return loc.titulo || loc.address || loc.descripcion || `Location ${loc.id}`;
+    return loc.titulo ?? loc.title ?? loc.descripcion ?? loc.description ?? loc.address ?? `Location ${loc.id}`;
   };
 
   const getCityName = (loc: Location) => {

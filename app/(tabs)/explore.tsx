@@ -1,5 +1,6 @@
 // app/(tabs)/explore.tsx
 import { apiGet } from '@/helpers/api';
+import { safeParseImages } from '@/helpers/imageUtils';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
@@ -53,52 +54,6 @@ type Experience = {
   raw: Location;
 };
 
-/**
- * Robust image parser
- * Accepts:
- * - null/undefined
- * - array of strings
- * - array of objects [{ url }]
- * - JSON-stringified array or string
- * - comma-separated string
- * - object with .url or .urls
- */
-const safeParseImages = (im: any): string[] => {
-  if (!im) return [];
-  if (Array.isArray(im)) {
-    return im
-      .map((it) => {
-        if (!it) return null;
-        if (typeof it === 'string') return it;
-        if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
-        return String(it);
-      })
-      .filter(Boolean) as string[];
-  }
-  if (typeof im === 'string') {
-    // try JSON
-    try {
-      const parsed = JSON.parse(im);
-      if (Array.isArray(parsed)) {
-        return parsed
-          .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
-          .filter(Boolean);
-      }
-      // parsed is primitive
-      return [String(parsed)];
-    } catch (e) {
-      // fallback: comma separated
-      if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
-      return [im];
-    }
-  }
-  if (typeof im === 'object' && im !== null) {
-    if (Array.isArray((im as any).urls)) return (im as any).urls;
-    if ((im as any).url) return [(im as any).url];
-    if ((im as any).src) return [(im as any).src];
-  }
-  return [];
-};
 
 /** Choose a small/thumbnail URL when possible */
 const pickBestImage = (imgs: string[] = []): string | null => {

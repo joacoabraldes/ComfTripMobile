@@ -1,6 +1,7 @@
 import { apiGet } from '@/helpers/api';
 import { formatDateRange } from '@/helpers/dateUtils';
 import { sortTripsByStatus, getTripStatus, getTripStatusValue, isTripCompleted } from '@/helpers/tripUtils';
+import { safeParseImages } from '@/helpers/imageUtils';
 import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
@@ -34,47 +35,12 @@ export default function TripsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<SortOption>('date');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   // Generate dynamic styles
   const styles = getStyles(AppColors);
 
   const cardWidth = Math.min(340, Math.round(width - 40));
-
-  // Helper to parse images from location imagenes field
-  const safeParseImages = (im: any): string[] => {
-    if (!im) return [];
-    if (Array.isArray(im)) {
-      return im
-        .map((it) => {
-          if (!it) return null;
-          if (typeof it === 'string') return it;
-          if (typeof it === 'object') return it.url ?? it.src ?? it.image ?? null;
-          return String(it);
-        })
-        .filter(Boolean) as string[];
-    }
-    if (typeof im === 'string') {
-      try {
-        const parsed = JSON.parse(im);
-        if (Array.isArray(parsed)) {
-          return parsed
-            .map((it) => (typeof it === 'object' && it !== null ? it.url ?? it.src ?? it.image ?? String(it) : String(it)))
-            .filter(Boolean);
-        }
-        return [String(parsed)];
-      } catch (e) {
-        if (im.includes(',')) return im.split(',').map((s) => s.trim()).filter(Boolean);
-        return [im];
-      }
-    }
-    if (typeof im === 'object' && im !== null) {
-      if (Array.isArray((im as any).urls)) return (im as any).urls;
-      if ((im as any).url) return [(im as any).url];
-      if ((im as any).src) return [(im as any).src];
-    }
-    return [];
-  };
 
   const fetchTrips = useCallback(async () => {
     setError(null);
@@ -178,8 +144,11 @@ export default function TripsScreen() {
       past: t('trips.status.past'),
     };
 
-    // Use first place image, fallback to flag_url, then placeholder
-    const imageSource = (item as any).firstPlaceImage || item.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7';
+    // Use first place image, fallback to flag_url
+    const imageSource = (item as any).firstPlaceImage || item.flag_url;
+    const hasImage = !!imageSource;
+    // Extract city name from destination (e.g., "Madrid, Spain" -> "Madrid")
+    const cityName = item.destination ? item.destination.split(',')[0].trim() : '';
 
     return (
       <TouchableOpacity
@@ -198,12 +167,20 @@ export default function TripsScreen() {
             },
           });
         }}>
-        <Image
-          source={imageSource}
-          style={styles.flag}
-          contentFit="cover"
-          placeholder={require("../../assets/images/icon.png")}
-        />
+        {hasImage ? (
+          <Image
+            source={imageSource}
+            style={styles.flag}
+            contentFit="cover"
+            placeholder={require("../../assets/images/icon.png")}
+          />
+        ) : (
+          <View style={[styles.flag, styles.flagPlaceholder]}>
+            <Text style={styles.flagPlaceholderText} numberOfLines={2}>
+              {cityName}
+            </Text>
+          </View>
+        )}
         <View style={styles.cardContent}>
           <Text style={styles.destination}>{item.destination}</Text>
           <Text style={styles.dates}>{formatDateRange(item.start_date, item.end_date)}</Text>
@@ -306,6 +283,17 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     borderRadius: 12,
     marginRight: 12,
     backgroundColor: AppColors.borderLight,
+  },
+  flagPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 4,
+  },
+  flagPlaceholderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: AppColors.textSecondary,
+    textAlign: 'center',
   },
 
   cardContent: { flex: 1, justifyContent: 'center' },

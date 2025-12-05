@@ -62,6 +62,7 @@ export interface Activity {
   img?: string | null;
   dateStr: string;
   sortTs?: number;
+  place?: any; // Raw place object from backend (for image extraction in ActivityCard)
 }
 
 export interface Friend {
