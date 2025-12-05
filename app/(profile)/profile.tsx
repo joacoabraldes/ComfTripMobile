@@ -19,11 +19,12 @@ import {
 } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useTranslation } from "@/i18n";
-import { ShadowColors } from "@/constants/Colors";
+import {AppColors, ShadowColors} from "@/constants/Colors";
 import { getResponsiveValues, responsiveSize } from "@/helpers/responsive";
 import TextButton from "@/components/buttons/TextButton";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
 import { useAppColors } from "@/hooks/useAppColors";
+import {useCommonStyles} from "@/constants/Styles";
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -71,6 +72,7 @@ export default function ProfileScreen() {
   const { t, language, setLanguage } = useTranslation();
   const { themeMode, setThemeMode } = useTheme();
   const AppColors = useAppColors();
+    const CommonStyles = useCommonStyles();
   
   // Tamaños relativos basados en el tamaño de pantalla
   const responsive = getResponsiveValues(width, height);
@@ -247,7 +249,8 @@ export default function ProfileScreen() {
     return (
       <SecondaryLayout title={t('profile.profile')}>
         <View style={styles.centered}>
-          <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color="#FF3951" />
+            <Text style={CommonStyles.loadingText}>{t('profile.loading')}</Text>
         </View>
       </SecondaryLayout>
     );

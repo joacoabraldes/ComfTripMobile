@@ -18,6 +18,7 @@ import { useTranslation } from '@/i18n';
 import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColors } from '@/hooks/useAppColors';
+import {useCommonStyles} from "@/constants/Styles";
 
 type Friend = {
   id: number;
@@ -55,6 +56,7 @@ export default function CommunityScreen() {
   const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
   const [emailOrId, setEmailOrId] = useState('');
   const [sending, setSending] = useState(false);
+    const CommonStyles = useCommonStyles();
 
   // Share modal state
   const [showShareModal, setShowShareModal] = useState(false);
@@ -301,16 +303,16 @@ export default function CommunityScreen() {
   function renderListItem(item: any, actions: React.ReactNode, showAvatar = false) {
     const title = item.requester_name || item.addressee_name || item.name || t('communityExtra.userNumber', { number: item.requester_id || item.addressee_id || item.id });
     const subtitle = item.requester_email || item.addressee_email || item.email || '';
-    const status = item.status;
+    //const status = item.status;
 
     return (
       <View key={item.id} style={styles.listItem}>
         <View style={styles.itemInfo}>
-          {showAvatar && renderAvatar(item.name, item.email)}
+          {showAvatar && renderAvatar(item.name || item.requester_name || item.addressee_name, item.email || item.requester_email || item.addressee_email )}
           <View style={[styles.itemText, !showAvatar && styles.itemTextNoAvatar]}>
             <Text style={styles.itemTitle}>{title}</Text>
             {subtitle ? <Text style={styles.itemSubtitle}>{subtitle}</Text> : null}
-            {status ? <Text style={styles.itemStatus}>{t('communityExtra.statusLabel', { status })}</Text> : null}
+              {/*{status ? <Text style={styles.itemStatus}>{t('communityExtra.statusLabel', { status })}</Text> : null}*/}
           </View>
         </View>
         <View style={styles.itemActions}>
@@ -324,8 +326,8 @@ export default function CommunityScreen() {
     return (
       <PrimaryLayout title={t('community.title')}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" />
-          <Text style={styles.loadingText}>{t('communityExtra.loading')}</Text>
+          <ActivityIndicator size="large" color="#FF3951" />
+          <Text style={CommonStyles.loadingText}>{t('communityExtra.loading')}</Text>
         </View>
       </PrimaryLayout>
     );
@@ -387,7 +389,7 @@ export default function CommunityScreen() {
                   >
                     <Ionicons name="close" size={18} color={AppColors.error} />
                   </TouchableOpacity>
-                </View>
+                </View>, true
               ))}
             </View>
           )}
@@ -429,7 +431,7 @@ export default function CommunityScreen() {
             <Text style={styles.emptyText}>{t('community.noOutgoing')}</Text>
           ) : (
             <View>
-              {outgoing.map(req => renderListItem(req, <View />))}
+              {outgoing.map(req => renderListItem(req, <View />, true))}
             </View>
           )}
         </View>
@@ -531,11 +533,6 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    color: AppColors.textSecondary,
-    fontSize: 16,
   },
   card: {
     backgroundColor: AppColors.backgroundPrimary,

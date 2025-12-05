@@ -6,12 +6,13 @@ import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  Platform,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  useWindowDimensions,
-  View,
+    ActivityIndicator,
+    Platform,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +22,7 @@ import { ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors'
 import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import { useAppColors } from '@/hooks/useAppColors';
+import {useCommonStyles} from "@/constants/Styles";
 
 type Trip = {
   id: number;
@@ -118,6 +120,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+    const CommonStyles = useCommonStyles();
 
   // Estimated tab bar height (adjust if your tab bar is taller)
   const TABBAR_HEIGHT = 64;
@@ -166,6 +169,7 @@ export default function HomeScreen() {
   // load trips
   useEffect(() => {
     let mounted = true;
+    setLoadingTrips(true);
     (async () => {
       try {
         const res = await apiGet('/trips');
@@ -474,7 +478,16 @@ export default function HomeScreen() {
   };
 
   const showHeaderSection = (!!ongoingTrip || (!!upcomingTrip && !ongoingTrip)) && !loadingTrips;
-
+    if (loadingTrips) {
+        return (
+            <PrimaryLayout title={t('tabs.home')}>
+                <View style={{flex: 1, justifyContent: 'center', alignItems: 'center',}}>
+                    <ActivityIndicator size="large" color="#FF3951" />
+                    <Text style={CommonStyles.loadingText}>{t('common.loading')}</Text>
+                </View>
+            </PrimaryLayout>
+        );
+    }
   return (
     <PrimaryLayout title={t('tabs.home')}>
       <View style={styles.root}>

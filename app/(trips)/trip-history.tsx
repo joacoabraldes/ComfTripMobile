@@ -6,12 +6,22 @@ import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import {
+    ActivityIndicator,
+    FlatList,
+    RefreshControl,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    useWindowDimensions,
+    View
+} from 'react-native';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { ShadowColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
 import ContextMenu from '@/components/ui/ContextMenu';
 import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
+import {useCommonStyles} from "@/constants/Styles";
 
 export default function TripHistoryScreen() {
   const { t } = useTranslation();
@@ -19,6 +29,7 @@ export default function TripHistoryScreen() {
   const styles = getStyles(AppColors);
   const { width } = useWindowDimensions();
   const router = useRouter();
+    const CommonStyles = useCommonStyles();
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -199,7 +210,8 @@ export default function TripHistoryScreen() {
     return (
       <SecondaryLayout title={t('tripHistory.title')} rightActions={<ContextMenu options={menuOptions} />}>
         <View style={styles.center}>
-          <Text style={{ marginTop: 40 }}>{t('tripHistory.loading')}</Text>
+            <ActivityIndicator size="large" color="#FF3951" />
+            <Text style={CommonStyles.loadingText}>{t('profile.loading')}</Text>
         </View>
       </SecondaryLayout>
     );

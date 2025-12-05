@@ -6,7 +6,10 @@ import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
-import { FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import {
+    ActivityIndicator,
+    FlatList, Platform, RefreshControl, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +18,7 @@ import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import ContextMenu from '@/components/ui/ContextMenu';
 import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
 import { useAppColors } from '@/hooks/useAppColors';
+import {useCommonStyles} from "@/constants/Styles";
 
 export default function TripsScreen() {
   const { t } = useTranslation();
@@ -22,6 +26,7 @@ export default function TripsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const AppColors = useAppColors();
+    const CommonStyles = useCommonStyles();
 
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -214,7 +219,8 @@ export default function TripsScreen() {
     return (
       <PrimaryLayout title={t('trips.title')}>
         <View style={styles.center}>
-          <Text style={{ marginTop: 40 }}>{t('trips.loading')}</Text>
+            <ActivityIndicator size="large" color="#FF3951" />
+          <Text style={CommonStyles.loadingText}>{t('trips.loading')}</Text>
         </View>
       </PrimaryLayout>
     );

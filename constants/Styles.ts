@@ -1,5 +1,6 @@
 import { Platform, StyleSheet } from 'react-native';
 import { useAppColors } from '@/hooks/useAppColors';
+import {AppColors} from "@/constants/Colors";
 
 /**
  * Hook para obtener estilos comunes dinámicos según el tema
@@ -35,6 +36,11 @@ export function useCommonStyles() {
       marginBottom: 12,
       fontSize: 16,
     },
+      loadingText: {
+          marginTop: 16,
+          color: AppColors.textSecondary,
+          fontSize: 16,
+      },
   };
 }
 
@@ -70,4 +76,9 @@ export const CommonStyles = {
     marginBottom: 12,
     fontSize: 16,
   },
+    loadingText: {
+        marginTop: 16,
+        color: AppColors.textSecondary,
+        fontSize: 16,
+    },
 };

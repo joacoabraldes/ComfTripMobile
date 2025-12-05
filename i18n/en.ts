@@ -194,6 +194,7 @@ const en = {
     updateError: 'Could not update profile',
     name: 'Name',
     selectNationality: 'Select nationality',
+      loading: 'Loading profile...'
   },
 
   // Auth

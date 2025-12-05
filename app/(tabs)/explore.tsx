@@ -20,6 +20,7 @@ import { useTranslation } from '@/i18n';
 import { ShadowColors } from '@/constants/Colors';
 import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 import { useAppColors } from '@/hooks/useAppColors';
+import {useCommonStyles} from "@/constants/Styles";
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -125,6 +126,7 @@ export default function ExploreScreen() {
   const translateCategory = useCategoryTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+    const CommonStyles = useCommonStyles();
 
   // server-driven
   const [categories, setCategories] = useState<Category[]>([]);
@@ -296,7 +298,7 @@ export default function ExploreScreen() {
         <View style={styles.container}>
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={AppColors.primary} />
-            <Text style={styles.loadingText}>{t('explore.loading')}</Text>
+            <Text style={CommonStyles.loadingText}>{t('explore.loading')}</Text>
           </View>
         </View>
       </PrimaryLayout>
@@ -470,7 +472,6 @@ export default function ExploreScreen() {
 const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 16, fontSize: 16, color: AppColors.textSecondary },
   errorContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   errorText: { fontSize: 16, color: AppColors.primary, textAlign: 'center' },
 

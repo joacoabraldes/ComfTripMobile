@@ -273,7 +273,8 @@ export default function EditProfileScreen() {
     return (
       <SecondaryLayout title={t('profile.editProfile')}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" />
+            <ActivityIndicator size="large" color="#FF3951" />
+            <Text style={CommonStyles.loadingText}>{t('profile.loading')}</Text>
         </View>
       </SecondaryLayout>
     );
