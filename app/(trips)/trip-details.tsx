@@ -48,12 +48,6 @@ export default function TripDetails() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
 
-  // Check if trip is completed based on dates (use params if trip not loaded yet)
-  const isCompleted = trip
-    ? isTripCompleted(trip)
-    : params.start_date && params.end_date
-    ? getTripStatus(params.start_date, params.end_date) === 'past'
-    : false;
 
   // Fetch trip and derive activities from trip.places (web parity)
   useEffect(() => {

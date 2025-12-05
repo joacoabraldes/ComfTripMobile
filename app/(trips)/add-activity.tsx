@@ -16,6 +16,7 @@ import { useTranslation } from '@/i18n';
 import { useAppColors } from '@/hooks/useAppColors';
 import { apiGet, apiPost } from '@/helpers/api';
 import { getTripCity, normalizeDate } from '@/helpers/activityUtils';
+import { formatDateRange } from '@/helpers/dateUtils';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
@@ -331,7 +332,7 @@ export default function AddActivity() {
         <Text style={styles.subtitle}>{trip?.destination || ''}</Text>
         {trip?.start_date && trip?.end_date && (
           <Text style={styles.dates}>
-            {new Date(trip.start_date).toLocaleDateString()} — {new Date(trip.end_date).toLocaleDateString()}
+            {formatDateRange(trip.start_date, trip.end_date)}
           </Text>
         )}
 

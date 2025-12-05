@@ -31,6 +31,14 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
   const [sharing, setSharing] = useState<boolean>(false);
   const [selectedFriendId, setSelectedFriendId] = useState<number | null>(null);
 
+  // Sync showModal with initialVisible prop when it changes
+  // This ensures the modal opens when the component is mounted with initialVisible=true
+  useEffect(() => {
+    if (initialVisible !== showModal) {
+      setShowModal(initialVisible);
+    }
+  }, [initialVisible, showModal]);
+
   const loadFriends = async () => {
     setLoading(true);
     try {
@@ -72,8 +80,7 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
         t('common.success'),
         t('share.success', { friendName })
       );
-      setShowModal(false);
-      setSelectedFriendId(null);
+      handleCloseModal();
     } catch (err: any) {
       console.error('Error sharing trip:', err);
       const message = err?.message || t('share.error');
@@ -136,17 +143,17 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
     );
   };
 
+  // Load friends when modal opens (similar to web version)
   useEffect(() => {
-    if (initialVisible && !showModal) {
-      setShowModal(true);
-      if (friends.length === 0) {
-        loadFriends();
-      }
+    if (showModal && friends.length === 0 && !loading) {
+      loadFriends();
     }
-  }, [initialVisible]);
+  }, [showModal]);
 
   const handleCloseModal = () => {
     setShowModal(false);
+    // Reset selected friend when closing
+    setSelectedFriendId(null);
     if (onClose) onClose();
   };
 

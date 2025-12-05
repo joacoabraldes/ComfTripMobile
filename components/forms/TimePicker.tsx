@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity, ScrollView, Platform, Modal, Pressable } from 'react-native';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
@@ -44,8 +44,8 @@ export default function TimePicker({
   const [showHourModal, setShowHourModal] = useState(false);
   const [showMinuteModal, setShowMinuteModal] = useState(false);
 
-  const hours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
-  const minutes = ['00', '30']; // Solo mostrar 00 y 30 minutos
+  const allHours = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+  const allMinutes = ['00', '30']; // Solo mostrar 00 y 30 minutos
 
   const isInvalidStart = (h: string, m: string) => {
     const time = `${h}:${m || '00'}`;
@@ -80,6 +80,32 @@ export default function TimePicker({
       return isInvalidEnd(h, m);
     }
   };
+
+  // Filter to show only available hours
+  const hours = useMemo(() => {
+    return allHours.filter(h => {
+      // Check if at least one minute option is valid for this hour
+      return allMinutes.some(m => {
+        if (!minTime) {
+          return !isInvalidStart(h, m);
+        } else {
+          return !isInvalidEnd(h, m);
+        }
+      });
+    });
+  }, [occupiedSlots, minTime, maxTime]);
+
+  // Filter to show only available minutes for the selected hour
+  const minutes = useMemo(() => {
+    if (!hour) return allMinutes;
+    return allMinutes.filter(m => {
+      if (!minTime) {
+        return !isInvalidStart(hour, m);
+      } else {
+        return !isInvalidEnd(hour, m);
+      }
+    });
+  }, [hour, occupiedSlots, minTime, maxTime]);
 
   // Update internal state when value prop changes
   useEffect(() => {

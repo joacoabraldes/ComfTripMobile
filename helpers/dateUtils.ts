@@ -71,14 +71,24 @@ export function formatTimeOrEmpty(timeStr?: string | null): string {
 
 /**
  * Formats a date range from start to end dates
+ * Parses dates manually to avoid timezone issues
  */
 export function formatDateRange(start?: string | null, end?: string | null): string {
   if (!start || !end) return '-';
   try {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const startStr = startDate.toLocaleDateString('es-ES');
-    const endStr = endDate.toLocaleDateString('es-ES');
+    // Parse dates manually to avoid timezone issues
+    // Dates come as "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss.sssZ"
+    const formatDateManual = (dateStr: string): string => {
+      const onlyDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+      const parts = onlyDate.split('-');
+      if (parts.length !== 3) return dateStr;
+      const [yy, mm, dd] = parts;
+      // Format as DD/MM/YYYY directly without timezone conversion
+      return `${dd}/${mm}/${yy}`;
+    };
+
+    const startStr = formatDateManual(start);
+    const endStr = formatDateManual(end);
     return `${startStr} - ${endStr}`;
   } catch {
     return `${start} - ${end}`;
