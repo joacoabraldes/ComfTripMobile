@@ -20,11 +20,48 @@ export function formatDate(dateStr?: string | null): string {
 
 /**
  * Formats a time string to HH:MM format
+ * Handles both "HH:mm" and "HH:mm:ss+00" formats
  */
 export function formatTime(timeStr?: string | null): string {
   if (!timeStr) return '-';
   try {
-    const parts = timeStr.split(':');
+    // Handle both "HH:mm" and "HH:mm:ss+00" formats
+    const timeOnly = timeStr.includes('+') ? timeStr.split('+')[0] : timeStr;
+    const parts = timeOnly.split(':');
+    const [hh, mm] = parts;
+    return `${hh}:${mm ?? '00'}`;
+  } catch {
+    return timeStr;
+  }
+}
+
+/**
+ * Formats a date string to DD/MM/YYYY format, returning empty string if no date
+ * Used in home.tsx where empty string is preferred over '-'
+ */
+export function formatDateOrEmpty(dateStr?: string | null): string {
+  if (!dateStr) return '';
+  try {
+    const onlyDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const parts = onlyDate.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [yy, mm, dd] = parts;
+    return `${dd}/${mm}/${yy}`;
+  } catch {
+    return dateStr;
+  }
+}
+
+/**
+ * Formats a time string to HH:MM format, returning empty string if no time
+ * Used in home.tsx where empty string is preferred over '-'
+ */
+export function formatTimeOrEmpty(timeStr?: string | null): string {
+  if (!timeStr) return '';
+  try {
+    // Handle both "HH:mm" and "HH:mm:ss+00" formats
+    const timeOnly = timeStr.includes('+') ? timeStr.split('+')[0] : timeStr;
+    const parts = timeOnly.split(':');
     const [hh, mm] = parts;
     return `${hh}:${mm ?? '00'}`;
   } catch {

@@ -1,6 +1,7 @@
 import { apiDelete, apiGet } from '@/helpers/api';
 import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
-import { getTripStatus, isTripCompleted } from '@/helpers/tripUtils';
+import { getTripStatus, isTripCompleted, normalizeTripData } from '@/helpers/tripUtils';
+import { mapPlacesToActivities } from '@/helpers/activityUtils';
 import { Activity, Trip } from '@/types';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -69,59 +70,18 @@ export default function TripDetails() {
         const data = res?.data ?? res;
 
         // Store the full trip object
-        const tripData: Trip = {
-          id: data.id || tripId,
-          user_id: data.user_id || 0,
-          destination: data.destination || params.destination || t('tripSummary.destination'),
-          start_date: data.start_date || params.start_date || '',
-          end_date: data.end_date || params.end_date || '',
-          flag_url: data.flag_url || params.flag_url || null,
-          notes: data.notes || null,
-          budget: data.budget || null,
-          created_at: data.created_at || null,
-          places: Array.isArray(data?.places) ? data.places : (Array.isArray(data?.data?.places) ? data.data.places : []),
-        };
+        const tripData = normalizeTripData(data, tripId, params, t);
 
         if (mounted) {
           setTrip(tripData);
         }
 
-        // Expecting trip object with places array, like the web
+        // Map places to activities
         const places: any[] = tripData.places || [];
-
-        const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
-          const loc = p.location || {};
-          const title = loc.titulo ?? p.location?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
-
-          // Build sortable timestamp from date + start_hour
-          let ts = Number.NaN;
-          if (p.date) {
-            const base = (typeof p.date === 'string' && p.date.includes('T')) ? p.date : `${p.date}T00:00:00`;
-            const start = p.start_hour ? `${base.split('T')[0]}T${p.start_hour}:00` : base;
-            const d = new Date(start);
-            ts = d.getTime();
-          }
-
-          const dateStr = `${formatDate(p.date)} ${formatTime(p.start_hour)}${p.end_hour ? ` - ${formatTime(p.end_hour)}` : ''}`.trim();
-
-          return {
-            key: String(p.id ?? idx),
-            title,
-            img: null, // Image will be extracted in ActivityCard from place object
-            dateStr,
-            sortTs: isNaN(ts) ? undefined : ts,
-            place: p, // Store raw place object for image extraction
-          };
-        });
-
-        const sorted = mapped.slice().sort((a, b) => {
-          const aa = a.sortTs ?? Number.MAX_SAFE_INTEGER;
-          const bb = b.sortTs ?? Number.MAX_SAFE_INTEGER;
-          return aa - bb;
-        });
+        const activities = mapPlacesToActivities(places, t, true);
 
         if (mounted) {
-          setActivities(sorted);
+          setActivities(activities);
         }
       } catch (err: any) {
         if (mounted) setError(err?.message || t('tripDetails.failedToLoad'));
@@ -164,57 +124,17 @@ export default function TripDetails() {
             const res = await apiGet(`/trips/${tripId}`);
             const data = res?.data ?? res;
 
-            const tripData: Trip = {
-              id: data.id || tripId,
-              user_id: data.user_id || 0,
-              destination: data.destination || params.destination || t('tripSummary.destination'),
-              start_date: data.start_date || params.start_date || '',
-              end_date: data.end_date || params.end_date || '',
-              flag_url: data.flag_url || params.flag_url || null,
-              notes: data.notes || null,
-              budget: data.budget || null,
-              created_at: data.created_at || null,
-              places: Array.isArray(data?.places) ? data.places : (Array.isArray(data?.data?.places) ? data.data.places : []),
-            };
+            const tripData = normalizeTripData(data, tripId, params, t);
 
             if (mounted) {
               setTrip(tripData);
             }
 
             const places: any[] = tripData.places || [];
-
-            const mapped: Activity[] = (places || []).map((p: any, idx: number) => {
-              const loc = p.location || {};
-              const title = loc.titulo ?? p.location?.titulo ?? t('addTrip.placeNumber', { number: p.fk_location ?? p.id ?? idx + 1 });
-
-              let ts = Number.NaN;
-              if (p.date) {
-                const base = (typeof p.date === 'string' && p.date.includes('T')) ? p.date : `${p.date}T00:00:00`;
-                const start = p.start_hour ? `${base.split('T')[0]}T${p.start_hour}:00` : base;
-                const d = new Date(start);
-                ts = d.getTime();
-              }
-
-              const dateStr = `${formatDate(p.date)} ${formatTime(p.start_hour)}${p.end_hour ? ` - ${formatTime(p.end_hour)}` : ''}`.trim();
-
-              return {
-                key: String(p.id ?? idx),
-                title,
-                img: null, // Image will be extracted in ActivityCard from place object
-                dateStr,
-                sortTs: isNaN(ts) ? undefined : ts,
-                place: p, // Store raw place object for image extraction
-              };
-            });
-
-            const sorted = mapped.slice().sort((a, b) => {
-              const aa = a.sortTs ?? Number.MAX_SAFE_INTEGER;
-              const bb = b.sortTs ?? Number.MAX_SAFE_INTEGER;
-              return aa - bb;
-            });
+            const activities = mapPlacesToActivities(places, t, true);
 
             if (mounted) {
-              setActivities(sorted);
+              setActivities(activities);
             }
           } catch (err: any) {
             console.error('Error refreshing trip:', err);

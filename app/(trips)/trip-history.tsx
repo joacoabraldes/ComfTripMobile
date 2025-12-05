@@ -1,7 +1,6 @@
 import { apiGet } from '@/helpers/api';
-import { formatDateRange } from '@/helpers/dateUtils';
-import { getTripStatus, getTripStatusValue, isTripCompleted } from '@/helpers/tripUtils';
-import { safeParseImages } from '@/helpers/imageUtils';
+import { isTripCompleted, sortTripsByOption, getTripFirstPlaceImage, SortOption, SortOrder } from '@/helpers/tripUtils';
+import TripCard from '@/components/trip/TripCard';
 import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
@@ -21,7 +20,7 @@ import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { ShadowColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
 import ContextMenu from '@/components/ui/ContextMenu';
-import SortTripsModal, { SortOption, SortOrder } from '@/components/modals/SortTripsModal';
+import SortTripsModal from '@/components/modals/SortTripsModal';
 import {useCommonStyles} from "@/constants/Styles";
 
 export default function TripHistoryScreen() {
@@ -51,14 +50,8 @@ export default function TripHistoryScreen() {
       
       // Enrich trips with first place image (only if places are already included)
       const enrichedTrips = tripsData.map((trip) => {
-        const places = trip.places || [];
-        if (places.length > 0 && places[0]?.location?.imagenes) {
-          const images = safeParseImages(places[0].location.imagenes);
-          if (images.length > 0 && typeof images[0] === 'string') {
-            return { ...trip, firstPlaceImage: images[0] };
-          }
-        }
-        return trip;
+        const firstPlaceImage = getTripFirstPlaceImage(trip);
+        return firstPlaceImage ? { ...trip, firstPlaceImage } : trip;
       });
       
       setAllTrips(enrichedTrips);
@@ -87,25 +80,7 @@ export default function TripHistoryScreen() {
 
   // Sort trips based on selected option
   const sortedTrips = useMemo(() => {
-    const trips = [...pastTrips];
-    
-    trips.sort((a, b) => {
-      let comparison = 0;
-      
-      if (sortOption === 'date') {
-        const aDate = new Date(a.start_date || '').getTime();
-        const bDate = new Date(b.start_date || '').getTime();
-        comparison = aDate - bDate;
-      } else if (sortOption === 'name') {
-        const aName = (a.destination || '').toLowerCase();
-        const bName = (b.destination || '').toLowerCase();
-        comparison = aName.localeCompare(bName);
-      }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-    
-    return trips;
+    return sortTripsByOption(pastTrips, sortOption, sortOrder);
   }, [pastTrips, sortOption, sortOrder]);
 
   const handleSortChange = (sort: SortOption, order: SortOrder) => {
@@ -123,63 +98,13 @@ export default function TripHistoryScreen() {
   ];
 
   const renderItem = ({ item }: { item: Trip }) => {
-    const status = getTripStatus(item.start_date, item.end_date);
-    const statusValue = getTripStatusValue(item.start_date, item.end_date);
-    
-    const bgColor = AppColors.backgroundTertiary;
-    const accent = AppColors.textDisabled;
-    const badgeTextColor = AppColors.text;
-    
-    const statusLabels: Record<'upcoming' | 'current' | 'past', string> = {
-      upcoming: t('trips.status.upcoming'),
-      current: t('trips.status.current'),
-      past: t('trips.status.past'),
-    };
-
-    // Use first place image, fallback to flag_url
-    const imageSource = (item as any).firstPlaceImage || item.flag_url;
-    const hasImage = !!imageSource;
-    // Extract city name from destination (e.g., "Madrid, Spain" -> "Madrid")
-    const cityName = item.destination ? item.destination.split(',')[0].trim() : '';
-
     return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        style={[styles.card, { width: cardWidth, backgroundColor: bgColor }]}
-        onPress={() => {
-          router.push({
-            pathname: '/(trips)/trip-history-details',
-            params: {
-              id: String(item.id),
-              destination: item.destination,
-              start_date: item.start_date,
-              end_date: item.end_date,
-              flag_url: item.flag_url ?? '',
-            },
-          });
-        }}>
-        {hasImage ? (
-          <Image
-            source={imageSource}
-            style={styles.flag}
-            contentFit="cover"
-            placeholder={require("../../assets/images/icon.png")}
-          />
-        ) : (
-          <View style={[styles.flag, styles.flagPlaceholder]}>
-            <Text style={styles.flagPlaceholderText} numberOfLines={2}>
-              {cityName}
-            </Text>
-          </View>
-        )}
-        <View style={styles.cardContent}>
-          <Text style={styles.destination}>{item.destination}</Text>
-          <Text style={styles.dates}>{formatDateRange(item.start_date, item.end_date)}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: accent }]}>
-          <Text style={[styles.badgeText, { color: badgeTextColor }]}>{statusLabels[status]}</Text>
-        </View>
-      </TouchableOpacity>
+      <TripCard
+        trip={item}
+        width={cardWidth}
+        destinationPath="/(trips)/trip-history-details"
+        t={t}
+      />
     );
   };
 
@@ -241,48 +166,6 @@ export default function TripHistoryScreen() {
 const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.create({
   screen: { flex: 1, width: '100%', backgroundColor: AppColors.background, paddingTop: 8, alignItems: 'center', position: 'relative', overflow: 'visible' },
   list: { paddingVertical: 16, alignItems: 'center', paddingBottom: 40 },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 20,
-    backgroundColor: AppColors.backgroundCard,
-    shadowColor: ShadowColors.black,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  flag: {
-    width: 76,
-    height: 76,
-    borderRadius: 12,
-    marginRight: 12,
-    backgroundColor: AppColors.borderLight,
-  },
-  flagPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 4,
-  },
-  flagPlaceholderText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: AppColors.textSecondary,
-    textAlign: 'center',
-  },
-  cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
-  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 64,
-  },
-  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   retryBtn: {
     backgroundColor: AppColors.primary,

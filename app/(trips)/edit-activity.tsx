@@ -14,6 +14,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 import { apiGet, apiPut, apiDelete } from '@/helpers/api';
+import { getTripCity, normalizeDate } from '@/helpers/activityUtils';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
@@ -73,20 +74,6 @@ export default function EditActivity() {
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
 
-  // Helper functions
-  const getTripCity = (dest: string) => {
-    if (!dest) return '';
-    return dest.toString().split(',')[0].toLowerCase().trim();
-  };
-
-  const normalizeDate = (d: string) => {
-    if (!d) return null;
-    const date = d.split('T')[0].split('-');
-    const yy = Number(date[0]);
-    const mm = Number(date[1]) - 1;
-    const dd = Number(date[2]);
-    return new Date(yy, mm, dd);
-  };
 
   // Filter locations by trip city
   const filteredLocations = useMemo(() => {

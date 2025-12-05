@@ -24,6 +24,8 @@ import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import { useAppColors } from '@/hooks/useAppColors';
 import {useCommonStyles} from "@/constants/Styles";
+import { extractCoords } from '@/helpers/locationUtils';
+import { formatDateOrEmpty, formatTimeOrEmpty } from '@/helpers/dateUtils';
 
 type Trip = {
   id: number;
@@ -54,17 +56,6 @@ type Place = {
   };
 };
 
-function fmtDate(d?: string) {
-  if (!d) return '';
-  try {
-    const onlyDate = d.includes('T') ? d.split('T')[0] : d;
-    const [yy, mm, dd] = onlyDate.split('-');
-    return `${dd}/${mm}/${yy}`;
-  } catch {
-    return d;
-  }
-}
-
 function isUpcoming(start?: string, end?: string) {
   if (!start || !end) return -1;
   const now = new Date();
@@ -82,36 +73,6 @@ function toDateSafe(date?: string, time?: string) {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d;
 }
-
-function fmtHour(t?: string) {
-  if (!t) return '';
-  try {
-    // Handle both "HH:mm" and "HH:mm:ss+00" formats
-    const timeOnly = t.includes('+') ? t.split('+')[0] : t;
-    const parts = timeOnly.split(':');
-    const [hh, mm] = parts;
-    return `${hh}:${mm ?? '00'}`;
-  } catch {
-    return t;
-  }
-}
-
-function toNumber(n: any): number | null {
-  const v = Number(n);
-  return Number.isFinite(v) ? v : null;
-}
-
-function extractCoords(p?: Place): { lat: number; lng: number } | null {
-  const loc = p?.location as any;
-  if (!loc) return null;
-
-  const lat = toNumber(loc.latitude ?? loc.latitud ?? loc.lat);
-  const lng = toNumber(loc.longitude ?? loc.longitud ?? loc.lng);
-
-  if (lat == null || lng == null) return null;
-  return { lat, lng };
-}
-
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -288,7 +249,7 @@ export default function HomeScreen() {
           />
           <View style={styles.cardContent}>
             <Text style={styles.destination}>{trip.destination}</Text>
-            <Text style={styles.dates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
+            <Text style={styles.dates}>{`${formatDateOrEmpty(trip.start_date)} - ${formatDateOrEmpty(trip.end_date)}`}</Text>
           </View>
           <View style={[styles.badge, { backgroundColor: AppColors.accent }]}>
             <Text style={[styles.badgeText, { color: AppColors.text }]}>{t('home.upcoming')}</Text>
@@ -301,8 +262,8 @@ export default function HomeScreen() {
   const renderOngoingSummary = (trip: Trip) => {
     const currTitle = currentActivity?.location?.titulo;
     const nextTitle = nextActivity?.location?.titulo;
-    const currTime = currentActivity ? `${fmtHour(currentActivity.start_hour)}${currentActivity.end_hour ? ` - ${fmtHour(currentActivity.end_hour)}` : ''}` : '-';
-    const nextTime = nextActivity ? `${fmtHour(nextActivity.start_hour)}${nextActivity.end_hour ? ` - ${fmtHour(nextActivity.end_hour)}` : ''}` : '-';
+    const currTime = currentActivity ? `${formatTimeOrEmpty(currentActivity.start_hour)}${currentActivity.end_hour ? ` - ${formatTimeOrEmpty(currentActivity.end_hour)}` : ''}` : '-';
+    const nextTime = nextActivity ? `${formatTimeOrEmpty(nextActivity.start_hour)}${nextActivity.end_hour ? ` - ${formatTimeOrEmpty(nextActivity.end_hour)}` : ''}` : '-';
 
     // Get current activity image and description
     const currImage = currentActivity?.location?.imagenes?.[0];
@@ -315,7 +276,7 @@ export default function HomeScreen() {
     return (
       <>
         <Text style={styles.ongoingHeader}>{trip.destination}</Text>
-        <Text style={styles.ongoingDates}>{`${fmtDate(trip.start_date)} - ${fmtDate(trip.end_date)}`}</Text>
+        <Text style={styles.ongoingDates}>{`${formatDateOrEmpty(trip.start_date)} - ${formatDateOrEmpty(trip.end_date)}`}</Text>
 
         {/* Current Activity Image and Description */}
         {currentActivity && (currImage || currDescription) && (
@@ -443,9 +404,9 @@ export default function HomeScreen() {
                       (() => {
                         const p = ongoingPlaces[idx];
                         const hour =
-                          (p?.start_hour ? ` ${fmtHour(p.start_hour)}` : '') +
-                          (p?.end_hour ? ` - ${fmtHour(p.end_hour)}` : '');
-                        const date = p?.date ? fmtDate(p.date) : '';
+                          (p?.start_hour ? ` ${formatTimeOrEmpty(p.start_hour)}` : '') +
+                          (p?.end_hour ? ` - ${formatTimeOrEmpty(p.end_hour)}` : '');
+                        const date = p?.date ? formatDateOrEmpty(p.date) : '';
                         return [date, hour.trim()].filter(Boolean).join(' · ');
                       })()
                     }
