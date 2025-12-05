@@ -347,6 +347,8 @@ const es = {
     flightCodeLabel: 'Código de vuelo',
     flightCodePlaceholder: 'Ej: AA123',
     flightTime: 'Horario',
+    invalidRange: 'Rango de Fechas Inválido',
+    bookedDatesInRange: 'El rango de fechas seleccionado contiene fechas ya reservadas por otros viajes. Por favor elige un rango diferente.',
   },
 
   // Add Activity

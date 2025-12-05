@@ -347,6 +347,8 @@ const en = {
     flightCodeLabel: 'Flight code',
     flightCodePlaceholder: 'E.g: AA123',
     flightTime: 'Time',
+    invalidRange: 'Invalid Date Range',
+    bookedDatesInRange: 'The selected date range contains dates already booked by other trips. Please choose a different range.',
   },
 
   // Add Activity

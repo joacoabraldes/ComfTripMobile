@@ -85,19 +85,54 @@ export default function AddTrip() {
 
   const { days, firstDayOfMonth } = generateCalendarDays();
 
+  // Check if there are any booked dates between startDate and endDate
+  const hasBookedDatesInRange = useCallback((start: Date, end: Date): boolean => {
+    const current = new Date(start);
+    while (current <= end) {
+      const isoDate = current.toISOString().split('T')[0];
+      if (bookedDates.has(isoDate)) {
+        return true;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return false;
+  }, [bookedDates]);
+
   const handleDateSelect = (day: number) => {
     const selectedDate = new Date(currentYear, currentMonth, day);
+    selectedDate.setHours(0, 0, 0, 0);
 
     if (!startDate || (startDate && endDate)) {
-      setStartDate(selectedDate);
+      // Start new selection
+      const normalizedStart = new Date(selectedDate);
+      normalizedStart.setHours(0, 0, 0, 0);
+      setStartDate(normalizedStart);
       setEndDate(null);
     } else {
+      // Complete range selection
+      let newStart = new Date(startDate);
+      newStart.setHours(0, 0, 0, 0);
+      let newEnd = new Date(selectedDate);
+      newEnd.setHours(0, 0, 0, 0);
+
       if (selectedDate < startDate) {
-        setStartDate(selectedDate);
-        setEndDate(startDate);
-      } else {
-        setEndDate(selectedDate);
+        newStart = new Date(selectedDate);
+        newStart.setHours(0, 0, 0, 0);
+        newEnd = new Date(startDate);
+        newEnd.setHours(0, 0, 0, 0);
       }
+
+      // Validate that the range doesn't contain booked dates
+      if (hasBookedDatesInRange(newStart, newEnd)) {
+        Alert.alert(
+          t('addTrip.invalidRange'),
+          t('addTrip.bookedDatesInRange')
+        );
+        return;
+      }
+
+      setStartDate(newStart);
+      setEndDate(newEnd);
     }
   };
 
@@ -117,8 +152,7 @@ export default function AddTrip() {
       }
       return prev - 1;
     });
-    setStartDate(null);
-    setEndDate(null);
+    // Don't reset dates - allow selecting across months
   };
 
   const handleNextMonth = () => {
@@ -129,9 +163,21 @@ export default function AddTrip() {
       }
       return prev + 1;
     });
-    setStartDate(null);
-    setEndDate(null);
+    // Don't reset dates - allow selecting across months
   };
+
+  // Navigate to the month of startDate when it's first selected (only once)
+  useEffect(() => {
+    if (startDate && !endDate) {
+      const startMonth = startDate.getMonth();
+      const startYear = startDate.getFullYear();
+      // Only navigate if we're not already viewing that month
+      if (currentMonth !== startMonth || currentYear !== startYear) {
+        setCurrentMonth(startMonth);
+        setCurrentYear(startYear);
+      }
+    }
+  }, [startDate]); // Only depend on startDate to avoid loops
 
   const monthNames = [
     t('addTrip.months.january'),
