@@ -56,6 +56,12 @@ export default function RecoverPasswordScreen() {
   const btnHeight = responsive.heights.button;
   const btnRadius = responsive.borderRadius.button;
 
+  // Validate email format function
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
   // Validate email format
   const isEmailValid = useMemo(() => {
     if (!email.trim()) return false;
@@ -82,11 +88,6 @@ export default function RecoverPasswordScreen() {
       return () => clearTimeout(timer);
     }
   }, [resendCooldown]);
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
 
   const handleSendCode = async () => {
     if (!email.trim()) {
