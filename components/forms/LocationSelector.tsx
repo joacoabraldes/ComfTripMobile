@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
+import { Ionicons } from '@expo/vector-icons';
 
 interface Location {
   id: number;
@@ -144,17 +145,12 @@ export default function LocationSelector({
           onSubmitEditing={() => setIsOpen(false)}
         />
         <TouchableOpacity style={styles.arrowButton} onPress={handleToggle} disabled={disabled}>
-          <Text
-            style={[
-              styles.arrow,
-              {
-                transform: [{ rotate: isOpen ? '0deg' : '180deg' }],
-                color: AppColors.textSecondary,
-              },
-            ]}
-          >
-            ▲
-          </Text>
+          <Ionicons 
+            name={isOpen ? "chevron-up" : "chevron-down"} 
+            size={20} 
+            color={AppColors.textSecondary} 
+            style={styles.arrow}
+          />
         </TouchableOpacity>
       </View>
 

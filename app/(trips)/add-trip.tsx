@@ -5,6 +5,7 @@ import MapView, { Marker } from 'react-native-maps';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 import { useAppColors } from '@/hooks/useAppColors';
+import FlightSearchCard from '@/components/trip/FlightSearchCard';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -469,6 +470,12 @@ export default function AddTrip() {
         </Text>
       )}
 
+      {/* Flight Search Card */}
+      <FlightSearchCard
+        startDate={startDate}
+        destinationCity={city || destination}
+      />
+
       <TouchableOpacity
         style={styles.createTripButton}
         onPress={handleSaveTrip}
@@ -490,7 +497,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     backgroundColor: AppColors.backgroundPrimary,
   },
   contentContainer: {
-    paddingBottom: 32,
+    paddingBottom: 100,
   },
   mapButton: {
     marginTop: 8,

@@ -12,9 +12,11 @@ import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import TripSummary from '@/components/trip/TripSummary';
 import ReviewSection from '@/components/trip/ReviewSection';
 import ActivityCard from '@/components/trip/ActivityCard';
+import FlightInfoCard from '@/components/trip/FlightInfoCard';
 import { useTranslation } from '@/i18n';
 import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
+import { useFlightInfo } from '@/hooks/useFlightInfo';
 
 type Params = {
   id?: string;
@@ -41,6 +43,7 @@ export default function TripHistoryDetails() {
   const [error, setError] = useState<string | null>(null);
 
   const tripId = params.id ? Number(params.id) : NaN;
+  const { flightInfo, refreshFlight } = useFlightInfo(tripId);
   // Check if trip is completed based on dates (use params if trip not loaded yet)
   const isCompleted = trip
     ? isTripCompleted(trip)
@@ -143,6 +146,16 @@ export default function TripHistoryDetails() {
 
         {/* Review Section for completed trips */}
         {isCompleted && <ReviewSection tripId={tripId} trip={trip} />}
+
+        {/* Flight Info Card (read-only) */}
+        {flightInfo && (
+          <FlightInfoCard
+            tripId={tripId}
+            flightInfo={flightInfo}
+            onRefresh={refreshFlight}
+            readOnly={true}
+          />
+        )}
 
         <Text style={styles.sectionTitle}>{t('tripDetails.itinerary')}</Text>
 

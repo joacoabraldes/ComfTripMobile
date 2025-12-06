@@ -3,6 +3,7 @@ import { View, TextInput, TouchableOpacity, ScrollView, StyleSheet, Text, Platfo
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 import countries from 'world-countries';
+import { Ionicons } from '@expo/vector-icons';
 
 interface PhoneFieldProps {
   value?: string;
@@ -132,7 +133,12 @@ export default function PhoneField({
           onPress={() => setShowCodePicker(!showCodePicker)}
         >
           <Text style={styles.codeText}>{code}</Text>
-          <Text style={styles.arrow}>{showCodePicker ? '▲' : '▼'}</Text>
+          <Ionicons 
+            name={showCodePicker ? "chevron-up" : "chevron-down"} 
+            size={10} 
+            color={AppColors.textSecondary} 
+            style={styles.arrow}
+          />
         </TouchableOpacity>
         <View style={styles.divider} />
         <TextInput

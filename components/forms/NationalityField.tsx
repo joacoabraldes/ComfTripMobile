@@ -3,6 +3,7 @@ import { View, TextInput, TouchableOpacity, ScrollView, StyleSheet, Text, Platfo
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 import countryRegionData from 'country-region-data';
+import { Ionicons } from '@expo/vector-icons';
 
 interface NationalityFieldProps {
   value?: string | null;
@@ -144,17 +145,12 @@ export default function NationalityField({
           onSubmitEditing={() => setIsOpen(false)}
         />
         <TouchableOpacity style={styles.arrowButton} onPress={handleToggle}>
-          <Text
-            style={[
-              styles.arrow,
-              {
-                transform: [{ rotate: isOpen ? '0deg' : '180deg' }],
-                color: AppColors.textSecondary,
-              },
-            ]}
-          >
-            ▲
-          </Text>
+          <Ionicons 
+            name={isOpen ? "chevron-up" : "chevron-down"} 
+            size={20} 
+            color={AppColors.textSecondary} 
+            style={styles.arrow}
+          />
         </TouchableOpacity>
       </View>
 
@@ -223,7 +219,8 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     alignItems: 'center',
   },
   arrow: {
-    fontSize: 16,
+    fontSize: 20,
+    marginRight: 8,
   },
   dropdown: {
     position: 'absolute',

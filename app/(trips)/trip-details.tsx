@@ -11,14 +11,16 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
-import TripSummary from '@/components/trip/TripSummary';
 import ShareTripButton from '@/components/trip/ShareTripButton';
 import ActivityCard from '@/components/trip/ActivityCard';
+import FlightInfoCard from '@/components/trip/FlightInfoCard';
+import FlightSearchCard from '@/components/trip/FlightSearchCard';
 import ContextMenu from '@/components/ui/ContextMenu';
 import { useTranslation } from '@/i18n';
 import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
+import { useFlightInfo } from '@/hooks/useFlightInfo';
 
 type Params = {
   id?: string;
@@ -47,6 +49,9 @@ export default function TripDetails() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
+  const [showFlightSearch, setShowFlightSearch] = useState(false);
+
+  const { flightInfo, loading: flightLoading, refreshFlight } = useFlightInfo(tripId);
 
 
   // Fetch trip and derive activities from trip.places (web parity)
@@ -205,6 +210,49 @@ export default function TripDetails() {
           <Text style={styles.subtitle}>{dateRangeStr}</Text>
         </View>
 
+        {/* Flight Info Card */}
+        {!showFlightSearch && flightInfo && (
+          <FlightInfoCard
+            tripId={tripId}
+            flightInfo={flightInfo}
+            onRefresh={refreshFlight}
+            onEdit={() => setShowFlightSearch(true)}
+            readOnly={false}
+          />
+        )}
+
+        {/* Flight Search Card (when editing) */}
+        {showFlightSearch && (
+          <FlightSearchCard
+            tripId={tripId}
+            startDate={trip?.start_date ? new Date(trip.start_date) : null}
+            destinationCity={trip?.destination || destination}
+            initialOriginCountry={null} // TODO: Load from flightInfo
+            initialOriginCity={null} // TODO: Load from flightInfo
+            initialOriginAirport={null} // TODO: Load from flightInfo
+            initialDestinationAirport={null} // TODO: Load from flightInfo
+            onFlightSelected={() => {
+              setShowFlightSearch(false);
+              refreshFlight();
+            }}
+            onSave={async (flightId: string) => {
+              // Flight is saved by FlightSearchCard
+              setShowFlightSearch(false);
+              await refreshFlight();
+            }}
+          />
+        )}
+
+        {!showFlightSearch && !flightInfo && !flightLoading && (
+          <TouchableOpacity
+            style={styles.addFlightButton}
+            onPress={() => setShowFlightSearch(true)}
+          >
+            <Ionicons name="add-circle-outline" size={20} color={AppColors.primary} />
+            <Text style={styles.addFlightButtonText}>{t('addTrip.flights')}</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionTitle}>{t('tripDetails.itinerary')}</Text>
 
         <View style={{ height: 8 }} />
@@ -305,5 +353,21 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     paddingVertical: 8,
     borderRadius: 8,
     elevation: 6,
+  },
+  addFlightButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: AppColors.backgroundTertiary,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    marginVertical: 12,
+  },
+  addFlightButtonText: {
+    color: AppColors.primary,
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
