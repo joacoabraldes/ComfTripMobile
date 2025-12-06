@@ -1,4 +1,4 @@
-import { apiDelete, apiGet } from '@/helpers/api';
+import { apiDelete, apiGet, apiPost, apiPut } from '@/helpers/api';
 import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
 import { getTripStatus, isTripCompleted, normalizeTripData } from '@/helpers/tripUtils';
 import { mapPlacesToActivities } from '@/helpers/activityUtils';
@@ -7,7 +7,7 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
@@ -21,6 +21,7 @@ import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
 import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import { useFlightInfo } from '@/hooks/useFlightInfo';
+import flightsApi from '@/services/flightsApi';
 
 type Params = {
   id?: string;
@@ -50,9 +51,122 @@ export default function TripDetails() {
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<boolean>(false);
   const [showFlightSearch, setShowFlightSearch] = useState(false);
+  const [isFlightFormValid, setIsFlightFormValid] = useState<boolean>(false);
+  const saveFlightFnRef = React.useRef<(() => Promise<void>) | null>(null);
+  const [initialFlightData, setInitialFlightData] = useState<{
+    originCountry: string | null;
+    originCity: string | null;
+    originAirport: any | null;
+    destinationAirport: any | null;
+  } | null>(null);
 
   const { flightInfo, loading: flightLoading, refreshFlight } = useFlightInfo(tripId);
 
+  // Memoize the callback to avoid recreating it on every render
+  const handleSaveRequest = useCallback((fn: () => Promise<void>) => {
+    saveFlightFnRef.current = fn;
+  }, []);
+
+  // Memoize the onSave callback to handle flight saving
+  const handleFlightSave = useCallback(async (flightId: string) => {
+    console.log('handleFlightSave: called with', { flightId, tripId });
+    // Save or update the flight
+    try {
+      // Check if there's already a flight for this trip
+      const existingFlightsRes = await apiGet(`/flights?trip_id=${tripId}`);
+      const existingFlights = existingFlightsRes?.data?.flights || (Array.isArray(existingFlightsRes?.data) ? existingFlightsRes.data : []);
+      const existingFlight = existingFlights.length > 0 ? existingFlights[0] : null;
+
+      console.log('handleFlightSave: existing flight', { existingFlight, flightId });
+
+      if (existingFlight) {
+        // If the flight_id is different, update the existing flight
+        if (existingFlight.flight_id !== flightId) {
+          console.log('handleFlightSave: updating to different flight', { old: existingFlight.flight_id, new: flightId });
+          // Disassociate old flight
+          await apiPut(`/flights/${encodeURIComponent(existingFlight.flight_id)}`, {
+            trip_id: null,
+          });
+          // Create new flight
+          await apiPost('/flights', {
+            flight_id: flightId,
+            trip_id: tripId,
+          });
+          console.log('handleFlightSave: new flight created');
+        } else {
+          console.log('handleFlightSave: same flight_id, updating association');
+          // Same flight_id, just ensure it's associated with the trip
+          await apiPut(`/flights/${encodeURIComponent(flightId)}`, {
+            trip_id: tripId,
+          });
+        }
+      } else {
+        console.log('handleFlightSave: no existing flight, creating new one');
+        // No existing flight, create new one
+        try {
+          await apiPost('/flights', {
+            flight_id: flightId,
+            trip_id: tripId,
+          });
+          console.log('handleFlightSave: flight created successfully');
+        } catch (postErr: any) {
+          console.log('handleFlightSave: POST failed, trying PUT', postErr);
+          // If POST fails with 409 (already exists), try to update it
+          if (postErr?.status === 409 || postErr?.response?.status === 409 || postErr?.message?.includes('ya existe')) {
+            await apiPut(`/flights/${encodeURIComponent(flightId)}`, {
+              trip_id: tripId,
+            });
+            console.log('handleFlightSave: flight updated via PUT');
+          } else {
+            throw postErr;
+          }
+        }
+      }
+      setShowFlightSearch(false);
+      await refreshFlight();
+      console.log('handleFlightSave: completed successfully');
+    } catch (err: any) {
+      console.error('handleFlightSave: error saving flight', err);
+      throw err; // Re-throw so FlightSearchCard can handle the alert
+    }
+  }, [tripId, refreshFlight]);
+
+  // Extract flight data from flightInfo when available
+  useEffect(() => {
+    if (flightInfo && flightInfo.fromIata && flightInfo.toIata) {
+      (async () => {
+        try {
+          // Get origin airport info
+          const fromIata = flightInfo.fromIata;
+          const toIata = flightInfo.toIata;
+          if (!fromIata || !toIata) return;
+          
+          const originAirportRow = await flightsApi.getAirportRowByIata(fromIata);
+          const originCountry = originAirportRow?.iso_country || null;
+          const originCity = originAirportRow?.municipality || originAirportRow?.city || null;
+          
+          // Get airport options for select
+          const originAirportOptions = originAirportRow && originCountry ? await flightsApi.getAirportOptionsForSelect('', 1, originCountry, originCity || undefined) : [];
+          const originAirport = originAirportOptions.find(opt => opt.value === fromIata) || null;
+          
+          // Get destination airport info
+          const destAirportOptions = await flightsApi.getAirportOptionsForSelect('', 1);
+          const destinationAirport = destAirportOptions.find(opt => opt.value === toIata) || null;
+          
+          setInitialFlightData({
+            originCountry: originCountry ? originCountry.toLowerCase() : null,
+            originCity,
+            originAirport,
+            destinationAirport,
+          });
+        } catch (err) {
+          console.error('Error loading flight airport data:', err);
+        }
+      })();
+    } else {
+      setInitialFlightData(null);
+    }
+  }, [flightInfo]);
 
   // Fetch trip and derive activities from trip.places (web parity)
   useEffect(() => {
@@ -231,24 +345,62 @@ export default function TripDetails() {
 
         {/* Flight Search Card (when editing) */}
         {showFlightSearch && (
-          <FlightSearchCard
-            tripId={tripId}
-            startDate={trip?.start_date ? new Date(trip.start_date) : null}
-            destinationCity={trip?.destination || destination}
-            initialOriginCountry={null} // TODO: Load from flightInfo
-            initialOriginCity={null} // TODO: Load from flightInfo
-            initialOriginAirport={null} // TODO: Load from flightInfo
-            initialDestinationAirport={null} // TODO: Load from flightInfo
-            onFlightSelected={() => {
-              setShowFlightSearch(false);
-              refreshFlight();
-            }}
-            onSave={async (flightId: string) => {
-              // Flight is saved by FlightSearchCard
-              setShowFlightSearch(false);
-              await refreshFlight();
-            }}
-          />
+          <>
+            <FlightSearchCard
+              tripId={tripId}
+              startDate={trip?.start_date ? new Date(trip.start_date) : null}
+              destinationCity={trip?.destination || destination}
+              initialOriginCountry={initialFlightData?.originCountry || null}
+              initialOriginCity={initialFlightData?.originCity || null}
+              initialOriginAirport={initialFlightData?.originAirport || null}
+              initialDestinationAirport={initialFlightData?.destinationAirport || null}
+              onFlightSelected={() => {
+                // Don't close automatically, wait for confirm button
+              }}
+              onSave={handleFlightSave}
+              onValidationChange={setIsFlightFormValid}
+              onSaveRequest={handleSaveRequest}
+              showSaveButton={false}
+            />
+            <View style={styles.flightActionButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowFlightSearch(false);
+                  setInitialFlightData(null);
+                  saveFlightFnRef.current = null;
+                }}
+              >
+                <Text style={styles.cancelButtonText}>{t('common.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmButton, !isFlightFormValid && styles.confirmButtonDisabled]}
+                onPress={async () => {
+                  if (!isFlightFormValid || !saveFlightFnRef.current) {
+                    console.warn('Confirm button: cannot save', { isFlightFormValid, hasSaveFn: !!saveFlightFnRef.current });
+                    return;
+                  }
+                  try {
+                    console.log('Confirm button: calling saveFlightFn');
+                    await saveFlightFnRef.current();
+                    console.log('Confirm button: saveFlightFn completed');
+                    setShowFlightSearch(false);
+                    setInitialFlightData(null);
+                    saveFlightFnRef.current = null;
+                    await refreshFlight();
+                  } catch (err) {
+                    console.error('Confirm button: error in saveFlightFn', err);
+                    // Error is already handled in FlightSearchCard
+                  }
+                }}
+                disabled={!isFlightFormValid || !saveFlightFnRef.current}
+              >
+                <Text style={[styles.confirmButtonText, !isFlightFormValid && styles.confirmButtonTextDisabled]}>
+                  {t('common.confirm')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </>
         )}
 
         {!showFlightSearch && !flightInfo && !flightLoading && (
@@ -377,5 +529,42 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     color: AppColors.primary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  flightActionButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: AppColors.backgroundTertiary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: AppColors.text,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButton: {
+    flex: 1,
+    backgroundColor: AppColors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  confirmButtonDisabled: {
+    backgroundColor: AppColors.backgroundTertiary,
+    opacity: 0.5,
+  },
+  confirmButtonText: {
+    color: AppColors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  confirmButtonTextDisabled: {
+    color: AppColors.textMuted,
   },
 });

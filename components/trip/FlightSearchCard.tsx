@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { useAppColors } from '@/hooks/useAppColors';
 import { useTranslation } from '@/i18n';
 import { Ionicons } from '@expo/vector-icons';
-import { apiPost } from '@/helpers/api';
+import { apiPost, apiPut, apiGet } from '@/helpers/api';
 import NationalityField from '@/components/forms/NationalityField';
 import flightsApi from '@/services/flightsApi';
 import worldCountries from 'world-countries';
@@ -46,6 +46,9 @@ interface FlightSearchCardProps {
   initialDestinationAirport?: AirportOption | null;
   onFlightSelected?: (flight: FlightOption) => void;
   onSave?: (flightId: string) => Promise<void>;
+  onValidationChange?: (isValid: boolean) => void;
+  showSaveButton?: boolean;
+  onSaveRequest?: (saveFn: () => Promise<void>) => void;
 }
 
 // Helper to get country ISO code from country name
@@ -100,6 +103,9 @@ export default function FlightSearchCard({
   initialDestinationAirport,
   onFlightSelected,
   onSave,
+  onValidationChange,
+  showSaveButton = true,
+  onSaveRequest,
 }: FlightSearchCardProps) {
   const { t } = useTranslation();
   const AppColors = useAppColors();
@@ -262,8 +268,16 @@ export default function FlightSearchCard({
         });
 
         setFlightOffers(flights);
-      } catch (err) {
-        console.error('Error fetching flights:', err);
+      } catch (err: any) {
+        // Handle rate limiting gracefully
+        if (err?.isRateLimit || err?.status === 429) {
+          // Don't show error alert for rate limiting - just show empty results
+          // The user can still manually enter flight information
+          console.warn('AeroDataBox rate limit exceeded, showing empty results');
+        } else {
+          // Only log as error if it's not a rate limit issue
+          console.error('Error fetching flights:', err);
+        }
         setFlightOffers([]);
       } finally {
         setOffersLoading(false);
@@ -314,30 +328,119 @@ export default function FlightSearchCard({
     onFlightSelected?.(flight);
   };
 
-  const handleSaveFlight = async () => {
-    if (!selectedFlight || !tripId) return;
+  // Check if all required fields are filled
+  const isFormValid = useMemo(() => {
+    return !!(
+      originCountry &&
+      originCity &&
+      originAirport &&
+      destinationAirport &&
+      startDate &&
+      selectedFlight
+    );
+  }, [originCountry, originCity, originAirport, destinationAirport, startDate, selectedFlight]);
+
+  // Notify parent of validation changes
+  useEffect(() => {
+    onValidationChange?.(isFormValid);
+  }, [isFormValid, onValidationChange]);
+
+  const handleSaveFlight = useCallback(async () => {
+    if (!selectedFlight || !tripId) {
+      console.warn('handleSaveFlight: missing selectedFlight or tripId', { selectedFlight, tripId });
+      return;
+    }
     
     try {
       // Build canonical flight ID
       const datePart = startDate ? startDate.toISOString().split('T')[0] : '';
       const flightCode = selectedFlight.meta?.flightCode || selectedFlight.id;
-      const canonicalFlightId = datePart ? `${flightCode}|${datePart}` : flightCode;
+      if (!flightCode) {
+        console.error('handleSaveFlight: no flightCode found', selectedFlight);
+        throw new Error('Código de vuelo no encontrado');
+      }
+      const cleanFlightCode = String(flightCode).replace(/\s+/g, '').toUpperCase();
+      const canonicalFlightId = datePart ? `${cleanFlightCode}|${datePart}` : cleanFlightCode;
+
+      console.log('handleSaveFlight: saving flight', { canonicalFlightId, tripId, hasOnSave: !!onSave });
 
       if (onSave) {
         await onSave(canonicalFlightId);
       } else {
-        await apiPost('/flights', {
-          flight_id: canonicalFlightId,
-          trip_id: tripId,
-        });
+        // Check if there's already a flight for this trip
+        try {
+          const existingFlightsRes = await apiGet(`/flights?trip_id=${tripId}`);
+          const existingFlights = existingFlightsRes?.data?.flights || (Array.isArray(existingFlightsRes?.data) ? existingFlightsRes.data : []);
+          const existingFlight = existingFlights.length > 0 ? existingFlights[0] : null;
+
+          if (existingFlight) {
+            // If the flight_id is different, update the existing flight
+            if (existingFlight.flight_id !== canonicalFlightId) {
+              // Update existing flight with new flight_id
+              await apiPut(`/flights/${encodeURIComponent(existingFlight.flight_id)}`, {
+                trip_id: null, // Disassociate old flight
+              });
+              // Create new flight
+              await apiPost('/flights', {
+                flight_id: canonicalFlightId,
+                trip_id: tripId,
+              });
+            } else {
+              // Same flight_id, just ensure it's associated with the trip
+              await apiPut(`/flights/${encodeURIComponent(canonicalFlightId)}`, {
+                trip_id: tripId,
+              });
+            }
+          } else {
+            // No existing flight, create new one
+            await apiPost('/flights', {
+              flight_id: canonicalFlightId,
+              trip_id: tripId,
+            });
+          }
+        } catch (postErr: any) {
+          // If POST fails with 409 (already exists), try to update it
+          if (postErr?.status === 409 || postErr?.response?.status === 409 || postErr?.message?.includes('ya existe')) {
+            await apiPut(`/flights/${encodeURIComponent(canonicalFlightId)}`, {
+              trip_id: tripId,
+            });
+          } else {
+            throw postErr;
+          }
+        }
       }
       Alert.alert(t('common.success'), t('addTrip.flightSaved') || 'Vuelo guardado');
       onFlightSelected?.(selectedFlight);
     } catch (err: any) {
       console.error('Error saving flight:', err);
       Alert.alert(t('common.error'), err?.message || t('addTrip.saveError'));
+      throw err; // Re-throw so parent can handle it
     }
-  };
+  }, [selectedFlight, tripId, startDate, onSave, onFlightSelected, t]);
+
+  // Expose save function to parent via callback
+  // Use useRef to avoid infinite loop - store the latest handleSaveFlight
+  const saveFlightRef = useRef(handleSaveFlight);
+  saveFlightRef.current = handleSaveFlight;
+
+  // Store onSaveRequest in a ref to avoid dependency issues
+  const onSaveRequestRef = useRef(onSaveRequest);
+  onSaveRequestRef.current = onSaveRequest;
+
+  // Expose the function once on mount, and update the ref when dependencies change
+  useEffect(() => {
+    if (onSaveRequestRef.current) {
+      onSaveRequestRef.current(() => saveFlightRef.current());
+    }
+    // Only run once on mount - the ref will always have the latest function
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only run on mount
+
+  // Update the ref when dependencies change (without calling the callback again)
+  useEffect(() => {
+    // Just update the ref, don't call the callback to avoid loops
+    saveFlightRef.current = handleSaveFlight;
+  }, [handleSaveFlight]);
 
   return (
     <View style={styles.container}>
@@ -539,9 +642,15 @@ export default function FlightSearchCard({
         </Modal>
       </View>
 
-      {selectedFlight && tripId && (
-        <TouchableOpacity style={styles.saveButton} onPress={handleSaveFlight}>
-          <Text style={styles.saveButtonText}>{t('common.save')}</Text>
+      {showSaveButton && selectedFlight && tripId && (
+        <TouchableOpacity 
+          style={[styles.saveButton, !isFormValid && styles.saveButtonDisabled]} 
+          onPress={handleSaveFlight}
+          disabled={!isFormValid}
+        >
+          <Text style={[styles.saveButtonText, !isFormValid && styles.saveButtonTextDisabled]}>
+            {t('common.save')}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -652,9 +761,16 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     alignItems: 'center',
     marginTop: 8,
   },
+  saveButtonDisabled: {
+    backgroundColor: AppColors.backgroundTertiary,
+    opacity: 0.5,
+  },
   saveButtonText: {
     color: AppColors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+  saveButtonTextDisabled: {
+    color: AppColors.textMuted,
   },
 });

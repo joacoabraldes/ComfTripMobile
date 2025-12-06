@@ -26,17 +26,9 @@ import { useAppColors } from '@/hooks/useAppColors';
 import {useCommonStyles} from "@/constants/Styles";
 import { extractCoords } from '@/helpers/locationUtils';
 import { formatDateOrEmpty, formatTimeOrEmpty } from '@/helpers/dateUtils';
-
-type Trip = {
-  id: number;
-  destination: string;
-  start_date: string;
-  end_date: string;
-  flag_url?: string | null;
-  notes?: string | null;
-  budget?: number | null;
-  created_at?: string | null;
-};
+import TripCard from '@/components/trip/TripCard';
+import { Trip } from '@/types';
+import { getTripFirstPlaceImage } from '@/helpers/tripUtils';
 
 type Place = {
   id: number;
@@ -114,6 +106,7 @@ export default function HomeScreen() {
 
   const copyFontSize = responsive.fontSizes.copy;
   const contentPaddingBottom = btnHeight + bottomInset + TABBAR_HEIGHT + 32;
+  const cardWidth = Math.min(340, Math.round(width - horizontalPadding * 2));
 
   const [ongoingPlaces, setOngoingPlaces] = useState<Place[]>([]);
   const mapRef = useRef<MapView | null>(null);
@@ -127,6 +120,11 @@ export default function HomeScreen() {
   // Ongoing trip activities
   const [currentActivity, setCurrentActivity] = useState<Place | null>(null);
   const [nextActivity, setNextActivity] = useState<Place | null>(null);
+  
+  // Upcoming trip places (for map display)
+  const [upcomingPlaces, setUpcomingPlaces] = useState<Place[]>([]);
+  const [loadingUpcomingPlaces, setLoadingUpcomingPlaces] = useState<boolean>(false);
+  const upcomingMapRef = useRef<MapView | null>(null);
 
   // load trips
   useEffect(() => {
@@ -136,19 +134,25 @@ export default function HomeScreen() {
       try {
         const res = await apiGet('/trips');
         const data = res?.data ?? res;
-        const list: Trip[] = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
+        const tripsData: Trip[] = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
         if (!mounted) return;
 
-        setTrips(list);
+        // Enrich trips with first place image (only if places are already included)
+        const enrichedTrips = tripsData.map((trip) => {
+          const firstPlaceImage = getTripFirstPlaceImage(trip);
+          return firstPlaceImage ? { ...trip, firstPlaceImage } : trip;
+        });
+
+        setTrips(enrichedTrips);
         // Determine ongoing and closest upcoming
         const now = new Date();
 
-        const ongoing = list.filter(t => isUpcoming(t.start_date, t.end_date) === 1);
+        const ongoing = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 1);
         const selectedOngoing = ongoing.length > 0
           ? ongoing.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0]
           : null;
 
-        const upcoming = list.filter(t => isUpcoming(t.start_date, t.end_date) === 2);
+        const upcoming = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 2);
         const selectedUpcoming = upcoming.length > 0
           ? upcoming.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())[0]
           : null;
@@ -220,41 +224,113 @@ export default function HomeScreen() {
     return () => { mounted = false; };
   }, [ongoingTrip]);
 
+  // Load places for upcoming trip (for map display when no ongoing trip)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!upcomingTrip || ongoingTrip) {
+        setUpcomingPlaces([]);
+        setLoadingUpcomingPlaces(false);
+        return;
+      }
+      setLoadingUpcomingPlaces(true);
+      try {
+        const res = await apiGet(`/trips/${upcomingTrip.id}`);
+        const tripData = res?.data ?? res;
+        const places: Place[] = Array.isArray(tripData?.places)
+          ? tripData.places
+          : (Array.isArray(tripData?.data?.places) ? tripData.data.places : []);
+
+        if (mounted) {
+          setUpcomingPlaces(places);
+          setLoadingUpcomingPlaces(false);
+          // Debug: log places and coordinates
+          const coords = places.map(extractCoords).filter((c): c is {lat:number; lng:number} => !!c);
+          console.log('[home] Upcoming trip places loaded:', places.length, 'places,', coords.length, 'with coordinates');
+        }
+      } catch (err) {
+        console.error('Error loading upcoming trip places:', err);
+        if (mounted) {
+          setUpcomingPlaces([]);
+          setLoadingUpcomingPlaces(false);
+        }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [upcomingTrip, ongoingTrip]);
+
   // Render helpers
   const renderUpcomingCard = (trip: Trip) => {
-    const imageSource = trip.flag_url || 'https://placehold.co/76x76?text=%F0%9F%87%AB%F0%9F%87%B7';
+    // Get coordinates from upcoming trip places
+    const coords = (upcomingPlaces ?? [])
+      .map(extractCoords)
+      .filter((c): c is {lat:number; lng:number} => !!c);
+
+    const hasMap = coords.length > 0;
+
+    // For map region
+    const initialRegion = hasMap ? {
+      latitude: coords[0].lat,
+      longitude: coords[0].lng,
+      latitudeDelta: 0.06,
+      longitudeDelta: 0.06,
+    } : null;
+
+    const fitAll = () => {
+      if (!upcomingMapRef.current || coords.length < 2) return;
+      upcomingMapRef.current.fitToCoordinates(
+        coords.map(c => ({ latitude: c.lat, longitude: c.lng })),
+        {
+          edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+          animated: true,
+        }
+      );
+    };
+
     return (
       <View style={styles.upcomingWrap}>
         <Text style={styles.upcomingLabel}>{t('home.upcomingTrip')}</Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[styles.card, { backgroundColor: AppColors.accentCard }]}
-          onPress={() => {
-            router.push({
-              pathname: '/(trips)/trip-details',
-              params: {
-                id: String(trip.id),
-                destination: trip.destination,
-                start_date: trip.start_date,
-                end_date: trip.end_date,
-                flag_url: trip.flag_url ?? '',
-              },
-            });
-          }}
-        >
-          <Image
-            source={imageSource}
-            style={styles.flag}
-            contentFit="cover"
-          />
-          <View style={styles.cardContent}>
-            <Text style={styles.destination}>{trip.destination}</Text>
-            <Text style={styles.dates}>{`${formatDateOrEmpty(trip.start_date)} - ${formatDateOrEmpty(trip.end_date)}`}</Text>
+        <TripCard
+          trip={trip}
+          width={cardWidth}
+          destinationPath="/(trips)/trip-details"
+          t={t}
+        />
+        {/* Map for upcoming trip destination */}
+        {loadingUpcomingPlaces ? (
+          <View style={{ marginTop: 16, height: 220, justifyContent: 'center', alignItems: 'center' }}>
+            <ActivityIndicator size="small" color={AppColors.primary} />
           </View>
-          <View style={[styles.badge, { backgroundColor: AppColors.accent }]}>
-            <Text style={[styles.badgeText, { color: AppColors.text }]}>{t('home.upcoming')}</Text>
+        ) : hasMap && initialRegion ? (
+          <View style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden', width: '100%' }}>
+            <MapView
+              ref={upcomingMapRef}
+              provider={PROVIDER_GOOGLE}
+              style={{ width: '100%', height: 220 }}
+              initialRegion={initialRegion}
+              onMapReady={fitAll}
+              onLayout={fitAll}
+            >
+              {coords.map((c, idx) => (
+                <Marker
+                  key={`upcoming-${c.lat}-${c.lng}-${idx}`}
+                  coordinate={{ latitude: c.lat, longitude: c.lng }}
+                  title={upcomingPlaces[idx]?.location?.titulo ?? t('home.placeNumber', { number: idx + 1 })}
+                  description={
+                    (() => {
+                      const p = upcomingPlaces[idx];
+                      const hour =
+                        (p?.start_hour ? ` ${formatTimeOrEmpty(p.start_hour)}` : '') +
+                        (p?.end_hour ? ` - ${formatTimeOrEmpty(p.end_hour)}` : '');
+                      const date = p?.date ? formatDateOrEmpty(p.date) : '';
+                      return [date, hour.trim()].filter(Boolean).join(' · ');
+                    })()
+                  }
+                />
+              ))}
+            </MapView>
           </View>
-        </TouchableOpacity>
+        ) : null}
       </View>
     );
   };
@@ -544,37 +620,6 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   // Reuse card styles similar to trips.tsx
   upcomingWrap: { width: '100%', alignItems: 'center' },
   upcomingLabel: { alignSelf: 'flex-start', marginBottom: 6, color: AppColors.text, fontWeight: '700' },
-  card: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 20,
-    backgroundColor: AppColors.backgroundCard,
-    shadowColor: ShadowColors.black,
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 3,
-  },
-  flag: {
-    width: 76,
-    height: 76,
-    borderRadius: 12,
-    marginRight: 12,
-    backgroundColor: AppColors.borderLight,
-  },
-  cardContent: { flex: 1, justifyContent: 'center' },
-  destination: { fontSize: 20, color: AppColors.text, fontWeight: '600' },
-  dates: { fontSize: 14, color: AppColors.textTertiary, marginTop: 4 },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    minWidth: 64,
-  },
-  badgeText: { fontSize: 12, color: AppColors.text, fontWeight: '700' },
 
   // Ongoing summary styles
   ongoingWrap: {

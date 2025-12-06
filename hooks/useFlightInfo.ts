@@ -199,9 +199,14 @@ export function useFlightInfo(tripId: number | null) {
               const info = extractFlightInfo(firstFlight);
               setFlightInfo(info);
             }
-          } catch (err) {
-            console.warn('Error enriching flight info:', err);
-            // Fallback to basic info
+          } catch (err: any) {
+            // Handle rate limiting gracefully - don't show error, just use basic info
+            if (err?.isRateLimit || err?.status === 429) {
+              console.warn('AeroDataBox rate limit exceeded, using basic flight info');
+            } else {
+              console.warn('Error enriching flight info:', err);
+            }
+            // Fallback to basic info - app continues to work
             const info = extractFlightInfo(firstFlight);
             setFlightInfo(info);
           }

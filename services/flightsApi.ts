@@ -1,8 +1,14 @@
 // services/flightsApi.ts
 // OurAirports CSV for airports + AeroDataBox (RapidAPI) for flights
 
+import Constants from 'expo-constants';
+
 const AERODATABOX_BASE = 'https://aerodatabox.p.rapidapi.com';
-const AERODATABOX_KEY = '1541aaadf9msh6c5432cdbe45d17p183a95jsn94566509c5fd'; // TODO: Move to env
+const AERODATABOX_KEY = 
+  (Constants?.manifest?.extra?.REACT_APP_AERODATABOX_KEY) ||
+  (Constants?.expoConfig?.extra?.REACT_APP_AERODATABOX_KEY) ||
+  process.env.REACT_APP_AERODATABOX_KEY ||
+  '1541aaadf9msh6c5432cdbe45d17p183a95jsn94566509c5fd'; // Fallback - debería moverse a variables de entorno
 const AERODATABOX_HOST = 'aerodatabox.p.rapidapi.com';
 
 const OURAIRPORTS_PRIMARY = 'https://ourairports.com/airports.csv';
@@ -35,53 +41,66 @@ async function loadOurAirportsCsv(force = false): Promise<any[]> {
     return _ourAirportsList;
   }
 
-  try {
-    const response = await fetch(OURAIRPORTS_PRIMARY);
-    if (!response.ok) {
-      throw new Error('Failed to fetch primary source');
-    }
-    const text = await response.text();
-    const lines = text.split('\n').filter((l) => l.trim());
-    if (lines.length < 2) throw new Error('Invalid CSV');
-
-    const headers = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''));
-    const parsed = lines.slice(1).map((line) => {
-      const cols = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
-      const obj: any = {};
-      headers.forEach((h, i) => {
-        obj[h] = cols[i] !== undefined ? cols[i] : '';
-      });
-      return obj;
-    });
-
-    const filtered = parsed.filter((row) => {
-      const iataCandidates = (row.iata_code || row.iata || '').trim();
-      return !!iataCandidates && /^[A-Za-z0-9]{1,3}$/.test(iataCandidates);
-    });
-
-    _ourAirportsList = filtered;
-    _ourAirportsIndex = { byIata: new Map(), byCity: new Map(), byName: [] };
-
-    filtered.forEach((a) => {
-      const iata = (a.iata || a.iata_code || '').toUpperCase();
-      const city = (a.municipality || a.city || '').toLowerCase();
-      if (iata) _ourAirportsIndex.byIata.set(iata, a);
-      if (city) {
-        const arr = _ourAirportsIndex.byCity.get(city) || [];
-        arr.push(a);
-        _ourAirportsIndex.byCity.set(city, arr);
+  // Try primary source first, then fallback
+  const sources = [OURAIRPORTS_PRIMARY, OURAIRPORTS_FALLBACK];
+  
+  for (const sourceUrl of sources) {
+    try {
+      const response = await fetch(sourceUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch from ${sourceUrl}: ${response.status}`);
       }
-      _ourAirportsIndex.byName.push(a);
-    });
+      const text = await response.text();
+      const lines = text.split('\n').filter((l) => l.trim());
+      if (lines.length < 2) {
+        throw new Error('Invalid CSV - not enough lines');
+      }
 
-    _ourAirportsLoaded = true;
-    return _ourAirportsList;
-  } catch (err) {
-    console.error('Error loading OurAirports CSV:', err);
-    _ourAirportsList = [];
-    _ourAirportsLoaded = false;
-    return [];
+      const headers = lines[0].split(',').map((h) => h.trim().replace(/"/g, ''));
+      const parsed = lines.slice(1).map((line) => {
+        const cols = line.split(',').map((c) => c.trim().replace(/^"|"$/g, ''));
+        const obj: any = {};
+        headers.forEach((h, i) => {
+          obj[h] = cols[i] !== undefined ? cols[i] : '';
+        });
+        return obj;
+      });
+
+      const filtered = parsed.filter((row) => {
+        const iataCandidates = (row.iata_code || row.iata || '').trim();
+        return !!iataCandidates && /^[A-Za-z0-9]{1,3}$/.test(iataCandidates);
+      });
+
+      _ourAirportsList = filtered;
+      _ourAirportsIndex = { byIata: new Map(), byCity: new Map(), byName: [] };
+
+      filtered.forEach((a) => {
+        const iata = (a.iata || a.iata_code || '').toUpperCase();
+        const city = (a.municipality || a.city || '').toLowerCase();
+        if (iata) _ourAirportsIndex.byIata.set(iata, a);
+        if (city) {
+          const arr = _ourAirportsIndex.byCity.get(city) || [];
+          arr.push(a);
+          _ourAirportsIndex.byCity.set(city, arr);
+        }
+        _ourAirportsIndex.byName.push(a);
+      });
+
+      _ourAirportsLoaded = true;
+      console.log(`[flightsApi] Successfully loaded ${filtered.length} airports from ${sourceUrl}`);
+      return _ourAirportsList;
+    } catch (err) {
+      console.warn(`[flightsApi] Error loading OurAirports CSV from ${sourceUrl}:`, err);
+      // Continue to next source
+      continue;
+    }
   }
+
+  // If all sources failed
+  console.error('[flightsApi] Failed to load OurAirports CSV from all sources');
+  _ourAirportsList = [];
+  _ourAirportsLoaded = false;
+  return [];
 }
 
 function mapOurAirportRowToResp(row: any): Airport {
@@ -105,7 +124,7 @@ function mapOurAirportRowToResp(row: any): Airport {
 /**
  * Get airport row by IATA code
  */
-async function getAirportRowByIata(iata: string): Promise<any | null> {
+export async function getAirportRowByIata(iata: string): Promise<any | null> {
   await loadOurAirportsCsv();
   const upper = String(iata || '').toUpperCase().trim();
   return _ourAirportsIndex.byIata.get(upper) || null;
@@ -239,20 +258,52 @@ async function callAeroDataBox(path: string, query: Record<string, any> = {}): P
     url.searchParams.set(k, String(v));
   });
 
-  const response = await fetch(url.toString(), {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-      'X-RapidAPI-Key': AERODATABOX_KEY,
-      'X-RapidAPI-Host': AERODATABOX_HOST,
-    },
-  });
+  try {
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+        'X-RapidAPI-Key': AERODATABOX_KEY,
+        'X-RapidAPI-Host': AERODATABOX_HOST,
+      },
+    });
 
-  if (!response.ok) {
-    throw new Error(`AeroDataBox API error: ${response.status}`);
+    if (!response.ok) {
+      let errorMessage = `AeroDataBox API error: ${response.status}`;
+      let errorBody: any = null;
+      
+      try {
+        errorBody = await response.json();
+        if (errorBody?.message) {
+          errorMessage = errorBody.message;
+        }
+      } catch (e) {
+        // Si no se puede parsear el JSON, usar el mensaje por defecto
+      }
+
+      if (response.status === 429) {
+        errorMessage = 'AeroDataBox API error: 429 (Too Many Requests - límite de solicitudes excedido)';
+      }
+
+      const error: any = new Error(errorMessage);
+      error.status = response.status;
+      error.isRateLimit = response.status === 429;
+      error.body = errorBody;
+      throw error;
+    }
+
+    return await response.json();
+  } catch (err: any) {
+    // Si es un error de red, re-lanzar con más contexto
+    if (err.name === 'TypeError' && err.message.includes('fetch')) {
+      const networkError: any = new Error('Error de red al conectar con AeroDataBox API');
+      networkError.isNetworkError = true;
+      networkError.originalError = err;
+      throw networkError;
+    }
+    // Re-lanzar otros errores tal cual
+    throw err;
   }
-
-  return await response.json();
 }
 
 /**
@@ -311,8 +362,30 @@ export async function searchFlights({
   const toIso2 = `${dateStr}T23:59`;
 
   // Sequential calls to be nicer with rate limits
-  const deps1 = await fetchDeparturesWindow(originIcao, fromIso1, toIso1);
-  const deps2 = await fetchDeparturesWindow(originIcao, fromIso2, toIso2);
+  // Si una falla, intentamos con la otra
+  let deps1: any[] = [];
+  let deps2: any[] = [];
+  
+  try {
+    deps1 = await fetchDeparturesWindow(originIcao, fromIso1, toIso1);
+  } catch (err: any) {
+    console.warn('[searchFlights] Error fetching first window:', err);
+    // Si es rate limit, no intentar la segunda ventana
+    if (err?.isRateLimit || err?.status === 429) {
+      throw err;
+    }
+  }
+
+  try {
+    deps2 = await fetchDeparturesWindow(originIcao, fromIso2, toIso2);
+  } catch (err: any) {
+    console.warn('[searchFlights] Error fetching second window:', err);
+    // Si es rate limit, lanzar el error
+    if (err?.isRateLimit || err?.status === 429) {
+      throw err;
+    }
+    // Si no es rate limit y tenemos resultados de la primera ventana, continuar
+  }
 
   const departures = [...deps1, ...deps2];
   const destIataUpper = String(destinationLocationCode).toUpperCase();
@@ -376,6 +449,7 @@ const flightsApi = {
   searchAirportsByCity,
   getAirportOptionsForSelect,
   getAirportsByCountry,
+  getAirportRowByIata,
   searchFlights,
   searchFlightByCode,
   getOfferById,
