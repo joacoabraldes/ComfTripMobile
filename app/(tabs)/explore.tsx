@@ -22,6 +22,7 @@ import { ShadowColors } from '@/constants/Colors';
 import { useCategoryTranslation } from '@/helpers/categoryTranslations';
 import { useAppColors } from '@/hooks/useAppColors';
 import {useCommonStyles} from "@/constants/Styles";
+import LocationDetailModal from '@/components/modals/LocationDetailModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -43,6 +44,8 @@ type Location = {
   relevancia?: number;
   latitude?: number | string;
   longitude?: number | string;
+  city?: string;
+  country?: string;
 };
 
 type Experience = {
@@ -192,10 +195,10 @@ export default function ExploreScreen() {
       return {
         id: loc.id as number,
         title: rawTitle,
-        description: truncated,
+        description: truncated, // Truncated for card display
         category: loc.fk_interest ?? loc.interest ?? null,
         image: thumb,
-        raw: loc,
+        raw: loc, // Full location data including full description
       };
     });
   };
@@ -218,18 +221,6 @@ export default function ExploreScreen() {
     setShowDetailModal(true);
   };
 
-  const handleCreateTrip = () => {
-    setShowDetailModal(false);
-    router.push({
-      pathname: '/(trips)/add-trip',
-      params: { destination: selectedExperience?.title ?? '' },
-    });
-  };
-
-  const handleShare = () => {
-    if (!selectedExperience) return;
-    Alert.alert(t('explore.share'), t('explore.shareSoon'));
-  };
 
   // skeleton card for mobile while loading locations
   const renderSkeletonCard = (key: number) => (
@@ -390,35 +381,11 @@ export default function ExploreScreen() {
       </View>
 
       {/* detail modal */}
-      <Modal visible={showDetailModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowDetailModal(false)}>
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity style={styles.modalCloseButton} onPress={() => setShowDetailModal(false)}>
-              <Text style={styles.modalCloseText}>×</Text>
-            </TouchableOpacity>
-          </View>
-
-          {selectedExperience && (
-            <ScrollView style={styles.modalContent}>
-              {selectedExperience.image ? (
-                <ExpoImage source={{ uri: selectedExperience.image }} style={styles.modalImage} contentFit="cover" />
-              ) : null}
-              <View style={styles.modalDetails}>
-                <Text style={styles.modalTitle}>{selectedExperience.title}</Text>
-                <Text style={styles.modalDescription}>{selectedExperience.description}</Text>
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.createTripButton} onPress={handleCreateTrip}>
-                    <Text style={styles.createTripButtonText}>{t('explore.createTripPlan')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                    <Text style={styles.shareButtonText}>{t('explore.share')}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </Modal>
+      <LocationDetailModal
+        visible={showDetailModal}
+        experience={selectedExperience}
+        onClose={() => setShowDetailModal(false)}
+      />
     </PrimaryLayout>
   );
 }
@@ -469,30 +436,15 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     elevation: 4,
     overflow: 'hidden',
   },
-  cardImageContainer: { height: 200, width: '100%' },
+  cardImageContainer: { height: 160, width: '100%' },
   cardImage: { width: '100%', height: '100%' },
   noImageContainer: { width: '100%', height: '100%', backgroundColor: AppColors.backgroundHover, justifyContent: 'center', alignItems: 'center' },
   noImageText: { color: AppColors.textMutedDark, fontSize: 14 },
 
   cardContent: { padding: 12 },
-  cardTitle: { fontSize: 18, fontWeight: '700', color: AppColors.text, marginBottom: 8, lineHeight: 24 },
-  cardDescription: { fontSize: 14, color: AppColors.textSecondary, lineHeight: 20, marginBottom: 12 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: AppColors.text, marginBottom: 6, lineHeight: 22 },
+  cardDescription: { fontSize: 13, color: AppColors.textSecondary, lineHeight: 18, marginBottom: 8 },
 
   categoryBadge: { alignSelf: 'flex-start', backgroundColor: '#E3F2FD', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   categoryBadgeText: { fontSize: 12, fontWeight: '600', color: '#1976D2' },
-
-  modalContainer: { flex: 1, backgroundColor: AppColors.backgroundPrimary },
-  modalHeader: { flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: AppColors.border },
-  modalCloseButton: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-  modalCloseText: { fontSize: 24, color: AppColors.textSecondary },
-  modalContent: { flex: 1 },
-  modalImage: { width: '100%', height: 250 },
-  modalDetails: { padding: 20 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: AppColors.text, marginBottom: 12 },
-  modalDescription: { fontSize: 16, color: AppColors.textSecondary, lineHeight: 24, marginBottom: 24 },
-  modalActions: { flexDirection: 'row', gap: 12 },
-  createTripButton: { flex: 1, backgroundColor: AppColors.primary, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  createTripButtonText: { color: AppColors.white, fontSize: 16, fontWeight: '700' },
-  shareButton: { flex: 1, backgroundColor: AppColors.backgroundTertiary, paddingVertical: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: AppColors.border },
-  shareButtonText: { color: AppColors.text, fontSize: 16, fontWeight: '600' },
 });

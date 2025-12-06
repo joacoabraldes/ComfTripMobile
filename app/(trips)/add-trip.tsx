@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform, ScrollView } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import MapView, { Marker } from 'react-native-maps';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
@@ -15,13 +15,14 @@ export default function AddTrip() {
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
-  const [destination, setDestination] = useState<string | null>(null);
+  const params = useLocalSearchParams<{ destination?: string }>();
+  const [destination, setDestination] = useState<string | null>(params.destination || null);
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
 
   // búsqueda con Nominatim
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(params.destination || "");
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [openSuggestions, setOpenSuggestions] = useState(false);
