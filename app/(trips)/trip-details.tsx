@@ -136,7 +136,15 @@ export default function TripDetails() {
               setActivities(activities);
             }
           } catch (err: any) {
-            console.error('Error refreshing trip:', err);
+            // If trip was deleted (404), navigate back
+            if (err?.status === 404 || err?.response?.status === 404 || err?.message?.includes('404') || err?.message?.includes('No encontrado')) {
+              console.log('Trip was deleted, navigating back');
+              if (mounted) {
+                router.back();
+              }
+            } else {
+              console.error('Error refreshing trip:', err);
+            }
           }
         }
       };

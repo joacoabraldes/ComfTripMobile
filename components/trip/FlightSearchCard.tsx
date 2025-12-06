@@ -309,6 +309,9 @@ export default function FlightSearchCard({
   const handleFlightSelect = (flight: FlightOption) => {
     setSelectedFlight(flight);
     setFlightOffersOpen(false);
+    // Call onFlightSelected immediately when a flight is selected
+    // This allows the parent to capture the selection even if tripId is not available yet
+    onFlightSelected?.(flight);
   };
 
   const handleSaveFlight = async () => {

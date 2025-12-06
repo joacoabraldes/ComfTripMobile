@@ -35,6 +35,7 @@ export default function AddTrip() {
   const [currentYear, setCurrentYear] = useState(today.getFullYear());
   const [saving, setSaving] = useState(false);
   const [existingTrips, setExistingTrips] = useState<any[]>([]);
+  const [selectedFlight, setSelectedFlight] = useState<any | null>(null);
   const router = useRouter();
 
   const getDaysInMonth = (year: number, month: number) => {
@@ -326,6 +327,38 @@ export default function AddTrip() {
         payload.lon = selectedLocation.lon;
       }
 
+      // Include selected flight if available
+      // Build canonical flight id exactly like the web version
+      if (selectedFlight) {
+        let canonicalFlightId = null;
+        const datePart = startDate ? startDate.toISOString().split('T')[0] : '';
+        
+        const metaCode = selectedFlight?.meta?.flightCode;
+        if (metaCode && String(metaCode).trim()) {
+          // Clean the flight code: remove spaces and convert to uppercase (same as web version)
+          const clean = String(metaCode)
+            .replace(/\s+/g, '')
+            .toUpperCase();
+          canonicalFlightId = datePart ? `${clean}|${datePart}` : clean;
+        } else if (selectedFlight?.id) {
+          canonicalFlightId = selectedFlight.id;
+        } else if (selectedFlight?.raw?.id) {
+          canonicalFlightId = selectedFlight.raw.id;
+        }
+        
+        if (canonicalFlightId) {
+          payload.selectedFlight = {
+            flight_id: canonicalFlightId,
+            raw: selectedFlight.raw || null, // Include the full flight data
+          };
+          console.log('Including flight in payload:', payload.selectedFlight);
+        } else {
+          console.log('No valid flight ID found');
+        }
+      } else {
+        console.log('No flight selected');
+      }
+
       // Navegar a load-trip y pasar el payload como query param (url-encoded JSON)
       const qs = encodeURIComponent(JSON.stringify(payload));
       router.push(`/(trips)/load-trip?payload=${qs}`);
@@ -474,6 +507,7 @@ export default function AddTrip() {
       <FlightSearchCard
         startDate={startDate}
         destinationCity={city || destination}
+        onFlightSelected={(flight) => setSelectedFlight(flight)}
       />
 
       <TouchableOpacity

@@ -5,6 +5,7 @@ import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { useFocusEffect } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
     ActivityIndicator,
@@ -69,6 +70,13 @@ export default function TripsScreen() {
   useEffect(() => {
     fetchTrips();
   }, [fetchTrips]);
+
+  // Refresh trips when screen comes into focus (e.g., after deleting a trip)
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchTrips();
+    }, [fetchTrips])
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

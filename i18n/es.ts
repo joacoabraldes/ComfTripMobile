@@ -369,7 +369,6 @@ const es = {
     searchingFlights: 'Buscando vuelos...',
     loadingAirports: 'Cargando aeropuertos...',
     origin: 'Origen',
-    destination: 'Destino',
     gate: 'Puerta',
     flightSaved: 'Vuelo guardado',
   },

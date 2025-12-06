@@ -37,6 +37,68 @@ export default function LoadTrip() {
         if (timedOut) return; // si ya tiró timeout, ignorar respuesta tardía
         clearTimeout(timeoutId);
 
+        // Save flight if it was selected (same logic as web version)
+        // The response structure is: { data: { trip: { id: ... }, places: [...] } }
+        const tripId = resp?.data?.trip?.id;
+        if (parsed.selectedFlight && tripId) {
+          try {
+            let canonicalFlightId = null;
+            
+            // Handle both old format (string) and new format (object with flight_id and raw)
+            if (typeof parsed.selectedFlight === 'string') {
+              canonicalFlightId = parsed.selectedFlight;
+            } else if (parsed.selectedFlight.flight_id) {
+              // If flight_id is already constructed, use it
+              canonicalFlightId = parsed.selectedFlight.flight_id;
+            } else {
+              // Fallback: construct it from the flight object (same logic as web version)
+              const sel = parsed.selectedFlight;
+              const datePart = parsed.start_date || '';
+              
+              const metaCode = sel?.meta?.flightCode;
+              if (metaCode && String(metaCode).trim()) {
+                // Clean the flight code: remove spaces and convert to uppercase (same as web version)
+                const clean = String(metaCode)
+                  .replace(/\s+/g, '')
+                  .toUpperCase();
+                canonicalFlightId = datePart ? `${clean}|${datePart}` : clean;
+              } else if (sel?.id) {
+                canonicalFlightId = sel.id;
+              } else if (sel?.raw?.id) {
+                canonicalFlightId = sel.raw.id;
+              }
+            }
+            
+            const flightRaw = typeof parsed.selectedFlight === 'object' 
+              ? parsed.selectedFlight.raw 
+              : null;
+
+            if (canonicalFlightId) {
+              console.log('Saving flight:', canonicalFlightId, 'for trip:', tripId);
+              await apiPost('/flights', {
+                flight_id: canonicalFlightId,
+                trip_id: tripId,
+                // Note: raw field is not supported by backend currently (was reverted)
+                // raw: flightRaw,
+              });
+              console.log('Flight saved successfully');
+            } else {
+              console.warn('Could not construct valid flight_id from selectedFlight');
+            }
+          } catch (flightErr: any) {
+            console.error('Error saving flight:', flightErr);
+            // Log the error details for debugging
+            if (flightErr?.message) {
+              console.error('Flight error message:', flightErr.message);
+            }
+            // Continue even if flight save fails (same as web version)
+          }
+        } else {
+          if (parsed.selectedFlight) {
+            console.warn('Flight selected but trip ID not found. Response:', resp);
+          }
+        }
+
         // En caso de éxito navegar a trips (reemplaza la pantalla de carga)
         router.replace('/trips');
       } catch (err) {
