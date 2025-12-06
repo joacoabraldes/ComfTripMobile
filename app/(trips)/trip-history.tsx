@@ -37,7 +37,7 @@ export default function TripHistoryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [showSortModal, setShowSortModal] = useState<boolean>(false);
   const [sortOption, setSortOption] = useState<SortOption>('date');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
 
   const cardWidth = Math.min(340, Math.round(width - 40));
 
