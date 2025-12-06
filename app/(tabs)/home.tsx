@@ -1,34 +1,32 @@
-import PrimaryButton from '@/components/buttons/PrimaryButton';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
+import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
-import { Ionicons } from '@expo/vector-icons';
+import TripCard from '@/components/trip/TripCard';
+import { AdditionalColors, ShadowColors, StateColors } from '@/constants/Colors';
+import { useCommonStyles } from "@/constants/Styles";
 import { apiGet } from '@/helpers/api';
+import { formatDateOrEmpty, formatTimeOrEmpty } from '@/helpers/dateUtils';
+import { extractCoords } from '@/helpers/locationUtils';
+import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
+import { getTripFirstPlaceImage } from '@/helpers/tripUtils';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useTranslation } from '@/i18n';
+import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    useWindowDimensions,
-    View,
+  ActivityIndicator,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  useWindowDimensions,
+  View,
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTranslation } from '@/i18n';
-import LogoSvg from '@/components/icons/LogoSvg';
-import { ShadowColors, StateColors, AdditionalColors } from '@/constants/Colors';
-import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
-import FloatingActionButton from '@/components/buttons/FloatingActionButton';
-import { useAppColors } from '@/hooks/useAppColors';
-import {useCommonStyles} from "@/constants/Styles";
-import { extractCoords } from '@/helpers/locationUtils';
-import { formatDateOrEmpty, formatTimeOrEmpty } from '@/helpers/dateUtils';
-import TripCard from '@/components/trip/TripCard';
-import { Trip } from '@/types';
-import { getTripFirstPlaceImage } from '@/helpers/tripUtils';
 
 type Place = {
   id: number;
@@ -105,7 +103,6 @@ export default function HomeScreen() {
   const svgMaxWidth = Math.round(svgMaxHeight / svgAspect);
 
   const copyFontSize = responsive.fontSizes.copy;
-  const contentPaddingBottom = btnHeight + bottomInset + TABBAR_HEIGHT + 32;
   const cardWidth = Math.min(340, Math.round(width - horizontalPadding * 2));
 
   const [ongoingPlaces, setOngoingPlaces] = useState<Place[]>([]);
@@ -116,6 +113,10 @@ export default function HomeScreen() {
   const [loadingTrips, setLoadingTrips] = useState<boolean>(true);
   const [upcomingTrip, setUpcomingTrip] = useState<Trip | null>(null);
   const [ongoingTrip, setOngoingTrip] = useState<Trip | null>(null);
+
+  // When there's an ongoing trip, we need more flexibility with height
+  const hasOngoingTrip = !!ongoingTrip;
+  const contentPaddingBottom = hasOngoingTrip ? 24 : (btnHeight + bottomInset + TABBAR_HEIGHT + 32);
 
   // Ongoing trip activities
   const [currentActivity, setCurrentActivity] = useState<Place | null>(null);
@@ -348,6 +349,10 @@ export default function HomeScreen() {
     // Get next activity image and description
     const nextImage = nextActivity?.location?.imagenes?.[0];
     const nextDescription = nextActivity?.location?.descripcion;
+    
+    // Reduced image size for compact layout
+    const activityImageSize = 50;
+    const mapHeight = 160;
 
     return (
       <>
@@ -362,7 +367,7 @@ export default function HomeScreen() {
               {currImage && (
                 <Image
                   source={currImage}
-                  style={styles.currentActivityImage}
+                  style={[styles.currentActivityImage, { width: activityImageSize, height: activityImageSize }]}
                   contentFit="cover"
                 />
               )}
@@ -370,7 +375,7 @@ export default function HomeScreen() {
                 <Text style={styles.currentActivityTitle}>{currTitle}</Text>
                 <Text style={styles.currentActivityTime}>{currTime}</Text>
                 {currDescription && (
-                  <Text style={styles.currentActivityDescription} numberOfLines={3}>
+                  <Text style={styles.currentActivityDescription} numberOfLines={2}>
                     {currDescription}
                   </Text>
                 )}
@@ -399,7 +404,7 @@ export default function HomeScreen() {
               timeRemainingText = t('home.timeRemainingMinutesOnly', { minutes: mins, minutesText });
             }
             return (
-              <Text style={{ marginTop: 10, color: AppColors.success, fontWeight: '600', fontSize: 15 }}>
+              <Text style={{ marginTop: 8, color: AppColors.success, fontWeight: '600', fontSize: 14 }}>
                 {timeRemainingText}
               </Text>
             );
@@ -415,7 +420,7 @@ export default function HomeScreen() {
               {nextImage && (
                 <Image
                   source={nextImage}
-                  style={styles.nextActivityImage}
+                  style={[styles.nextActivityImage, { width: activityImageSize, height: activityImageSize }]}
                   contentFit="cover"
                 />
               )}
@@ -423,7 +428,7 @@ export default function HomeScreen() {
                 <Text style={styles.nextActivityTitle}>{nextTitle}</Text>
                 <Text style={styles.nextActivityTime}>{nextTime}</Text>
                 {nextDescription && (
-                  <Text style={styles.nextActivityDescription} numberOfLines={3}>
+                  <Text style={styles.nextActivityDescription} numberOfLines={2}>
                     {nextDescription}
                   </Text>
                 )}
@@ -455,18 +460,18 @@ export default function HomeScreen() {
             mapRef.current.fitToCoordinates(
               coords.map(c => ({ latitude: c.lat, longitude: c.lng })),
               {
-                edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
+                edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
                 animated: true,
               }
             );
           };
 
           return (
-            <View style={{ marginTop: 16, borderRadius: 12, overflow: 'hidden' }}>
+            <View style={{ marginTop: 12, borderRadius: 12, overflow: 'hidden' }}>
               <MapView
                 ref={mapRef}
                 provider={PROVIDER_GOOGLE}
-                style={{ width: '100%', height: 220 }}
+                style={{ width: '100%', height: mapHeight }}
                 initialRegion={initialRegion}
                 onMapReady={fitAll}
                 onLayout={fitAll}
@@ -542,7 +547,7 @@ export default function HomeScreen() {
           >
             <View style={[styles.centeredContent, { height: availableContentHeight }]}>
               {showHeaderSection && (
-                <View style={{ width: '100%', marginBottom: 12 }}>
+                <View style={{ width: '100%', marginBottom: 6 }}>
                   {ongoingTrip ? renderOngoingSummary(ongoingTrip) : (upcomingTrip ? renderUpcomingCard(upcomingTrip) : null)}
                 </View>
               )}
@@ -633,8 +638,8 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     shadowOffset: { width: 0, height: 6 },
     elevation: 3,
   },
-  ongoingHeader: { fontSize: 22, color: AppColors.text, fontWeight: '800' },
-  ongoingDates: { marginTop: 4, color: AppColors.textTertiary },
+  ongoingHeader: { fontSize: 20, color: AppColors.text, fontWeight: '800' },
+  ongoingDates: { marginTop: 2, color: AppColors.textTertiary, fontSize: 13 },
   activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -653,28 +658,26 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
 
   currentActivityPreview: {
-    marginTop: 16,
-    padding: 12,
+    marginTop: 12,
+    padding: 10,
     backgroundColor: StateColors.successLight,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: StateColors.successBorder,
   },
   currentActivityLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: AppColors.success,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   currentActivityContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   currentActivityImage: {
-    width: 60,
-    height: 60,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: 10,
     backgroundColor: AppColors.borderLight,
   },
   currentActivityInfo: {
@@ -682,47 +685,45 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     justifyContent: 'center',
   },
   currentActivityTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: AppColors.text,
     marginBottom: 2,
   },
   currentActivityTime: {
-    fontSize: 12,
+    fontSize: 11,
     color: AppColors.success,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   currentActivityDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: AdditionalColors.lightGray,
-    lineHeight: 18,
+    lineHeight: 16,
   },
 
   // Next Activity Preview Styles
   nextActivityPreview: {
-    marginTop: 16,
-    padding: 12,
+    marginTop: 12,
+    padding: 10,
     backgroundColor: AppColors.backgroundSection,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: AppColors.borderLight,
   },
   nextActivityLabel: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '700',
     color: AdditionalColors.darkGray,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   nextActivityContent: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   nextActivityImage: {
-    width: 60,
-    height: 60,
     borderRadius: 8,
-    marginRight: 12,
+    marginRight: 10,
     backgroundColor: AppColors.borderLight,
   },
   nextActivityInfo: {
@@ -730,20 +731,20 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     justifyContent: 'center',
   },
   nextActivityTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: AppColors.text,
     marginBottom: 2,
   },
   nextActivityTime: {
-    fontSize: 12,
+    fontSize: 11,
     color: AdditionalColors.darkGray,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   nextActivityDescription: {
-    fontSize: 13,
+    fontSize: 12,
     color: AdditionalColors.lightGray,
-    lineHeight: 18,
+    lineHeight: 16,
   },
 });
