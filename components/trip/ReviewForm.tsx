@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ShadowColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
+import TextButton from '@/components/buttons/TextButton';
 
 interface ReviewFormProps {
   tripId: number;
@@ -18,9 +19,10 @@ interface ReviewFormProps {
     comment?: string | null;
   } | null;
   onSaved?: () => void;
+  onCancel?: () => void;
 }
 
-export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFormProps) {
+export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }: ReviewFormProps) {
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
@@ -194,19 +196,30 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
         <Text style={styles.charCount}>{comment.length}/1000</Text>
       </View>
 
-      <TouchableOpacity
-        style={[styles.saveButton, saving && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <ActivityIndicator size="small" color={AppColors.white} />
-        ) : (
-          <Text style={styles.saveButtonText}>
-            {existingReview ? t('review.updateButton') : t('review.saveButton')}
-          </Text>
+      <View style={styles.buttonsContainer}>
+        {onCancel && (
+          <TextButton
+            title={t('common.cancel')}
+            onPress={onCancel}
+            disabled={saving}
+            style={styles.cancelButton}
+            textStyle={styles.cancelButtonText}
+          />
         )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+          onPress={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color={AppColors.white} />
+          ) : (
+            <Text style={styles.saveButtonText}>
+              {existingReview ? t('review.updateButton') : t('review.saveButton')}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -281,14 +294,26 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     textAlign: 'right',
     marginTop: 4,
   },
+  buttonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    marginRight: 'auto',
+  },
+  cancelButtonText: {
+    color: AppColors.text,
+  },
   saveButton: {
+    flex: 1,
     backgroundColor: AppColors.primary,
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
   },
   saveButtonDisabled: {
     opacity: 0.6,

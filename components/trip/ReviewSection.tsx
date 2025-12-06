@@ -29,6 +29,10 @@ export default function ReviewSection({ tripId, trip }: ReviewSectionProps) {
     await reloadReview();
   };
 
+  const handleReviewCancel = () => {
+    setShowReviewForm(false);
+  };
+
   if (!Number.isFinite(tripId) || tripId <= 0) {
     return null;
   }
@@ -86,6 +90,7 @@ export default function ReviewSection({ tripId, trip }: ReviewSectionProps) {
           tripId={tripId}
           existingReview={review}
           onSaved={handleReviewSaved}
+          onCancel={handleReviewCancel}
         />
       )}
     </>

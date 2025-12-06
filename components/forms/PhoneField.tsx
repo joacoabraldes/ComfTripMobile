@@ -125,6 +125,13 @@ export default function PhoneField({
     );
   }, [countryCodes, search]);
 
+  // Handle number input - only allow numeric characters
+  const handleNumberChange = (text: string) => {
+    // Remove all non-numeric characters
+    const numericOnly = text.replace(/[^0-9]/g, '');
+    onNumberChange?.(numericOnly);
+  };
+
   return (
     <View style={[styles.container, containerStyle]}>
       <View style={[styles.inputRow, { height: inputHeight }]}>
@@ -144,7 +151,7 @@ export default function PhoneField({
         <TextInput
           style={styles.numberInput}
           value={value}
-          onChangeText={onNumberChange}
+          onChangeText={handleNumberChange}
           placeholder={defaultPlaceholder}
           placeholderTextColor={AppColors.textMuted}
           keyboardType="phone-pad"
