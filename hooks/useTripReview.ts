@@ -12,13 +12,19 @@ interface UseTripReviewOptions {
  * Custom hook to manage trip review fetching and state
  */
 export function useTripReview({ tripId, trip }: UseTripReviewOptions) {
-  const [review, setReview] = useState<TripReview | null>(null);
+  const [review, setReview] = useState<TripReview | null>(trip?.review || null);
   const [loadingReview, setLoadingReview] = useState<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
 
-    // Load review for completed trips
+    // If trip already has review, use it (from GET /trips/:id response)
+    if (trip?.review) {
+      setReview(trip.review);
+      return;
+    }
+
+    // Load review for completed trips if not in trip object
     if (trip && isTripCompleted(trip) && Number.isFinite(tripId) && tripId > 0) {
       (async () => {
         setLoadingReview(true);
@@ -27,6 +33,8 @@ export function useTripReview({ tripId, trip }: UseTripReviewOptions) {
           const reviewData = reviewRes?.data || reviewRes;
           if (mounted && reviewData && reviewData.id) {
             setReview(reviewData);
+          } else if (mounted) {
+            setReview(null);
           }
         } catch (err: any) {
           // Review doesn't exist yet, that's okay (404 or endpoint not found)
@@ -35,13 +43,17 @@ export function useTripReview({ tripId, trip }: UseTripReviewOptions) {
             // Only log non-404 errors
             console.error('Error loading review:', err?.message || err);
           }
-          // Silently ignore 404s and endpoint not found errors
+          if (mounted) {
+            setReview(null);
+          }
         } finally {
           if (mounted) {
             setLoadingReview(false);
           }
         }
       })();
+    } else if (mounted) {
+      setReview(null);
     }
 
     return () => {

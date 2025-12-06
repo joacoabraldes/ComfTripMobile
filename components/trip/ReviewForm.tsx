@@ -80,7 +80,24 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
         comment: comment.trim() || null,
       };
 
-      if (existingReview) {
+      // Check if review exists by trying to get it first
+      let reviewExists = false;
+      if (existingReview?.id) {
+        reviewExists = true;
+      } else {
+        try {
+          await apiGet(`/trips/${tripId}/review`);
+          reviewExists = true;
+        } catch (err: any) {
+          if (err?.status === 404) {
+            reviewExists = false;
+          } else {
+            throw err;
+          }
+        }
+      }
+
+      if (reviewExists) {
         await apiPut(`/trips/${tripId}/review`, reviewData);
       } else {
         await apiPost(`/trips/${tripId}/review`, reviewData);
@@ -88,7 +105,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved }: ReviewFo
 
       Alert.alert(
         t('common.success'),
-        existingReview ? t('review.updateSuccess') : t('review.saveSuccess')
+        reviewExists ? t('review.updateSuccess') : t('review.saveSuccess')
       );
       onSaved?.();
     } catch (err: any) {
