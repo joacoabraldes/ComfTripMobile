@@ -1,27 +1,27 @@
-import { apiDelete, apiGet, apiPost, apiPut } from '@/helpers/api';
-import { formatDate, formatDateRange, formatTime } from '@/helpers/dateUtils';
-import { getTripStatus, isTripCompleted, normalizeTripData } from '@/helpers/tripUtils';
-import { mapPlacesToActivities } from '@/helpers/activityUtils';
-import { Activity, Trip } from '@/types';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
-import ShareTripButton from '@/components/trip/ShareTripButton';
 import ActivityCard from '@/components/trip/ActivityCard';
 import FlightInfoCard from '@/components/trip/FlightInfoCard';
 import FlightSearchCard from '@/components/trip/FlightSearchCard';
+import ShareTripButton from '@/components/trip/ShareTripButton';
 import ContextMenu from '@/components/ui/ContextMenu';
-import { useTranslation } from '@/i18n';
-import { ShadowColors, StateColors } from '@/constants/Colors';
+import { StateColors } from '@/constants/Colors';
+import { mapPlacesToActivities } from '@/helpers/activityUtils';
+import { apiDelete, apiGet, apiPost, apiPut } from '@/helpers/api';
+import { formatDateRange } from '@/helpers/dateUtils';
+import { normalizeTripData } from '@/helpers/tripUtils';
 import { useAppColors } from '@/hooks/useAppColors';
-import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import { useFlightInfo } from '@/hooks/useFlightInfo';
+import { useTranslation } from '@/i18n';
 import flightsApi from '@/services/flightsApi';
+import { Activity, Trip } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Params = {
   id?: string;
@@ -275,6 +275,47 @@ export default function TripDetails() {
     router.push(`/(trips)/edit-activity?tripId=${tripId}&placeId=${a.key}`);
   };
 
+  // Group activities by date
+  const groupActivitiesByDate = (activities: Activity[]) => {
+    const grouped: { [key: string]: { dateLabel: string; activities: Activity[] } } = {};
+
+    activities.forEach((activity) => {
+      // Extract date from place object or dateStr
+      let dateStr = '';
+      if (activity.place?.date) {
+        dateStr = activity.place.date.split('T')[0]; // Get YYYY-MM-DD part
+      }
+
+      if (!dateStr) {
+        // Fallback: try to parse from activity.dateStr (format varies)
+        // This is a fallback; usually place.date should exist
+        dateStr = 'unknown';
+      }
+
+      if (!grouped[dateStr]) {
+        // Format the date label (e.g., "Sábado, 6 de diciembre")
+        const actDate = new Date(dateStr + 'T00:00:00');
+        const dayName = new Intl.DateTimeFormat('es-ES', { weekday: 'long' }).format(actDate);
+        const dateLabel = new Intl.DateTimeFormat('es-ES', {
+          day: 'numeric',
+          month: 'long',
+        }).format(actDate);
+
+        grouped[dateStr] = {
+          dateLabel: `${dayName.charAt(0).toUpperCase() + dayName.slice(1)}, ${dateLabel.charAt(0).toUpperCase() + dateLabel.slice(1)}`,
+          activities: [],
+        };
+      }
+
+      grouped[dateStr].activities.push(activity);
+    });
+
+    // Sort by date
+    return Object.entries(grouped)
+      .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime())
+      .map(([_, group]) => group);
+  };
+
   const confirmAndDelete = () => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
       Alert.alert(t('common.error'), t('tripDetails.invalidId'));
@@ -431,14 +472,21 @@ export default function TripDetails() {
             <Text style={{ color: AppColors.textSecondary }}>{t('tripDetails.noActivities')}</Text>
           </View>
         ) : (
-          activities.map((a) => (
-            <ActivityCard
-              key={a.key}
-              activity={a}
-              place={a.place}
-              onEdit={onEdit}
-              showEditButton={true}
-            />
+          groupActivitiesByDate(activities).map((group, groupIdx) => (
+            <View key={`date-group-${groupIdx}`} style={{ width: '100%' }}>
+              <Text style={styles.dateGroupTitle}>{group.dateLabel}</Text>
+              <View style={{ height: 12 }} />
+              {group.activities.map((a) => (
+                <ActivityCard
+                  key={a.key}
+                  activity={a}
+                  place={a.place}
+                  onEdit={onEdit}
+                  showEditButton={true}
+                />
+              ))}
+              <View style={{ height: 16 }} />
+            </View>
           ))
         )}
 
@@ -487,6 +535,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     color: AppColors.success,
   },
   sectionTitle: { alignSelf: 'flex-start', fontSize: 22, fontWeight: '800', marginTop: 6, color: AppColors.text },
+  dateGroupTitle: { alignSelf: 'flex-start', fontSize: 18, fontWeight: '700', marginTop: 12, color: AppColors.text },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
