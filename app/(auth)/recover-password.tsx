@@ -216,65 +216,62 @@ export default function RecoverPasswordScreen() {
               </Text>
             </View>
 
+              {/* Code input with send/resend button */}
+              <View style={[styles.codeInputContainer, { marginTop: 12, height: inputHeight }]}>
+                  <TextInput
+                      ref={codeRef}
+                      style={[styles.codeInput, { height: inputHeight }]}
+                      placeholder={t('auth.recoverPassword.emailPlaceholder')}
+                      placeholderTextColor={AppColors.textMuted}
+                      value={email}
+                      onChangeText={(text)=>{
+                          setEmail(text)
+                          if(!text.trim()) setErrorEmail('auth.recoverPassword.enterEmail')
+                          else if(!validateEmail(text)) setErrorEmail("auth.recoverPassword.invalidEmail");
+                          else setErrorEmail(null)
+                      }}
+                      keyboardType="email-address"
+                      returnKeyType="next"
+                      onSubmitEditing={() => newPasswordRef.current?.focus()}
+
+                  />
+                  <TouchableOpacity
+                      style={[styles.resendButton, (resendCooldown > 0) && styles.resendButtonDisabled]}
+                      onPress={handleSendCode}
+                      disabled={resendCooldown > 0 || sendingCode}
+                  >
+                      {sendingCode ? (
+                          <ActivityIndicator size="small" color={AppColors.primary} />
+                      ) : (
+                          <Text style={[styles.resendButtonText, resendCooldown > 0 && styles.resendButtonTextDisabled]}>
+                              {resendCooldown > 0
+                                  ? (t('auth.recoverPassword.resendIn') || 'Reenviar ({seconds}s)').replace('{seconds}', resendCooldown.toString())
+                                  : t('auth.recoverPassword.sendButton') || 'Enviar'
+                              }
+                          </Text>
+                      )}
+                  </TouchableOpacity>
+              </View>{errorEmail && (
+              <Text style={styles.errorText}>{t(errorEmail)}</Text>
+          )}
+
             <InputField
-              placeholder={t('auth.recoverPassword.emailPlaceholder')}
-              value={email}
-              onChangeText={(text)=>{setEmail(text)
-                if(!text.trim()) setErrorEmail('auth.recoverPassword.enterEmail')
-                  else if(!validateEmail(text)) setErrorEmail("auth.recoverPassword.invalidEmail");
-                  else setErrorEmail(null)
+              placeholder={t('auth.recoverPassword.codePlaceholder') || 'Código de verificación'}
+              value={code}
+              onChangeText={(text)=>{
+                  setCode(text)
+                  if (!text.trim()) setErrorCode('auth.recoverPassword.enterCode')
+                  else setErrorCode(null)
               }}
-              keyboardType="email-address"
+              keyboardType="number-pad"
+              maxLength={6}
               autoCapitalize="none"
               autoCorrect={false}
               containerStyle={{ height: inputHeight, marginTop: 24 }}
               returnKeyType="next"
               onSubmitEditing={() => codeRef.current?.focus()}
-              messageError={errorEmail ? t(errorEmail) : null}
-
+              messageError={errorCode ? t(errorCode) : null}
             />
-
-            {/* Code input with send/resend button */}
-            <View style={[styles.codeInputContainer, { marginTop: 12, height: inputHeight }]}>
-              <TextInput
-                ref={codeRef}
-                style={[styles.codeInput, { height: inputHeight }]}
-                placeholder={t('auth.recoverPassword.codePlaceholder') || 'Código de verificación'}
-                placeholderTextColor={AppColors.textMuted}
-                value={code}
-                onChangeText={(text)=>{
-                    setCode(text)
-                    if (!text.trim()) {
-                        setErrorCode('auth.recoverPassword.enterCode')
-                    }else{
-                        setErrorCode(null)
-                    }
-                }}
-                keyboardType="number-pad"
-                maxLength={6}
-                returnKeyType="next"
-                onSubmitEditing={() => newPasswordRef.current?.focus()}
-
-              />
-              <TouchableOpacity
-                style={[styles.resendButton, (resendCooldown > 0) && styles.resendButtonDisabled]}
-                onPress={handleSendCode}
-                disabled={resendCooldown > 0 || sendingCode }
-              >
-                {sendingCode ? (
-                  <ActivityIndicator size="small" color={AppColors.primary} />
-                ) : (
-                  <Text style={[styles.resendButtonText, resendCooldown > 0 && styles.resendButtonTextDisabled]}>
-                    {resendCooldown > 0 
-                      ? (t('auth.recoverPassword.resendIn') || 'Reenviar ({seconds}s)').replace('{seconds}', resendCooldown.toString())
-                      : t('auth.recoverPassword.sendButton') || 'Enviar'
-                    }
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>{errorCode && (
-              <Text style={styles.errorText}>{t(errorCode)}</Text>
-          )}
 
             <InputField
               ref={newPasswordRef}
