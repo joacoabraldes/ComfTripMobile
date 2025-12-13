@@ -139,7 +139,7 @@ export default function RecoverPasswordScreen() {
           setErrorEmail("auth.recoverPassword.invalidEmail");
       }
 
-      if (!newPassword.trim().length) {
+      if (!newPassword.trim()) {
           setErrorPassword("auth.errors.passwordRequired")
       } else if (newPassword.trim().length < 6) {
           setErrorPassword('auth.recoverPassword.passwordTooShort')
