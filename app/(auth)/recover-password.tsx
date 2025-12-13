@@ -41,6 +41,12 @@ export default function RecoverPasswordScreen() {
   const [loading, setLoading] = useState(false);
   const [sendingCode, setSendingCode] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+
+    const [errorCode, setErrorCode]=useState<string | null>(null)
+    const [errorEmail, setErrorEmail]=useState<string | null>(null)
+    const [errorPassword, setErrorPassword]=useState<string | null>(null)
+    const [errorConfirmPassword, setErrorConfirmPassword]=useState<string | null>(null)
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   
   const codeRef = useRef<TextInput>(null);
   const newPasswordRef = useRef<TextInput>(null);
@@ -58,8 +64,7 @@ export default function RecoverPasswordScreen() {
 
   // Validate email format function
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return EMAIL_REGEX.test(email);
   };
 
   // Validate email format
@@ -91,11 +96,13 @@ export default function RecoverPasswordScreen() {
 
   const handleSendCode = async () => {
     if (!email.trim()) {
+        setErrorEmail("auth.recoverPassword.enterEmail")
       Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.enterEmail'));
       return;
     }
 
     if (!validateEmail(email)) {
+        setErrorEmail("auth.recoverPassword.invalidEmail");
       Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.invalidEmail'));
       return;
     }
@@ -123,23 +130,32 @@ export default function RecoverPasswordScreen() {
 
   const handleResetPassword = async () => {
     if (!code.trim()) {
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.enterCode') || 'Por favor ingresa el código de verificación');
-      return;
+        setErrorCode('auth.recoverPassword.enterCode')
     }
 
-    if (!newPassword.trim() || !confirmPassword.trim()) {
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.completeAllFields') || 'Por favor completa todos los campos');
-      return;
+      if (!email.trim()) {
+          setErrorEmail("auth.recoverPassword.enterEmail")
+      }else if (!validateEmail(email)) {
+          setErrorEmail("auth.recoverPassword.invalidEmail");
+      }
+
+      if (!newPassword.trim().length) {
+          setErrorPassword("auth.errors.passwordRequired")
+      } else if (newPassword.trim().length < 6) {
+          setErrorPassword('auth.recoverPassword.passwordTooShort')
+      } else {
+          setErrorPassword(null)
+      }
+
+    if(!confirmPassword.trim()){
+        setErrorConfirmPassword("auth.errors.confirmPasswordRequired")
+    }else if (newPassword !== confirmPassword) {
+        setErrorConfirmPassword('auth.recoverPassword.passwordsDoNotMatch')
     }
 
-    if (newPassword !== confirmPassword) {
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.passwordsDoNotMatch') || 'Las contraseñas no coinciden');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.passwordTooShort') || 'La contraseña debe tener al menos 6 caracteres');
-      return;
+    if(!isFormValid){
+        Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.completeAllFields') || 'Por favor completa todos los campos');
+        return
     }
 
     setLoading(true);
@@ -178,13 +194,13 @@ export default function RecoverPasswordScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.select({ ios: 80, android: 0 })}
+        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
       >
         <ScrollView
           contentContainerStyle={[styles.container, { paddingHorizontal: horizontalPadding }]}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={[styles.topArea, { marginTop: 100 }]}>
+          <View style={[styles.topArea]}>
             <View style={{ alignItems: 'center', height: topIllustrationHeight }}>
               <MapSvg width={Math.round(width * 2)} height={Math.round(topIllustrationHeight * 1.4)} />
             </View>
@@ -203,13 +219,19 @@ export default function RecoverPasswordScreen() {
             <InputField
               placeholder={t('auth.recoverPassword.emailPlaceholder')}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text)=>{setEmail(text)
+                if(!text.trim()) setErrorEmail('auth.recoverPassword.enterEmail')
+                  else if(!validateEmail(text)) setErrorEmail("auth.recoverPassword.invalidEmail");
+                  else setErrorEmail(null)
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               containerStyle={{ height: inputHeight, marginTop: 24 }}
               returnKeyType="next"
               onSubmitEditing={() => codeRef.current?.focus()}
+              messageError={errorEmail ? t(errorEmail) : null}
+
             />
 
             {/* Code input with send/resend button */}
@@ -220,16 +242,24 @@ export default function RecoverPasswordScreen() {
                 placeholder={t('auth.recoverPassword.codePlaceholder') || 'Código de verificación'}
                 placeholderTextColor={AppColors.textMuted}
                 value={code}
-                onChangeText={setCode}
+                onChangeText={(text)=>{
+                    setCode(text)
+                    if (!text.trim()) {
+                        setErrorCode('auth.recoverPassword.enterCode')
+                    }else{
+                        setErrorCode(null)
+                    }
+                }}
                 keyboardType="number-pad"
                 maxLength={6}
                 returnKeyType="next"
                 onSubmitEditing={() => newPasswordRef.current?.focus()}
+
               />
               <TouchableOpacity
-                style={[styles.resendButton, (resendCooldown > 0 || !isEmailValid) && styles.resendButtonDisabled]}
+                style={[styles.resendButton, (resendCooldown > 0) && styles.resendButtonDisabled]}
                 onPress={handleSendCode}
-                disabled={resendCooldown > 0 || sendingCode || !isEmailValid}
+                disabled={resendCooldown > 0 || sendingCode }
               >
                 {sendingCode ? (
                   <ActivityIndicator size="small" color={AppColors.primary} />
@@ -242,13 +272,19 @@ export default function RecoverPasswordScreen() {
                   </Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </View>{errorCode && (
+              <Text style={styles.errorText}>{t(errorCode)}</Text>
+          )}
 
             <InputField
               ref={newPasswordRef}
               placeholder={t('auth.recoverPassword.newPassword') || 'Nueva contraseña'}
               value={newPassword}
-              onChangeText={setNewPassword}
+              onChangeText={(text) => {
+                  setNewPassword(text)
+                  if(!text) setErrorPassword("auth.errors.passwordRequired")
+                  else if(text.trim().length<6) setErrorPassword('auth.recoverPassword.passwordTooShort')
+                  else setErrorPassword(null)}}
               secureTextEntry={!showNewPassword}
               showPasswordToggle
               showPassword={showNewPassword}
@@ -258,13 +294,18 @@ export default function RecoverPasswordScreen() {
               autoCorrect={false}
               returnKeyType="next"
               onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+              messageError={errorPassword ? t(errorPassword) : null}
             />
 
             <InputField
               ref={confirmPasswordRef}
               placeholder={t('auth.recoverPassword.confirmPassword') || 'Confirmar contraseña'}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text)=>{setConfirmPassword(text)
+                if(!text) setErrorConfirmPassword("auth.errors.confirmPasswordRequired")
+                  else if(text!==newPassword) setErrorConfirmPassword('auth.recoverPassword.passwordsDoNotMatch')
+                  else setErrorConfirmPassword(null)
+              }}
               secureTextEntry={!showConfirmPassword}
               showPasswordToggle
               showPassword={showConfirmPassword}
@@ -274,6 +315,7 @@ export default function RecoverPasswordScreen() {
               autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={handleResetPassword}
+              messageError={errorConfirmPassword ? t(errorConfirmPassword) : null}
             />
 
             <PrimaryButton
@@ -282,7 +324,7 @@ export default function RecoverPasswordScreen() {
               height={btnHeight}
               borderRadius={btnRadius}
               style={{ marginTop: 24 }}
-              disabled={!isFormValid || loading}
+              disabled={loading}
             >
               {loading && <ActivityIndicator />}
             </PrimaryButton>
@@ -310,7 +352,7 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   topArea: {
     alignItems: 'center',
-    marginTop: Platform.OS === 'ios' ? 60 : 40,
+    marginTop: Platform.OS === 'ios' ? 40 : 40,
   },
   titleContainer: {
     alignItems: 'center',
@@ -375,5 +417,11 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   resendButtonTextDisabled: {
     color: AppColors.textSecondary,
   },
+    errorText: {
+        color: AppColors.error,
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
 });
 

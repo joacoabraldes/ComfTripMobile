@@ -1,5 +1,5 @@
 import React, { forwardRef } from 'react';
-import { TextInput, View, TextInputProps, Platform, StyleSheet, TouchableOpacity } from 'react-native';
+import {TextInput, View, TextInputProps, Platform, StyleSheet, TouchableOpacity, Text} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppColors } from '@/hooks/useAppColors';
 
@@ -8,14 +8,16 @@ interface InputFieldProps extends TextInputProps {
   showPasswordToggle?: boolean;
   showPassword?: boolean;
   onTogglePassword?: () => void;
+    messageError?: any;
 }
 
 const InputField = forwardRef<TextInput, InputFieldProps>(
-  ({ containerStyle, showPasswordToggle, showPassword, onTogglePassword, style, ...props }, ref) => {
+  ({ containerStyle, showPasswordToggle, showPassword, onTogglePassword, messageError, style, ...props }, ref) => {
     const AppColors = useAppColors();
     const styles = getStyles(AppColors);
     
     return (
+        <View>
       <View style={[styles.inputBox, containerStyle]}>
         <TextInput
           ref={ref}
@@ -37,7 +39,10 @@ const InputField = forwardRef<TextInput, InputFieldProps>(
             />
           </TouchableOpacity>
         )}
-      </View>
+      </View>{messageError && (
+            <Text style={styles.errorText}>{messageError}</Text>
+        )}
+            </View>
     );
   }
 );
@@ -71,6 +76,12 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     height: '100%',
     justifyContent: 'center',
   },
+    errorText: {
+        color: AppColors.error,
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
 });
 
 export default InputField;

@@ -45,6 +45,12 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+    const [errorName, setErrorName]=useState<string | null>(null)
+    const [errorEmail, setErrorEmail]=useState<string | null>(null)
+    const [errorPassword, setErrorPassword]=useState<string | null>(null)
+    const [errorConfirmPassword, setErrorConfirmPassword]=useState<string | null>(null)
+    const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
   const [nationality, setNationality] = useState<string | null>(null);
 
   const [birthdate, setBirthdate] = useState('');
@@ -189,6 +195,38 @@ export default function RegisterScreen() {
 
   const handleNext = async () => {
     if (!isFormValid) {
+        if (password.trim().length === 0) {
+            setErrorPassword("auth.errors.passwordRequired")
+        } else if (password.trim().length < 6) {
+            setErrorPassword("auth.errors.passwordMinLength")
+        } else {
+            setErrorPassword(null)
+        }
+
+        if (password !== confirmPassword) {
+            if (confirmPassword.trim().length === 0) {
+                setErrorConfirmPassword("auth.errors.confirmPasswordRequired")
+            } else {
+                setErrorConfirmPassword("auth.errors.passwordsNotMatch")
+            }
+        } else {
+            setErrorConfirmPassword(null)
+        }
+
+        if (name.trim().length === 0) {
+            setErrorName("auth.errors.usernameRequired")
+        } else {
+            setErrorName(null)
+        }
+
+        if (email.trim().length === 0) {
+            setErrorEmail("auth.errors.emailRequired")
+        } else if (!EMAIL_REGEX.test(email.trim())) {
+            setErrorEmail("auth.errors.invalidEmail");
+        } else {
+            setErrorEmail(null)
+        }
+
       if (!name || !email || !phoneNumber || !birthdate || !password || !confirmPassword) {
         Alert.alert(t('auth.register.attention'), t('auth.register.completeFields'));
         return;
@@ -202,9 +240,11 @@ export default function RegisterScreen() {
         return;
       }
     }
+    setLoading(true)
 
     // Save form data before navigating to interests (registration will happen in interests screen)
     await saveFormData();
+    setLoading(false)
     router.push('/interests');
   };
 
@@ -213,7 +253,7 @@ export default function RegisterScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 2 : 0}
       >
         <ScrollView
           contentContainerStyle={[styles.container, { paddingHorizontal: horizontalPadding }]}
@@ -235,23 +275,40 @@ export default function RegisterScreen() {
               ref={nameRef}
               placeholder={t('auth.register.namePlaceholder')}
               value={name}
-              onChangeText={setName}
+              onChangeText={(text)=>{
+                  setName(text)
+                  if (!text) {
+                      setErrorName("auth.errors.usernameRequired")
+                  } else {
+                      setErrorName(null)
+                  }
+              }}
               containerStyle={{ height: inputHeight, marginTop: 16 }}
               returnKeyType="next"
               onSubmitEditing={() => emailRef.current?.focus()}
+              messageError={errorName ? t(errorName) : null}
             />
 
             <InputField
               ref={emailRef}
               placeholder={t('auth.register.emailPlaceholder')}
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {setEmail(text)
+                  if (!text) {
+                      setErrorEmail("auth.errors.emailRequired")
+                  } else if (!EMAIL_REGEX.test(text.trim())) {
+                      setErrorEmail("auth.errors.invalidEmail");
+                  } else {
+                      setErrorEmail(null)
+                  }
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
               containerStyle={{ height: inputHeight, marginTop: 12 }}
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
+              messageError={errorEmail ? t(errorEmail) : null}
             />
 
             <View style={{ marginTop: 12 }}>
@@ -301,7 +358,16 @@ export default function RegisterScreen() {
               ref={passwordRef}
               placeholder={t('auth.register.password')}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) =>{
+                  setPassword(text)
+                  if (!text) {
+                      setErrorPassword("auth.errors.passwordRequired")
+                  } else if (text.trim().length < 6) {
+                      setErrorPassword("auth.errors.passwordMinLength")
+                  }else {
+                      setErrorPassword(null)
+                  }
+              }}
               secureTextEntry={!showPassword}
               showPasswordToggle
               showPassword={showPassword}
@@ -311,13 +377,25 @@ export default function RegisterScreen() {
               autoCorrect={false}
               returnKeyType="next"
               onSubmitEditing={() => confirmPasswordRef.current?.focus()}
+              messageError={errorPassword ? t(errorPassword) : null}
             />
 
             <InputField
               ref={confirmPasswordRef}
               placeholder={t('auth.register.confirmPassword')}
               value={confirmPassword}
-              onChangeText={setConfirmPassword}
+              onChangeText={(text) => {
+                  setConfirmPassword(text)
+                  if (password.trim() !== text.trim()) {
+                      if (!text) {
+                          setErrorConfirmPassword("auth.errors.confirmPasswordRequired")
+                      } else {
+                          setErrorConfirmPassword("auth.errors.passwordsNotMatch")
+                      }
+                  } else {
+                      setErrorConfirmPassword(null)
+                  }
+              }}
               secureTextEntry={!showConfirmPassword}
               showPasswordToggle
               showPassword={showConfirmPassword}
@@ -326,6 +404,7 @@ export default function RegisterScreen() {
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="done"
+              messageError={errorConfirmPassword ? t(errorConfirmPassword) : null}
             />
 
             <View style={[styles.termsRow, { marginTop: 12 }]}>
@@ -353,7 +432,7 @@ export default function RegisterScreen() {
                 height={btnHeight}
                 borderRadius={btnRadius}
                 style={{ flex: 1, marginLeft: 'auto' }}
-                disabled={!isFormValid || loading}
+                disabled={loading}
               >
                 {loading && <ActivityIndicator />}
               </PrimaryButton>
@@ -382,8 +461,8 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     paddingBottom: 60,
   },
   header: {
-    marginTop: Platform.OS === 'ios' ? 40 : 20,
-    marginBottom: 24,
+    marginTop: Platform.OS === 'ios' ? 10 : 20,
+    marginBottom: Platform.OS === 'ios' ? 8: 24,
     alignItems: 'center',
   },
   title: {
@@ -465,4 +544,10 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   datePlaceholder: {
     color: AppColors.textMuted,
   },
+    errorText: {
+        color: AppColors.error,
+        fontSize: 12,
+        marginTop: 4,
+        marginLeft: 4,
+    },
 });

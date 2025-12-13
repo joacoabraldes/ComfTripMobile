@@ -51,14 +51,29 @@ export default function LoginScreen() {
   const btnRadius = responsive.borderRadius.button;
   const styles = getStyles(AppColors);
 
-  // Validate form
+    const [identifierError, setIdentifierError] = useState<string | null>(null);
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+
+    // Validate form
   const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
 
   const handleNext = async () => {
-    if (!identifier || !password) {
-      Alert.alert(t('auth.login.attention'), t('auth.login.completeFields'));
-      return;
-    }
+
+      setIdentifierError(null);
+      setPasswordError(null);
+
+      if (!identifier.trim()) {
+          setIdentifierError('auth.errors.identifierRequired');
+      }
+
+      if (!password.trim()) {
+          setPasswordError('auth.errors.passwordRequired');
+      }
+
+      if (!isFormValid) {
+          Alert.alert(t('auth.login.attention'), t('auth.login.completeFields'));
+          return;
+      }
     setLoading(true);
     try {
       // send identifier (can be username or email) per backend change
@@ -89,7 +104,7 @@ export default function LoginScreen() {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.select({ ios: 80, android: 0 })}
+        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
       >
         {/* Language Selector Button - Top Right */}
         <View style={styles.languageButtonContainer}>
@@ -119,20 +134,29 @@ export default function LoginScreen() {
             <InputField
               placeholder={t('auth.login.email')}
               value={identifier}
-              onChangeText={setIdentifier}
+              onChangeText={(text) => {
+                  setIdentifier(text);
+                  if (text) setIdentifierError(null);
+                  else setIdentifierError('auth.errors.identifierRequired')
+              }}
               keyboardType="default"
               autoCapitalize="none"
               autoCorrect={false}
               containerStyle={{ height: inputHeight, marginTop: 16 }}
               returnKeyType="next"
               onSubmitEditing={() => passwordRef.current?.focus()}
+              messageError={identifierError ? t(identifierError) : null}
             />
 
             <InputField
               ref={passwordRef}
               placeholder={t('auth.login.password')}
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(text) => {
+                  setPassword(text);
+                  if (text) setPasswordError(null);
+                  else setPasswordError('auth.errors.passwordRequired')
+              }}
               secureTextEntry={!showPassword}
               showPasswordToggle
               showPassword={showPassword}
@@ -142,6 +166,7 @@ export default function LoginScreen() {
               autoCorrect={false}
               returnKeyType="go"
               onSubmitEditing={handleNext}
+              messageError={passwordError? t(passwordError) : null}
             />
 
             <View style={styles.forgotWrap}>
@@ -158,7 +183,7 @@ export default function LoginScreen() {
               height={btnHeight}
               borderRadius={btnRadius}
               style={{ marginTop: 24 }}
-              disabled={!isFormValid || loading}
+              disabled={ loading}
             >
               {loading && <ActivityIndicator />}
             </PrimaryButton>

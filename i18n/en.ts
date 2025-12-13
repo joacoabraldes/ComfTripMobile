@@ -305,6 +305,16 @@ const en = {
       codeResent: 'Code resent',
       codeResentMessage: 'A new code has been sent to your email',
     },
+      errors: {
+          identifierRequired: 'Please enter a username or email address',
+          usernameRequired: 'Please enter a username',
+          emailRequired: 'Please enter an email address',
+          passwordRequired: 'Please enter a password',
+          passwordMinLength: 'Password must be at least 6 characters long',
+          confirmPasswordRequired: 'Please confirm your password',
+          passwordsNotMatch: 'Passwords do not match',
+          invalidEmail: 'Please enter a valid email address'
+      }
   },
 
   // Add Trip
