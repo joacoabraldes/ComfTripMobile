@@ -3,10 +3,11 @@ import { apiGet } from '@/helpers/api';
 import { safeParseImages } from '@/helpers/imageUtils';
 import { Image as ExpoImage } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -91,6 +92,7 @@ export default function ExploreScreen() {
   // ui & state
   const [initialLoading, setInitialLoading] = useState(true); // categories
   const [locationsLoading, setLocationsLoading] = useState(true); // grid
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // keep both slug and id for category selection (use id when calling backend)
@@ -101,50 +103,52 @@ export default function ExploreScreen() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
 
+  // Load categories and locations (reusable for refresh)
+  const loadCategoriesAndLocations = useCallback(async () => {
+    try {
+      setError(null);
+      // categories first (so UI appears quickly)
+      const catsResp = await apiGet('/interests');
+      const cats = Array.isArray(catsResp?.data || catsResp) ? (catsResp?.data || catsResp) : [];
+      setCategories(cats);
+
+      // now fetch locations (background)
+      setLocationsLoading(true);
+      try {
+        const locsResp = await apiGet('/locations?limit=200');
+        const locs = Array.isArray(locsResp?.data || locsResp) ? (locsResp?.data || locsResp) : [];
+        const sorted = sortByRelevanceDesc(locs);
+        setPopularLocations(sorted.slice(0, 12));
+        setLocationsFiltered(sorted.slice(0, 50));
+      } catch (locErr) {
+        console.error('Locations fetch error', locErr);
+        setPopularLocations([]);
+        setLocationsFiltered([]);
+        setError(t('explore.loadError'));
+      } finally {
+        setLocationsLoading(false);
+      }
+    } catch (catErr) {
+      console.error('Categories fetch error', catErr);
+      setCategories([]);
+      setError(t('explore.categoriesError'));
+      setLocationsLoading(false);
+    } finally {
+      setInitialLoading(false);
+      setRefreshing(false);
+    }
+  }, [t]);
+
   // INITIAL LOAD: fetch categories fast, then fetch locations in background
   useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        setError(null);
-        // categories first (so UI appears quickly)
-        const catsResp = await apiGet('/interests');
-        const cats = Array.isArray(catsResp?.data || catsResp) ? (catsResp?.data || catsResp) : [];
-        if (!mounted) return;
-        setCategories(cats);
+    loadCategoriesAndLocations();
+  }, [loadCategoriesAndLocations]);
 
-        // now fetch locations (background)
-        setLocationsLoading(true);
-        try {
-          const locsResp = await apiGet('/locations?limit=200');
-          const locs = Array.isArray(locsResp?.data || locsResp) ? (locsResp?.data || locsResp) : [];
-          if (!mounted) return;
-          const sorted = sortByRelevanceDesc(locs);
-          setPopularLocations(sorted.slice(0, 12));
-          setLocationsFiltered(sorted.slice(0, 50));
-        } catch (locErr) {
-          console.error('Locations fetch error', locErr);
-          if (!mounted) return;
-          setPopularLocations([]);
-          setLocationsFiltered([]);
-          setError(t('explore.loadError'));
-        } finally {
-          if (mounted) setLocationsLoading(false);
-        }
-      } catch (catErr) {
-        console.error('Categories fetch error', catErr);
-        if (!mounted) return;
-        setCategories([]);
-        setError(t('explore.categoriesError'));
-        setLocationsLoading(false);
-      } finally {
-        if (mounted) setInitialLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadCategoriesAndLocations();
+  }, [loadCategoriesAndLocations]);
 
   // When category changes, fetch filtered (only updates grid, doesn't block categories)
   useEffect(() => {
@@ -283,7 +287,13 @@ export default function ExploreScreen() {
         </ScrollView>
 
         {/* Results */}
-        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.resultsContainer} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
               {selectedCategorySlug === 'todo' 

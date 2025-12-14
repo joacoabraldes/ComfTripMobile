@@ -14,10 +14,11 @@ import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -111,6 +112,7 @@ export default function HomeScreen() {
   // New state for trips and activities
   const [trips, setTrips] = useState<Trip[] | null>(null);
   const [loadingTrips, setLoadingTrips] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [upcomingTrip, setUpcomingTrip] = useState<Trip | null>(null);
   const [ongoingTrip, setOngoingTrip] = useState<Trip | null>(null);
 
@@ -127,49 +129,56 @@ export default function HomeScreen() {
   const [loadingUpcomingPlaces, setLoadingUpcomingPlaces] = useState<boolean>(false);
   const upcomingMapRef = useRef<MapView | null>(null);
 
-  // load trips
-  useEffect(() => {
-    let mounted = true;
-    setLoadingTrips(true);
-    (async () => {
-      try {
-        const res = await apiGet('/trips');
-        const data = res?.data ?? res;
-        const tripsData: Trip[] = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
-        if (!mounted) return;
+  // Load trips function (reusable for refresh)
+  const loadTrips = useCallback(async () => {
+    try {
+      const res = await apiGet('/trips');
+      const data = res?.data ?? res;
+      const tripsData: Trip[] = Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []);
 
-        // Enrich trips with first place image (only if places are already included)
-        const enrichedTrips = tripsData.map((trip) => {
-          const firstPlaceImage = getTripFirstPlaceImage(trip);
-          return firstPlaceImage ? { ...trip, firstPlaceImage } : trip;
-        });
+      // Enrich trips with first place image (only if places are already included)
+      const enrichedTrips = tripsData.map((trip) => {
+        const firstPlaceImage = getTripFirstPlaceImage(trip);
+        return firstPlaceImage ? { ...trip, firstPlaceImage } : trip;
+      });
 
-        setTrips(enrichedTrips);
-        // Determine ongoing and closest upcoming
-        const now = new Date();
+      setTrips(enrichedTrips);
+      // Determine ongoing and closest upcoming
+      const now = new Date();
 
-        const ongoing = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 1);
-        const selectedOngoing = ongoing.length > 0
-          ? ongoing.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0]
-          : null;
+      const ongoing = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 1);
+      const selectedOngoing = ongoing.length > 0
+        ? ongoing.sort((a, b) => new Date(a.end_date).getTime() - new Date(b.end_date).getTime())[0]
+        : null;
 
-        const upcoming = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 2);
-        const selectedUpcoming = upcoming.length > 0
-          ? upcoming.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())[0]
-          : null;
+      const upcoming = enrichedTrips.filter(t => isUpcoming(t.start_date, t.end_date) === 2);
+      const selectedUpcoming = upcoming.length > 0
+        ? upcoming.sort((a, b) => new Date(a.start_date).getTime() - new Date(b.start_date).getTime())[0]
+        : null;
 
-        setOngoingTrip(selectedOngoing);
-        setUpcomingTrip(selectedOngoing ? null : selectedUpcoming); // if ongoing exists, don't show upcoming
-      } catch {
-        setTrips([]);
-        setOngoingTrip(null);
-        setUpcomingTrip(null);
-      } finally {
-        if (mounted) setLoadingTrips(false);
-      }
-    })();
-    return () => { mounted = false; };
+      setOngoingTrip(selectedOngoing);
+      setUpcomingTrip(selectedOngoing ? null : selectedUpcoming); // if ongoing exists, don't show upcoming
+    } catch {
+      setTrips([]);
+      setOngoingTrip(null);
+      setUpcomingTrip(null);
+    } finally {
+      setLoadingTrips(false);
+      setRefreshing(false);
+    }
   }, []);
+
+  // load trips on mount
+  useEffect(() => {
+    setLoadingTrips(true);
+    loadTrips();
+  }, [loadTrips]);
+
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadTrips();
+  }, [loadTrips]);
 
   // Load places for ongoing trip to compute current and next
   useEffect(() => {
@@ -533,7 +542,13 @@ export default function HomeScreen() {
     }
   return (
     <PrimaryLayout title={t('tabs.home')}>
-      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        nestedScrollEnabled 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <View style={styles.root}>
           <View
             style={[

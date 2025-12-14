@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { apiDelete, apiGet, apiPost } from '@/helpers/api';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
     ActivityIndicator,
     Modal,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -53,6 +54,7 @@ export default function CommunityScreen() {
   const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [incoming, setIncoming] = useState<FriendRequest[]>([]);
   const [outgoing, setOutgoing] = useState<FriendRequest[]>([]);
@@ -71,8 +73,7 @@ export default function CommunityScreen() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [friendToDelete, setFriendToDelete] = useState<number | null>(null);
 
-  async function loadAll() {
-    setLoading(true);
+  const loadAll = useCallback(async () => {
     try {
       const [fRes, reqRes] = await Promise.all([
         apiGet('/friends').then(r => r.data || r),
@@ -103,12 +104,20 @@ export default function CommunityScreen() {
       setOutgoing([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }
+  }, [t, showError]);
 
   useEffect(() => {
+    setLoading(true);
     loadAll();
-  }, []);
+  }, [loadAll]);
+
+  // Refresh handler
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadAll();
+  }, [loadAll]);
 
   async function sendRequest() {
     if (!emailOrId) {
@@ -354,6 +363,9 @@ export default function CommunityScreen() {
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={[styles.content, { paddingBottom }]}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
       >
 
         {/* Send Request Section */}
