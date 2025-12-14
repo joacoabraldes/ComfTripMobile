@@ -22,7 +22,6 @@ import { useTranslation } from '@/i18n';
 import { ShadowColors } from '@/constants/Colors';
 import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import { useAppColors } from '@/hooks/useAppColors';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getResponsiveValues } from '@/helpers/responsive';
 import { useCategoryTranslation, useCategoryDescriptionTranslation } from '@/helpers/categoryTranslations';
 import { useSnackbar } from '@/contexts/SnackbarContext';
@@ -170,14 +169,10 @@ export default function InterestsScreen() {
   const titleFontSize = responsive.fontSizes.titleLarge;
   const subtitleFontSize = responsive.fontSizes.subtitle;
 
-  // Handle hardware back button (Android) and navigation back gesture
+  // Prevent back navigation - user must complete registration
   const handleBackPress = useCallback(() => {
-    // Set flag to indicate we're going back to register from interests
-    AsyncStorage.setItem('@register_from_interests', 'true').then(() => {
-      router.push('/register');
-    });
     return true; // Prevent default back behavior
-  }, [router]);
+  }, []);
 
   // Set up back button handler
   useFocusEffect(
@@ -208,7 +203,6 @@ export default function InterestsScreen() {
         setInterests([]);
       }
     } catch (err: any) {
-      console.warn("Failed to fetch interests:", err);
       setInterests([]);
       // Show error message to user
       const errorMsg = err?.message || err?.error || t('auth.interests.loadError');
@@ -244,7 +238,6 @@ export default function InterestsScreen() {
         }
         if (mounted) setAssetsReady(true);
       } catch (e) {
-        console.warn("Asset preload failed:", e);
         if (mounted) setAssetsReady(true);
       }
     };
@@ -304,61 +297,28 @@ export default function InterestsScreen() {
   }, []);
 
   const handleSaveInterests = async (skip: boolean = false) => {
-    if (!skip && selected.length === 0) return;
+    // Allow saving even if no interests selected (user can skip)
+
     setLoading(true);
     try {
-      // First, register the user with form data from AsyncStorage
-      let token: string | null = null;
-      try {
-        const savedData = await AsyncStorage.getItem('@register_form_data');
-        if (savedData) {
-          const formData = JSON.parse(savedData);
-          const registerPayload = {
-            name: formData.name,
-            email: formData.email,
-            phone: `${formData.phoneCode}${formData.phoneNumber}`,
-            password: formData.password,
-            password_hash: formData.password,
-            nationality: formData.nationality || "",
-            birthdate: formData.birthdate || null,
-          };
-
-          const registerRes = await apiPost('/auth/register', registerPayload);
-          const registerData = registerRes.data ?? registerRes;
-          token = registerData?.token || registerData?.accessToken || registerData?.jwt || registerData?.data?.token || null;
-
-          if (token) {
-            await tokenStorage.setToken(token);
-          } else {
-            console.warn('No token found in register response', registerData);
-            showError(t('auth.register.registerFailed'));
-            return;
-          }
-        } else {
-          // If no saved data, try to get existing token
-          token = await getTokenWithRetries(6, 250);
-          if (!token) {
-            showError(t('auth.interests.noSession'));
-            router.replace("/login");
-            return;
-          }
-        }
-      } catch (registerErr: any) {
-        console.error('Register error:', registerErr);
-        const msg = (registerErr && registerErr.message) || (registerErr && registerErr.error) || JSON.stringify(registerErr) || t('auth.register.registerFailed');
-        showError(msg);
+      // Get token (user should already be registered)
+      const token = await getTokenWithRetries(6, 250);
+      if (!token) {
+        showError(t('auth.interests.noSession'));
+        router.replace("/login");
         return;
       }
 
-      // Now save interests
+      // Get user ID from token
       let userId: number | string | null = null;
       try {
         const payload = parseJwt(token);
         userId = payload?.id ?? payload?.userId ?? payload?.sub ?? null;
       } catch (e) {
-        console.warn("parseJwt failed:", e);
+        // parseJwt failed - continue without userId
       }
 
+      // Prepare interest IDs
       const selectedIds: number[] = [];
       for (const slug of selected) {
         const match = interests.find((s) => (s.slug ?? "").trim().toLowerCase() === slug.trim().toLowerCase());
@@ -371,35 +331,24 @@ export default function InterestsScreen() {
         ? { interestIds: selectedIds } 
         : { interestSlugs: selected };
 
+      // Save interests
       let postRes: any = null;
-      try {
-        if (userId) {
-          postRes = await apiPost(`/users/${userId}/interests`, payloadBody);
-        } else {
-          postRes = await apiPost("/users/interests", payloadBody);
-        }
-      } catch (e) {
-        console.warn("apiPost to save interests failed:", e);
+      if (userId) {
+        postRes = await apiPost(`/users/${userId}/interests`, payloadBody);
+      } else {
+        postRes = await apiPost("/users/interests", payloadBody);
       }
 
       const postData = postRes?.data ?? postRes;
       const success = (postRes && postRes.status >= 200 && postRes.status < 300) || Boolean(postData && (postData.message || postData.success));
 
       if (success) {
-        // Clear saved form data after successful registration
-        try {
-          await AsyncStorage.removeItem('@register_form_data');
-        } catch (error) {
-          console.warn('Error clearing form data:', error);
-        }
         showSuccess(t('auth.interests.savedSuccess'));
         router.replace("/home");
       } else {
-        console.warn("Save interests unexpected response:", postRes);
         showError(t('auth.interests.saveError'));
       }
     } catch (err: any) {
-      console.error("Error saving interests:", err);
       const msg = (err && err.message) || JSON.stringify(err) || t('auth.interests.saveErrorGeneric');
       showError(msg);
     } finally {
@@ -451,20 +400,8 @@ export default function InterestsScreen() {
           )}
         </View>
 
-        {/* Navigation Buttons - Fixed at bottom */}
+        {/* Navigation Button - Fixed at bottom */}
         <View style={styles.buttonRow}>
-          <TouchableOpacity
-            style={[styles.navButton, styles.backButton]}
-            onPress={async () => {
-              // Set flag to indicate we're going back to register from interests
-              await AsyncStorage.setItem('@register_from_interests', 'true');
-              router.push('/register');
-            }}
-            disabled={loading}
-          >
-            <Text style={styles.backButtonText}>{t('auth.register.backButton')}</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={[styles.navButton, styles.completeButton, loading && styles.completeButtonDisabled]}
             onPress={() => handleSaveInterests(false)}
@@ -535,10 +472,9 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 0,
-    gap: 12,
     borderTopWidth: 1,
     borderTopColor: AppColors.borderLight,
   },
@@ -550,22 +486,9 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     justifyContent: 'center',
     minHeight: 44,
   },
-  backButton: {
-    backgroundColor: AppColors.backgroundTertiary,
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    flex: 0,
-    minWidth: 100,
-  },
-  backButtonText: {
-    color: AppColors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   completeButton: {
     backgroundColor: AppColors.primary,
-    flex: 0,
-    minWidth: 100,
+    flex: 1,
   },
   completeButtonDisabled: {
     backgroundColor: AppColors.textDisabled,

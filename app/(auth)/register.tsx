@@ -1,12 +1,10 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { apiPost, tokenStorage } from '@/helpers/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { useRouter, useFocusEffect } from 'expo-router';
-import React, { useRef, useState, useMemo, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
+import React, { useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -114,86 +112,6 @@ export default function RegisterScreen() {
     }
   };
 
-  // Save form data to AsyncStorage before navigating
-  const saveFormData = async () => {
-    try {
-      const formData = {
-        name,
-        email,
-        phoneCode,
-        phoneNumber,
-        password,
-        confirmPassword,
-        nationality,
-        birthdate,
-        accepted,
-      };
-      await AsyncStorage.setItem('@register_form_data', JSON.stringify(formData));
-    } catch (error) {
-      console.warn('Error saving form data:', error);
-    }
-  };
-
-  // Restore form data when screen is focused, but only if coming from interests
-  useFocusEffect(
-    useCallback(() => {
-      const loadFormData = async () => {
-        try {
-          // Check if we're coming from interests screen
-          const fromInterests = await AsyncStorage.getItem('@register_from_interests');
-          if (fromInterests === 'true') {
-            // Clear the flag
-            await AsyncStorage.removeItem('@register_from_interests');
-            
-            // Load form data
-            const savedData = await AsyncStorage.getItem('@register_form_data');
-            if (savedData) {
-              const formData = JSON.parse(savedData);
-              setName(formData.name || '');
-              setEmail(formData.email || '');
-              setPhoneCode(formData.phoneCode || '+1');
-              setPhoneNumber(formData.phoneNumber || '');
-              setPassword(formData.password || '');
-              setConfirmPassword(formData.confirmPassword || '');
-              setNationality(formData.nationality || null);
-              const savedBirthdate = formData.birthdate || '';
-              setBirthdate(savedBirthdate);
-              if (savedBirthdate) {
-                try {
-                  const date = new Date(savedBirthdate);
-                  if (!isNaN(date.getTime())) {
-                    setBirthdateDate(date);
-                    setBirthdateDisplay(formatDateForDisplay(date));
-                  }
-                } catch (e) {
-                  // Invalid date, leave empty
-                }
-              }
-              setAccepted(formData.accepted || false);
-            }
-          } else {
-            // If not coming from interests, clear form data
-            await AsyncStorage.removeItem('@register_form_data');
-            // Reset form
-            setName('');
-            setEmail('');
-            setPhoneCode('+1');
-            setPhoneNumber('');
-            setPassword('');
-            setConfirmPassword('');
-            setNationality(null);
-            setBirthdate('');
-            setBirthdateDate(null);
-            setBirthdateDisplay('');
-            setAccepted(false);
-          }
-        } catch (error) {
-          console.warn('Error loading form data:', error);
-        }
-      };
-      loadFormData();
-    }, [])
-  );
 
   const handleNext = async () => {
     if (!isFormValid) {
@@ -242,12 +160,47 @@ export default function RegisterScreen() {
         return;
       }
     }
-    setLoading(true)
+    setLoading(true);
 
-    // Save form data before navigating to interests (registration will happen in interests screen)
-    await saveFormData();
-    setLoading(false)
-    router.push('/interests');
+    try {
+      // Combinar phoneCode y phoneNumber
+      const phone = phoneNumber.trim() ? `${phoneCode}${phoneNumber.trim()}` : null;
+
+      // Registrar usuario - payload debe coincidir con la versión web
+      const registerPayload = {
+        name: name.trim(),
+        username: name.trim(), // Usar name como username (como en web)
+        email: email.trim().toLowerCase(),
+        phone: phone,
+        password: password,
+        nationality: nationality || null,
+        birthdate: birthdate || null,
+      };
+
+      // Remover valores undefined
+      Object.keys(registerPayload).forEach(key => {
+        if (registerPayload[key as keyof typeof registerPayload] === undefined) {
+          delete registerPayload[key as keyof typeof registerPayload];
+        }
+      });
+
+      const registerRes = await apiPost('/auth/register', registerPayload);
+      const registerData = registerRes.data ?? registerRes;
+      const token = registerData?.token || registerData?.accessToken || registerData?.jwt || registerData?.data?.token || null;
+
+      if (token) {
+        await tokenStorage.setToken(token);
+        // Navegar a interests después de registro exitoso
+        router.push('/interests');
+      } else {
+        showError(t('auth.register.registerFailed'));
+      }
+    } catch (err: any) {
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.register.error');
+      showError(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
