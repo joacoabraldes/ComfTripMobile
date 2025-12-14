@@ -26,6 +26,7 @@ import { getResponsiveValues } from '@/helpers/responsive';
 import TextButton from '@/components/buttons/TextButton';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppColors } from '@/hooks/useAppColors';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 export default function LoginScreen() {
   const { width, height } = useWindowDimensions();
@@ -34,6 +35,7 @@ export default function LoginScreen() {
   const AppColors = useAppColors();
   const CommonStyles = useCommonStyles();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const { showError } = useSnackbar();
 
   const [identifier, setIdentifier] = useState(''); // email or username
   const [password, setPassword] = useState('');
@@ -71,7 +73,7 @@ export default function LoginScreen() {
       }
 
       if (!isFormValid) {
-          Alert.alert(t('auth.login.attention'), t('auth.login.completeFields'));
+          showError(t('auth.login.completeFields'));
           return;
       }
     setLoading(true);
@@ -93,7 +95,7 @@ export default function LoginScreen() {
     } catch (err: any) {
       console.error('Login error', err);
       const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.login.loginFailed');
-      Alert.alert(t('auth.login.loginFailed'), msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }

@@ -27,6 +27,7 @@ import ProgressIndicator from '@/components/forms/ProgressIndicator';
 import NationalityField from '@/components/forms/NationalityField';
 import { getResponsiveValues } from '@/helpers/responsive';
 import TextButton from '@/components/buttons/TextButton';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 export default function RegisterScreen() {
   const { width, height } = useWindowDimensions();
@@ -35,6 +36,7 @@ export default function RegisterScreen() {
   const AppColors = useAppColors();
   const CommonStyles = useCommonStyles();
   const styles = getStyles(AppColors);
+  const { showError } = useSnackbar();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -228,15 +230,15 @@ export default function RegisterScreen() {
         }
 
       if (!name || !email || !phoneNumber || !birthdate || !password || !confirmPassword) {
-        Alert.alert(t('auth.register.attention'), t('auth.register.completeFields'));
+        showError(t('auth.register.completeFields'));
         return;
       }
       if (password !== confirmPassword) {
-        Alert.alert(t('auth.register.attention'), 'Las contraseñas no coinciden');
+        showError(t('auth.errors.passwordsNotMatch'));
         return;
       }
       if (!accepted) {
-        Alert.alert(t('auth.register.attention'), t('auth.register.acceptTerms'));
+        showError(t('auth.register.acceptTerms'));
         return;
       }
     }

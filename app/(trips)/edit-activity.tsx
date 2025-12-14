@@ -5,9 +5,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -20,7 +18,9 @@ import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import TextButton from '@/components/buttons/TextButton';
-import { useAppColors } from '@/hooks/useAppColors';  
+import { useAppColors } from '@/hooks/useAppColors';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';  
 
 interface CalendarDay {
   date: number;
@@ -49,6 +49,7 @@ export default function EditActivity() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { t } = useTranslation();
+  const { showError } = useSnackbar();
   const tripId = params.tripId ? Number(params.tripId) : NaN;
   const placeId = params.placeId ? Number(params.placeId) : NaN;
 
@@ -64,6 +65,7 @@ export default function EditActivity() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   // Calendar state
   const today = new Date();
@@ -265,11 +267,11 @@ export default function EditActivity() {
 
   const handleSave = async () => {
     if (!date) {
-      Alert.alert(t('editActivity.selectDate'));
+      showError(t('editActivity.selectDate'));
       return;
     }
     if (!startHour || !endHour || !startHour.split(':')[1] || !endHour.split(':')[1]) {
-      Alert.alert(t('editActivity.selectStartAndEndTime'));
+      showError(t('editActivity.selectStartAndEndTime'));
       return;
     }
 
@@ -314,30 +316,27 @@ export default function EditActivity() {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      t('editActivity.delete'),
-      t('editActivity.deleteConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            if (deleting) return;
-            setDeleting(true);
-            try {
-              await apiDelete(`/trips/${tripId}/places/${placeId}`);
-              router.back();
-            } catch (err: any) {
-              console.error('Error deleting place:', err);
-              Alert.alert(t('common.error'), err?.message || t('editActivity.deleteError'));
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await apiDelete(`/trips/${tripId}/places/${placeId}`);
+      setShowDeleteDialog(false);
+      router.back();
+    } catch (err: any) {
+      console.error('Error deleting place:', err);
+      showError(err?.message || t('editActivity.deleteError'));
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
   };
 
   const monthNames = [
@@ -537,6 +536,17 @@ export default function EditActivity() {
           style={{ marginTop: 16, alignSelf: 'center' }}
         />
       </ScrollView>
+
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title={t('editActivity.delete')}
+        message={t('editActivity.deleteConfirm')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        destructive={true}
+      />
     </SecondaryLayout>
   );
 }

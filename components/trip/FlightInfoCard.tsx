@@ -5,6 +5,8 @@ import { useTranslation } from '@/i18n';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { apiGet, apiPut } from '@/helpers/api';
 import { ShadowColors } from '@/constants/Colors';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface FlightInfo {
   flight_id: string;
@@ -39,8 +41,10 @@ export default function FlightInfoCard({
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
   const [refreshing, setRefreshing] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   if (!flightInfo) return null;
 
@@ -95,7 +99,7 @@ export default function FlightInfoCard({
       await onRefresh();
     } catch (err) {
       console.error('Error refreshing flight:', err);
-      Alert.alert(t('common.error'), t('tripDetails.refreshError') || 'Error al actualizar el vuelo');
+      showError(t('tripDetails.refreshError'));
     } finally {
       setRefreshing(false);
     }
@@ -103,32 +107,29 @@ export default function FlightInfoCard({
 
   const handleRemove = () => {
     if (readOnly || removing) return;
-    Alert.alert(
-      t('tripDetails.removeFlightTitle') || 'Eliminar vuelo',
-      t('tripDetails.removeFlightConfirm') || '¿Estás seguro que quieres eliminar este vuelo?',
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            setRemoving(true);
-            try {
-              await apiPut(`/flights/${flightInfo.flight_id}`, {
-                trip_id: null,
-              });
-              Alert.alert(t('common.success'), t('tripDetails.flightDisassociated') || 'Vuelo eliminado');
-              if (onRefresh) await onRefresh();
-            } catch (err: any) {
-              console.error('Error removing flight:', err);
-              Alert.alert(t('common.error'), err?.message || t('tripDetails.disassociateFlightError'));
-            } finally {
-              setRemoving(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const handleConfirmRemove = async () => {
+    setRemoving(true);
+    try {
+      await apiPut(`/flights/${flightInfo.flight_id}`, {
+        trip_id: null,
+      });
+      showSuccess(t('tripDetails.flightDisassociated') || 'Vuelo eliminado');
+      setShowDeleteDialog(false);
+      if (onRefresh) await onRefresh();
+    } catch (err: any) {
+      console.error('Error removing flight:', err);
+      showError(err?.message || t('tripDetails.disassociateFlightError'));
+      setShowDeleteDialog(false);
+    } finally {
+      setRemoving(false);
+    }
+  };
+
+  const handleCancelRemove = () => {
+    setShowDeleteDialog(false);
   };
 
   return (
@@ -237,6 +238,17 @@ export default function FlightInfoCard({
           )}
         </View>
       )}
+
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title={t('tripDetails.removeFlightTitle') || 'Eliminar vuelo'}
+        message={t('tripDetails.removeFlightConfirm') || '¿Estás seguro que quieres eliminar este vuelo?'}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmRemove}
+        onCancel={handleCancelRemove}
+        destructive={true}
+      />
     </View>
   );
 }

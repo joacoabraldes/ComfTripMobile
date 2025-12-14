@@ -9,6 +9,7 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, TouchableOpacity
 import { ShadowColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
 import TextButton from '@/components/buttons/TextButton';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 interface ReviewFormProps {
   tripId: number;
@@ -26,6 +27,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
   const [rating, setRating] = useState<number>(existingReview?.rating || 0);
   const [title, setTitle] = useState<string>(existingReview?.title || '');
   const [comment, setComment] = useState<string>(existingReview?.comment || '');
@@ -65,12 +67,12 @@ export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }
 
   const handleSave = async () => {
     if (rating === 0) {
-      Alert.alert(t('common.error'), t('review.ratingRequired'));
+      showError(t('review.ratingRequired'));
       return;
     }
 
     if (title.trim().length === 0) {
-      Alert.alert(t('common.error'), t('review.titleRequired'));
+      showError(t('review.titleRequired'));
       return;
     }
 
@@ -105,15 +107,12 @@ export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }
         await apiPost(`/trips/${tripId}/review`, reviewData);
       }
 
-      Alert.alert(
-        t('common.success'),
-        reviewExists ? t('review.updateSuccess') : t('review.saveSuccess')
-      );
+      showSuccess(reviewExists ? t('review.updateSuccess') : t('review.saveSuccess'));
       onSaved?.();
     } catch (err: any) {
       console.error('Error saving review:', err);
       const message = err?.message || t('review.saveError');
-      Alert.alert(t('common.error'), message);
+      showError(message);
     } finally {
       setSaving(false);
     }

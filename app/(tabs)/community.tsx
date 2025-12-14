@@ -3,7 +3,6 @@ import { apiDelete, apiGet, apiPost } from '@/helpers/api';
 import React, { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
-    Alert,
     Modal,
     Platform,
     ScrollView,
@@ -19,6 +18,8 @@ import { ShadowColors, StateColors } from '@/constants/Colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAppColors } from '@/hooks/useAppColors';
 import {useCommonStyles} from "@/constants/Styles";
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 type Friend = {
   id: number;
@@ -48,6 +49,7 @@ type Trip = {
 export default function CommunityScreen() {
   const { t } = useTranslation();
   const AppColors = useAppColors();
+  const { showSuccess, showError, showInfo } = useSnackbar();
   const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(true);
@@ -64,6 +66,10 @@ export default function CommunityScreen() {
   const [availableTrips, setAvailableTrips] = useState<Trip[]>([]);
   const [selectedTripIds, setSelectedTripIds] = useState<Set<number>>(new Set());
   const [sharing, setSharing] = useState(false);
+
+  // Delete friend dialog state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [friendToDelete, setFriendToDelete] = useState<number | null>(null);
 
   async function loadAll() {
     setLoading(true);
@@ -92,7 +98,7 @@ export default function CommunityScreen() {
     } catch (err: any) {
       console.error('Error cargando comunidad:', err);
       const msg = (err && err.message) ? err.message : t('communityExtra.failedToLoad');
-      Alert.alert(t('common.error'), `${t('communityExtra.failedToLoad')}\n\n${msg}`);
+      showError(msg);
       setFriends([]);
       setIncoming([]);
       setOutgoing([]);
@@ -107,7 +113,7 @@ export default function CommunityScreen() {
 
   async function sendRequest() {
     if (!emailOrId) {
-      Alert.alert(t('common.error'), t('communityExtra.enterEmailOrId'));
+      showError(t('communityExtra.enterEmailOrId'));
       return;
     }
     setSending(true);
@@ -120,13 +126,13 @@ export default function CommunityScreen() {
       }
 
       await apiPost('/friends', body);
-      Alert.alert(t('common.success'), t('communityExtra.requestSent'));
+      showSuccess(t('communityExtra.requestSent'));
       setEmailOrId('');
       await loadAll();
     } catch (err: any) {
       console.error('Error enviando solicitud:', err);
       const msg = (err && err.message) ? err.message : t('communityExtra.failedToSend');
-      Alert.alert(t('common.error'), msg);
+      showError(msg);
     } finally {
       setSending(false);
     }
@@ -138,7 +144,7 @@ export default function CommunityScreen() {
       await loadAll();
     } catch (err) {
       console.error('Error aceptando:', err);
-      Alert.alert(t('common.error'), t('communityExtra.failedToAccept'));
+      showError(t('communityExtra.failedToAccept'));
     }
   }
 
@@ -148,27 +154,34 @@ export default function CommunityScreen() {
       await loadAll();
     } catch (err) {
       console.error('Error rechazando:', err);
-      Alert.alert(t('common.error'), t('communityExtra.failedToReject'));
+      showError(t('communityExtra.failedToReject'));
     }
   }
 
   async function removeFriend(userId: number) {
-    Alert.alert(
-      t('community.removeFriend'),
-      t('community.removeFriendConfirm'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.delete'), style: 'destructive', onPress: async () => {
-          try {
-            await apiDelete(`/friends/${userId}`);
-            await loadAll();
-          } catch (err) {
-            console.error('Error eliminando amigo:', err);
-            Alert.alert(t('common.error'), t('communityExtra.failedToRemove'));
-          }
-        }}
-      ]
-    );
+    setFriendToDelete(userId);
+    setShowDeleteDialog(true);
+  }
+
+  async function handleConfirmDelete() {
+    if (!friendToDelete) return;
+    
+    try {
+      await apiDelete(`/friends/${friendToDelete}`);
+      await loadAll();
+      setShowDeleteDialog(false);
+      setFriendToDelete(null);
+    } catch (err) {
+      console.error('Error eliminando amigo:', err);
+      showError(t('communityExtra.failedToRemove'));
+      setShowDeleteDialog(false);
+      setFriendToDelete(null);
+    }
+  }
+
+  function handleCancelDelete() {
+    setShowDeleteDialog(false);
+    setFriendToDelete(null);
   }
 
   // Helper to get current user ID
@@ -216,18 +229,18 @@ export default function CommunityScreen() {
 
       if (currentUserId == null) {
         setAvailableTrips([]);
-        Alert.alert(t('common.error'), t('communityExtra.cannotDetermineUser'));
+        showError(t('communityExtra.cannotDetermineUser'));
         return;
       }
 
       const ownedTrips = tripsArr.filter((t: Trip) => Number(t?.user_id) === Number(currentUserId));
       if (ownedTrips.length === 0) {
-        Alert.alert(t('common.success'), t('community.noOwnTrips'));
+        showInfo(t('community.noOwnTrips'));
       }
       setAvailableTrips(ownedTrips);
     } catch (err) {
       console.error('Error fetching trips for sharing:', err);
-      Alert.alert(t('common.error'), t('communityExtra.failedToLoadTrips'));
+      showError(t('communityExtra.failedToLoadTrips'));
       setAvailableTrips([]);
     }
   }
@@ -246,11 +259,11 @@ export default function CommunityScreen() {
 
   async function submitShare() {
     if (!shareTargetFriend) {
-      Alert.alert(t('common.error'), t('communityExtra.noFriendSelected'));
+      showError(t('communityExtra.noFriendSelected'));
       return;
     }
     if (!selectedTripIds.size) {
-      Alert.alert(t('common.error'), t('communityExtra.selectAtLeastOne'));
+      showError(t('communityExtra.selectAtLeastOne'));
       return;
     }
 
@@ -284,7 +297,13 @@ export default function CommunityScreen() {
       msg += t('community.shareErrors', { count: failures.length }) + failures.map(f => ` - ${f.tripId}: ${f.message}`).join('\n');
     }
 
-    Alert.alert(t('communityExtra.result'), msg || t('share.operationCompleted'));
+    if (successes.length > 0 && failures.length === 0) {
+      showSuccess(msg || t('share.operationCompleted'));
+    } else if (failures.length > 0) {
+      showError(msg || t('share.operationCompleted'));
+    } else {
+      showInfo(msg || t('share.operationCompleted'));
+    }
     setShowShareModal(false);
     setShareTargetFriend(null);
     setSelectedTripIds(new Set());
@@ -517,6 +536,18 @@ export default function CommunityScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Delete Friend Confirmation Dialog */}
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title={t('community.removeFriend')}
+        message={t('community.removeFriendConfirm')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        destructive={true}
+      />
     </PrimaryLayout>
   );
 }

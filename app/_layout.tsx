@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { TranslationProvider } from '@/i18n';
 import { ThemeProvider as CustomThemeProvider } from '@/hooks/useTheme';
+import { SnackbarProvider } from '@/contexts/SnackbarContext';
 import ThemedRootContent from './ThemedRootContent';
 
 export default function RootLayout() {
@@ -21,7 +22,9 @@ export default function RootLayout() {
   return (
     <TranslationProvider>
       <CustomThemeProvider>
-        <ThemedRootContent />
+        <SnackbarProvider>
+          <ThemedRootContent />
+        </SnackbarProvider>
       </CustomThemeProvider>
     </TranslationProvider>
   );

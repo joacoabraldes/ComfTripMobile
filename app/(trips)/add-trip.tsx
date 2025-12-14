@@ -6,6 +6,7 @@ import SecondaryLayout from '@/components/layouts/SecondaryLayout';
 import { useTranslation } from '@/i18n';
 import { useAppColors } from '@/hooks/useAppColors';
 import FlightSearchCard from '@/components/trip/FlightSearchCard';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -15,6 +16,7 @@ export default function AddTrip() {
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showError, showWarning } = useSnackbar();
   const params = useLocalSearchParams<{ destination?: string }>();
   const [destination, setDestination] = useState<string | null>(params.destination || null);
   const [country, setCountry] = useState<string | null>(null);
@@ -127,10 +129,7 @@ export default function AddTrip() {
 
       // Validate that the range doesn't contain booked dates
       if (hasBookedDatesInRange(newStart, newEnd)) {
-        Alert.alert(
-          t('addTrip.invalidRange'),
-          t('addTrip.bookedDatesInRange')
-        );
+        showWarning(t('addTrip.bookedDatesInRange'));
         return;
       }
 
@@ -295,7 +294,7 @@ export default function AddTrip() {
 
   const openMap = () => {
     if (!selectedLocation) {
-      Alert.alert(t('addTrip.locationNotSelected'), t('addTrip.locationNotSelectedMessage'));
+      showError(t('addTrip.locationNotSelectedMessage'));
       return;
     }
     setShowMap(true);
@@ -305,11 +304,11 @@ export default function AddTrip() {
   const handleSaveTrip = async () => {
     if (saving) return;
     if (!startDate || !endDate) {
-      Alert.alert(t('addTrip.selectDatesAlert'), t('addTrip.selectDatesMessage'));
+      showError(t('addTrip.selectDatesMessage'));
       return;
     }
     if (!destination || destination.trim().length === 0) {
-      Alert.alert(t('addTrip.emptyDestination'), t('addTrip.emptyDestinationMessage'));
+      showError(t('addTrip.emptyDestinationMessage'));
       return;
     }
 
@@ -367,7 +366,7 @@ export default function AddTrip() {
     } catch (err: any) {
       console.error('Error preparando payload:', err);
       const message = (err && err.message) || t('addTrip.saveError');
-      Alert.alert(t('common.error'), message);
+      showError(message);
     } finally {
       setSaving(false);
     }

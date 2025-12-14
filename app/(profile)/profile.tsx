@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   StyleSheet,
   Text,
@@ -25,6 +24,7 @@ import TextButton from "@/components/buttons/TextButton";
 import { useTheme, ThemeMode } from "@/hooks/useTheme";
 import { useAppColors } from "@/hooks/useAppColors";
 import {useCommonStyles} from "@/constants/Styles";
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 // Helper: base64url decode (works in RN / browser)
 function base64UrlDecode(input: string) {
@@ -84,6 +84,7 @@ export default function ProfileScreen() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showThemeModal, setShowThemeModal] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
 
   // helper: try to read token a few times (handles small race where login sets token just before navigation)
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
@@ -229,10 +230,16 @@ export default function ProfileScreen() {
   }
 
   function handleLogout() {
-    Alert.alert(t('profile.logoutTitle'), t('profile.logoutMessage'), [
-      { text: t('profile.logoutCancel'), style: "cancel" },
-      { text: t('profile.logout'), style: "destructive", onPress: performLogout },
-    ]);
+    setShowLogoutDialog(true);
+  }
+
+  function handleConfirmLogout() {
+    setShowLogoutDialog(false);
+    performLogout();
+  }
+
+  function handleCancelLogout() {
+    setShowLogoutDialog(false);
   }
 
   // Generate dynamic styles early so they're available everywhere
@@ -585,6 +592,17 @@ export default function ProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ConfirmDialog
+        visible={showLogoutDialog}
+        title={t('profile.logoutTitle')}
+        message={t('profile.logoutMessage')}
+        confirmText={t('profile.logout')}
+        cancelText={t('profile.logoutCancel')}
+        onConfirm={handleConfirmLogout}
+        onCancel={handleCancelLogout}
+        destructive={true}
+      />
     </SecondaryLayout>
   );
 }

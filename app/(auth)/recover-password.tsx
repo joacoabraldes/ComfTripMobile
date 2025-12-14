@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -23,6 +22,7 @@ import InputField from '@/components/forms/InputField';
 import { useAppColors } from '@/hooks/useAppColors';
 import { getResponsiveValues } from '@/helpers/responsive';
 import TextButton from '@/components/buttons/TextButton';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 export default function RecoverPasswordScreen() {
   const { width, height } = useWindowDimensions();
@@ -31,6 +31,7 @@ export default function RecoverPasswordScreen() {
   const AppColors = useAppColors();
   const CommonStyles = useCommonStyles();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
 
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -97,13 +98,13 @@ export default function RecoverPasswordScreen() {
   const handleSendCode = async () => {
     if (!email.trim()) {
         setErrorEmail("auth.recoverPassword.enterEmail")
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.enterEmail'));
+      showError(t('auth.recoverPassword.enterEmail'));
       return;
     }
 
     if (!validateEmail(email)) {
         setErrorEmail("auth.recoverPassword.invalidEmail");
-      Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.invalidEmail'));
+      showError(t('auth.recoverPassword.invalidEmail'));
       return;
     }
 
@@ -122,7 +123,7 @@ export default function RecoverPasswordScreen() {
     } catch (err: any) {
       console.error('Send code error', err);
       const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.recoverPassword.requestFailed');
-      Alert.alert(t('auth.recoverPassword.error'), msg);
+      showError(msg);
     } finally {
       setSendingCode(false);
     }
@@ -154,7 +155,7 @@ export default function RecoverPasswordScreen() {
     }
 
     if(!isFormValid){
-        Alert.alert(t('auth.recoverPassword.attention'), t('auth.recoverPassword.completeAllFields') || 'Por favor completa todos los campos');
+        showError(t('auth.recoverPassword.completeAllFields'));
         return
     }
 
@@ -168,21 +169,15 @@ export default function RecoverPasswordScreen() {
       const data = res.data ?? res;
       
       if (data?.message || data?.success || res.data !== undefined) {
-        Alert.alert(
-          t('auth.recoverPassword.success') || 'Éxito',
-          t('auth.recoverPassword.passwordResetSuccess') || 'Tu contraseña ha sido actualizada correctamente',
-          [
-            {
-              text: t('auth.recoverPassword.backToLogin') || 'Volver al login',
-              onPress: () => router.replace('/login'),
-            },
-          ]
-        );
+        showSuccess(t('auth.recoverPassword.passwordResetSuccess'));
+        setTimeout(() => {
+          router.replace('/login');
+        }, 2000);
       }
     } catch (err: any) {
       console.error('Reset password error', err);
-      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.recoverPassword.resetFailed') || 'Error al restablecer la contraseña';
-      Alert.alert(t('auth.recoverPassword.error'), msg);
+      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.recoverPassword.resetFailed');
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -212,7 +207,7 @@ export default function RecoverPasswordScreen() {
                 {t('auth.recoverPassword.title')}
               </Text>
               <Text style={[styles.subtitle, { fontSize: subtitleFontSize, marginTop: 12 }]}>
-                {t('auth.recoverPassword.subtitle') || 'Ingresa tu email y te enviaremos un código de verificación'}
+                {t('auth.recoverPassword.subtitle')}
               </Text>
             </View>
 
@@ -246,7 +241,7 @@ export default function RecoverPasswordScreen() {
                           <Text style={[styles.resendButtonText, resendCooldown > 0 && styles.resendButtonTextDisabled]}>
                               {resendCooldown > 0
                                   ? (t('auth.recoverPassword.resendIn') || 'Reenviar ({seconds}s)').replace('{seconds}', resendCooldown.toString())
-                                  : t('auth.recoverPassword.sendButton') || 'Enviar'
+                                  : t('auth.recoverPassword.sendButton')
                               }
                           </Text>
                       )}

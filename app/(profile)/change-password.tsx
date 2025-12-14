@@ -4,11 +4,11 @@ import SecondaryLayout from "@/components/layouts/SecondaryLayout";
 import { apiPut, tokenStorage } from "@/helpers/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, ActivityIndicator, StyleSheet, Text, TextInput, View, Platform, ScrollView, useWindowDimensions } from "react-native";
+import { ActivityIndicator, StyleSheet, View, ScrollView, useWindowDimensions } from "react-native";
 import { useTranslation } from '@/i18n';
-import { CommonStyles } from '@/constants/Styles';
 import InputField from '@/components/forms/InputField';
 import { getResponsiveValues } from '@/helpers/responsive';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 function base64UrlDecode(input: string) {
   try {
@@ -42,6 +42,7 @@ export default function ChangePasswordScreen() {
   const params = useLocalSearchParams();
   const paramId = (params?.id as string | undefined) ?? undefined;
   const { t } = useTranslation();
+  const { showSuccess, showError } = useSnackbar();
 
   const [userId, setUserId] = useState<string | number | undefined>(paramId);
   const [oldPassword, setOldPassword] = useState("");
@@ -74,14 +75,14 @@ export default function ChangePasswordScreen() {
         const token = await tokenStorage.getToken();
         if (!token) {
           // no token -> redirect to login
-          Alert.alert(t('changePassword.unauthorized'), t('changePassword.mustLogin'));
+          showError(t('changePassword.mustLogin'));
           router.replace("/login");
           return;
         }
         const payload = parseJwt(token);
         const idFromToken = payload?.id ?? payload?.userId ?? payload?.sub ?? null;
         if (!idFromToken) {
-          Alert.alert(t('changePassword.unauthorized'), t('changePassword.invalidUser'));
+          showError(t('changePassword.invalidUser'));
           router.replace("/login");
           return;
         }
@@ -99,15 +100,15 @@ export default function ChangePasswordScreen() {
 
   async function handleChangePassword() {
     if (!userId) {
-      Alert.alert(t('common.error'), t('changePassword.userNotIdentified'));
+      showError(t('changePassword.userNotIdentified'));
       return;
     }
     if (!oldPassword || !newPassword || !confirmPassword) {
-      Alert.alert(t('common.error'), t('changePassword.completeAllFields') || 'Por favor completa todos los campos');
+      showError(t('changePassword.completeAllFields'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert(t('common.error'), t('changePassword.passwordsDoNotMatch') || 'Las contraseñas no coinciden');
+      showError(t('changePassword.passwordsDoNotMatch'));
       return;
     }
     setLoading(true);
@@ -118,12 +119,12 @@ export default function ChangePasswordScreen() {
         oldPassword,
         newPassword,
       });
-      Alert.alert(t('changePassword.updated'), res.data?.message || t('changePassword.updatedMessage'));
+      showSuccess(res.data?.message || t('changePassword.updatedMessage'));
       router.back();
     } catch (err: any) {
       // Show server message when available, otherwise generic
       const msg = err?.response?.data?.message || err?.message || t('changePassword.updateError');
-      Alert.alert(t('common.error'), msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }

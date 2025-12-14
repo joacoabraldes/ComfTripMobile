@@ -7,7 +7,6 @@ import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -23,6 +22,7 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import PhoneField from '@/components/forms/PhoneField';
 import NationalityField from '@/components/forms/NationalityField';
 import countries from 'world-countries';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 export const options = {
   headerShown: false,
@@ -72,6 +72,7 @@ export default function EditProfileScreen() {
   const AppColors = useAppColors();
   const CommonStyles = useCommonStyles();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
   const colorScheme = useColorScheme();
   const placeholderColor = colorScheme === 'dark' ? AppColors.white : AppColors.textMutedDark;
   // Get userId from token as in profile.tsx
@@ -259,11 +260,11 @@ export default function EditProfileScreen() {
         // send ISO date (YYYY-MM-DD) if we have one, otherwise empty string
         birthdate: birthdateDate ? dateToISODate(birthdateDate) : birthdateDisplay || "",
       });
-      Alert.alert(t('profile.profileUpdated'), res.data?.message || "");
+      showSuccess(res.data?.message || t('profile.profileUpdated'));
       // go back; profile screen listens for focus and will reload
       router.back();
     } catch (err: any) {
-      Alert.alert(t('common.error'), err?.message || t('profile.updateError'));
+      showError(err?.message || t('profile.updateError'));
     } finally {
       setLoading(false);
     }

@@ -11,6 +11,8 @@ import { ActivityIndicator } from 'react-native';
 import { Friend } from '@/types';
 import { ShadowColors } from '@/constants/Colors';
 import { useAppColors } from '@/hooks/useAppColors';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface ShareTripButtonProps {
   tripId: number;
@@ -24,12 +26,14 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
   const router = useRouter();
   const [showModal, setShowModal] = useState<boolean>(initialVisible);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [sharing, setSharing] = useState<boolean>(false);
   const [selectedFriendId, setSelectedFriendId] = useState<number | null>(null);
+  const [showShareAllDialog, setShowShareAllDialog] = useState(false);
 
   // Sync showModal with initialVisible prop when it changes
   // This ensures the modal opens when the component is mounted with initialVisible=true
@@ -48,7 +52,7 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
       setFriends(friendsArr);
     } catch (err: any) {
       console.error('Error loading friends:', err);
-      Alert.alert(t('common.error'), t('share.errorLoadingFriends'));
+      showError(t('share.errorLoadingFriends'));
       setFriends([]);
     } finally {
       setLoading(false);
@@ -76,71 +80,70 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
       
       const friend = friends.find(f => f.id === friendId);
       const friendName = friend?.name || friend?.email || `Usuario ${friendId}`;
-      Alert.alert(
-        t('common.success'),
-        t('share.success', { friendName })
-      );
+      showSuccess(t('share.success', { friendName }));
       handleCloseModal();
     } catch (err: any) {
       console.error('Error sharing trip:', err);
       const message = err?.message || t('share.error');
-      Alert.alert(t('common.error'), message);
+      showError(message);
     } finally {
       setSharing(false);
       setSelectedFriendId(null);
     }
   };
 
-  const handleShareAll = async () => {
+  const handleShareAll = () => {
     if (friends.length === 0) {
-      Alert.alert(t('common.error'), t('share.noFriends'));
+      showError(t('share.noFriends'));
       return;
     }
+    setShowShareAllDialog(true);
+  };
 
-    Alert.alert(
-      t('share.shareAllTitle'),
-      t('share.shareAllMessage', { count: friends.length }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.share'),
-          onPress: async () => {
-            setSharing(true);
-            let successCount = 0;
-            let failCount = 0;
+  const handleConfirmShareAll = async () => {
+    setSharing(true);
+    let successCount = 0;
+    let failCount = 0;
 
-            for (const friend of friends) {
-              try {
-                await apiPost(`/trips/${tripId}/share`, {
-                  mode: 'viewer',
-                  public: false,
-                  shared_with_user_id: friend.id,
-                });
-                successCount++;
-              } catch (err) {
-                failCount++;
-                console.error(`Error sharing with friend ${friend.id}:`, err);
-              }
-            }
+    for (const friend of friends) {
+      try {
+        await apiPost(`/trips/${tripId}/share`, {
+          mode: 'viewer',
+          public: false,
+          shared_with_user_id: friend.id,
+        });
+        successCount++;
+      } catch (err) {
+        failCount++;
+        console.error(`Error sharing with friend ${friend.id}:`, err);
+      }
+    }
 
-            setSharing(false);
-            setShowModal(false);
-            
-            let message = '';
-            if (successCount > 0) {
-              const friendsText = successCount === 1 ? t('share.friend') : t('share.friends');
-              message += t('share.shareAllSuccess', { count: successCount, friends: friendsText });
-            }
-            if (failCount > 0) {
-              const errorsText = failCount === 1 ? t('share.errorSingular') : t('share.errorsPlural');
-              message += t('share.shareAllErrors', { count: failCount, errors: errorsText });
-            }
-            
-            Alert.alert(t('common.success'), message || t('share.operationCompleted'));
-          },
-        },
-      ]
-    );
+    setSharing(false);
+    setShowModal(false);
+    setShowShareAllDialog(false);
+    
+    let message = '';
+    if (successCount > 0) {
+      const friendsText = successCount === 1 ? t('share.friend') : t('share.friends');
+      message += t('share.shareAllSuccess', { count: successCount, friends: friendsText });
+    }
+    if (failCount > 0) {
+      const errorsText = failCount === 1 ? t('share.errorSingular') : t('share.errorsPlural');
+      message += t('share.shareAllErrors', { count: failCount, errors: errorsText });
+    }
+    
+    if (successCount > 0 && failCount === 0) {
+      showSuccess(message || t('share.operationCompleted'));
+    } else if (failCount > 0) {
+      showError(message || t('share.operationCompleted'));
+    } else {
+      showSuccess(message || t('share.operationCompleted'));
+    }
+  };
+
+  const handleCancelShareAll = () => {
+    setShowShareAllDialog(false);
   };
 
   // Load friends when modal opens (similar to web version)
@@ -263,6 +266,17 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
           </View>
         </View>
       </Modal>
+
+      <ConfirmDialog
+        visible={showShareAllDialog}
+        title={t('share.shareAllTitle')}
+        message={t('share.shareAllMessage', { count: friends.length })}
+        confirmText={t('common.share')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmShareAll}
+        onCancel={handleCancelShareAll}
+        destructive={false}
+      />
     </>
   );
 }

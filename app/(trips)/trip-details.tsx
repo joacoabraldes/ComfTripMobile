@@ -5,6 +5,7 @@ import FlightInfoCard from '@/components/trip/FlightInfoCard';
 import FlightSearchCard from '@/components/trip/FlightSearchCard';
 import ShareTripButton from '@/components/trip/ShareTripButton';
 import ContextMenu from '@/components/ui/ContextMenu';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { StateColors } from '@/constants/Colors';
 import { mapPlacesToActivities } from '@/helpers/activityUtils';
 import { apiDelete, apiGet, apiPost, apiPut } from '@/helpers/api';
@@ -13,6 +14,7 @@ import { normalizeTripData } from '@/helpers/tripUtils';
 import { useAppColors } from '@/hooks/useAppColors';
 import { useFlightInfo } from '@/hooks/useFlightInfo';
 import { useTranslation } from '@/i18n';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 import flightsApi from '@/services/flightsApi';
 import { Activity, Trip } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,6 +40,7 @@ export default function TripDetails() {
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
+  const { showSuccess, showError } = useSnackbar();
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? t('tripSummary.destination');
@@ -318,38 +321,35 @@ export default function TripDetails() {
 
   const confirmAndDelete = () => {
     if (!Number.isFinite(tripId) || tripId <= 0) {
-      Alert.alert(t('common.error'), t('tripDetails.invalidId'));
+      showError(t('tripDetails.invalidId'));
       return;
     }
+    setShowDeleteDialog(true);
+  };
 
-    Alert.alert(
-      t('tripDetails.deleteTitle'),
-      t('tripDetails.deleteMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.delete'),
-          style: 'destructive',
-          onPress: async () => {
-            if (deleting) return;
-            setDeleting(true);
-            try {
-              await apiDelete(`/trips/${tripId}`);
-              Alert.alert(t('common.success'), t('tripDetails.deleteSuccess'));
-              router.back();
-            } catch (e: any) {
-              const msg = e?.message || t('tripDetails.deleteError');
-              Alert.alert(t('common.error'), msg);
-            } finally {
-              setDeleting(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleConfirmDelete = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    try {
+      await apiDelete(`/trips/${tripId}`);
+      showSuccess(t('tripDetails.deleteSuccess'));
+      setShowDeleteDialog(false);
+      router.back();
+    } catch (e: any) {
+      const msg = e?.message || t('tripDetails.deleteError');
+      showError(msg);
+      setShowDeleteDialog(false);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteDialog(false);
   };
 
   const [showShareModal, setShowShareModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const menuOptions = [
     {
@@ -509,6 +509,17 @@ export default function TripDetails() {
           onClose={() => setShowShareModal(false)}
         />
       )}
+
+      <ConfirmDialog
+        visible={showDeleteDialog}
+        title={t('tripDetails.deleteTitle')}
+        message={t('tripDetails.deleteMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+        destructive={true}
+      />
     </SecondaryLayout>
   );
 }

@@ -20,6 +20,7 @@ import { formatDateRange } from '@/helpers/dateUtils';
 import TimePicker from '@/components/forms/TimePicker';
 import LocationSelector from '@/components/forms/LocationSelector';
 import PrimaryButton from '@/components/buttons/PrimaryButton';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 interface CalendarDay {
   date: number;
@@ -54,6 +55,7 @@ export default function AddActivity() {
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showError } = useSnackbar();
   const tripId = params.tripId ? Number(params.tripId) : NaN;
 
   const [loading, setLoading] = useState(true);
@@ -234,19 +236,19 @@ export default function AddActivity() {
 
   const handleAddPlace = async () => {
     if (!selectedLocation) {
-      Alert.alert(t('addActivity.selectLocation'));
+      showError(t('addActivity.selectLocation'));
       return;
     }
     if (!date) {
-      Alert.alert(t('addActivity.selectDate'));
+      showError(t('addActivity.selectDate'));
       return;
     }
     if (!startHour || !startHour.split(':')[1]) {
-      Alert.alert(t('addActivity.selectStartTime'));
+      showError(t('addActivity.selectStartTime'));
       return;
     }
     if (!endHour || !endHour.split(':')[1]) {
-      Alert.alert(t('addActivity.selectEndTime'));
+      showError(t('addActivity.selectEndTime'));
       return;
     }
 

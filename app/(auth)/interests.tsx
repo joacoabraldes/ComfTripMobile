@@ -8,7 +8,6 @@ import {
   FlatList,
   Dimensions,
   Image,
-  Alert,
   ActivityIndicator,
   Platform,
   useWindowDimensions,
@@ -16,7 +15,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
-import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
@@ -27,6 +25,8 @@ import { useAppColors } from '@/hooks/useAppColors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getResponsiveValues } from '@/helpers/responsive';
 import { useCategoryTranslation, useCategoryDescriptionTranslation } from '@/helpers/categoryTranslations';
+import { useSnackbar } from '@/contexts/SnackbarContext';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 // --- images mapping (local assets) ---
 const IMAGES: Record<string, any> = {
@@ -154,6 +154,8 @@ export default function InterestsScreen() {
   const [interests, setInterests] = useState<ServerInterest[]>([]);
   const [imageLoadFailed, setImageLoadFailed] = useState<Record<string, boolean>>({});
   const [assetsReady, setAssetsReady] = useState(false);
+  const [showErrorDialog, setShowErrorDialog] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const router = useRouter();
   const { t } = useTranslation();
@@ -163,6 +165,7 @@ export default function InterestsScreen() {
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
   const translateDescription = useCategoryDescriptionTranslation();
+  const { showSuccess, showError } = useSnackbar();
   
   const titleFontSize = responsive.fontSizes.titleLarge;
   const subtitleFontSize = responsive.fontSizes.subtitle;
@@ -209,23 +212,8 @@ export default function InterestsScreen() {
       setInterests([]);
       // Show error message to user
       const errorMsg = err?.message || err?.error || t('auth.interests.loadError');
-      Alert.alert(
-        t('common.error'),
-        errorMsg,
-        [
-          {
-            text: t('common.retry'),
-            onPress: () => {
-              // Retry loading
-              loadInterests();
-            },
-          },
-          {
-            text: t('common.ok'),
-            style: 'cancel',
-          },
-        ]
-      );
+      setErrorMessage(errorMsg);
+      setShowErrorDialog(true);
     } finally {
       setFetching(false);
       // Ensure assetsReady is set even if there's an error
@@ -343,14 +331,14 @@ export default function InterestsScreen() {
             await tokenStorage.setToken(token);
           } else {
             console.warn('No token found in register response', registerData);
-            Alert.alert(t('auth.register.registerFailed'), t('auth.register.registerFailed'));
+            showError(t('auth.register.registerFailed'));
             return;
           }
         } else {
           // If no saved data, try to get existing token
           token = await getTokenWithRetries(6, 250);
           if (!token) {
-            Alert.alert(t('auth.interests.attention'), t('auth.interests.noSession'));
+            showError(t('auth.interests.noSession'));
             router.replace("/login");
             return;
           }
@@ -358,7 +346,7 @@ export default function InterestsScreen() {
       } catch (registerErr: any) {
         console.error('Register error:', registerErr);
         const msg = (registerErr && registerErr.message) || (registerErr && registerErr.error) || JSON.stringify(registerErr) || t('auth.register.registerFailed');
-        Alert.alert(t('auth.register.registerFailed'), msg);
+        showError(msg);
         return;
       }
 
@@ -404,16 +392,16 @@ export default function InterestsScreen() {
         } catch (error) {
           console.warn('Error clearing form data:', error);
         }
-        Alert.alert(t('auth.interests.saved'), t('auth.interests.savedSuccess'));
+        showSuccess(t('auth.interests.savedSuccess'));
         router.replace("/home");
       } else {
         console.warn("Save interests unexpected response:", postRes);
-        Alert.alert(t('auth.interests.error'), t('auth.interests.saveError'));
+        showError(t('auth.interests.saveError'));
       }
     } catch (err: any) {
       console.error("Error saving interests:", err);
       const msg = (err && err.message) || JSON.stringify(err) || t('auth.interests.saveErrorGeneric');
-      Alert.alert(t('auth.interests.error'), msg);
+      showError(msg);
     } finally {
       setLoading(false);
     }
@@ -495,6 +483,25 @@ export default function InterestsScreen() {
             <ActivityIndicator size="large" />
           </View>
         )}
+
+        <ConfirmDialog
+          visible={showErrorDialog}
+          title={t('common.error')}
+          message={errorMessage}
+          confirmText={t('common.ok')}
+          cancelText={t('common.cancel')}
+          actionText={t('common.retry')}
+          onAction={() => {
+            setShowErrorDialog(false);
+            loadInterests();
+          }}
+          onConfirm={() => {
+            setShowErrorDialog(false);
+          }}
+          onCancel={() => {
+            setShowErrorDialog(false);
+          }}
+        />
       </View>
     </SafeAreaView>
   );

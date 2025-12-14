@@ -8,6 +8,7 @@ import NationalityField from '@/components/forms/NationalityField';
 import flightsApi from '@/services/flightsApi';
 import worldCountries from 'world-countries';
 import { ShadowColors } from '@/constants/Colors';
+import { useSnackbar } from '@/contexts/SnackbarContext';
 
 interface AirportOption {
   value: string; // IATA code
@@ -110,6 +111,7 @@ export default function FlightSearchCard({
   const { t } = useTranslation();
   const AppColors = useAppColors();
   const styles = getStyles(AppColors);
+  const { showSuccess, showError } = useSnackbar();
 
   const [originCountry, setOriginCountry] = useState<string | null>(initialOriginCountry || null);
   const [originCity, setOriginCity] = useState<string | null>(initialOriginCity || null);
@@ -409,11 +411,11 @@ export default function FlightSearchCard({
           }
         }
       }
-      Alert.alert(t('common.success'), t('addTrip.flightSaved') || 'Vuelo guardado');
+      showSuccess(t('addTrip.flightSaved'));
       onFlightSelected?.(selectedFlight);
     } catch (err: any) {
       console.error('Error saving flight:', err);
-      Alert.alert(t('common.error'), err?.message || t('addTrip.saveError'));
+      showError(err?.message || t('addTrip.saveError'));
       throw err; // Re-throw so parent can handle it
     }
   }, [selectedFlight, tripId, startDate, onSave, onFlightSelected, t]);
