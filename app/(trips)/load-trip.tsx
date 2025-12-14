@@ -99,6 +99,23 @@ export default function LoadTrip() {
           }
         }
 
+        if (tripId) {
+          try {
+            console.log('Generating itinerary for trip:', tripId);
+            const itineraryBody = {
+              save: true,
+              pace: 'Moderado', // Default pace, can be made configurable later
+              places: [],
+              llm_notes: parsed.notes || '',
+            };
+            await apiPost(`/trips/${tripId}/itinerary`, itineraryBody);
+            console.log('Itinerary generated successfully');
+          } catch (itineraryErr: any) {
+            //console.error('Error generating itinerary:', itineraryErr);
+            // Continue even if itinerary generation fails (non-blocking)
+          }
+        }
+
         // En caso de éxito navegar a trips (reemplaza la pantalla de carga)
         router.replace('/trips');
       } catch (err) {

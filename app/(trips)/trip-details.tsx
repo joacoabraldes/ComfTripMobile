@@ -21,9 +21,11 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import { extractCoords } from '@/helpers/locationUtils';
 
 type Params = {
   id?: string;
@@ -350,6 +352,7 @@ export default function TripDetails() {
 
   const [showShareModal, setShowShareModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const mapRef = useRef<MapView | null>(null);
 
   const menuOptions = [
     {
@@ -453,6 +456,65 @@ export default function TripDetails() {
             <Text style={styles.addFlightButtonText}>{t('addTrip.flights')}</Text>
           </TouchableOpacity>
         )}
+
+        {/* Map with all locations */}
+        {(() => {
+          const coords = activities
+            .map(a => extractCoords(a.place))
+            .filter((c): c is {lat:number; lng:number} => !!c);
+
+          if (coords.length > 0) {
+            const first = coords[0];
+            const initialRegion = {
+              latitude: first.lat,
+              longitude: first.lng,
+              latitudeDelta: 0.06,
+              longitudeDelta: 0.06,
+            };
+
+            const fitAll = () => {
+              if (!mapRef.current || coords.length < 2) return;
+              mapRef.current.fitToCoordinates(
+                coords.map(c => ({ latitude: c.lat, longitude: c.lng })),
+                {
+                  edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+                  animated: true,
+                }
+              );
+            };
+
+            return (
+              <View style={{ marginTop: 12, marginBottom: 20, borderRadius: 12, overflow: 'hidden', width: '100%' }}>
+                <Text style={styles.sectionTitle}>{t('tripDetails.map') || 'Mapa'}</Text>
+                <View style={{ height: 8 }} />
+                <MapView
+                  ref={mapRef}
+                  provider={PROVIDER_GOOGLE}
+                  style={{ width: '100%', height: 240 }}
+                  initialRegion={initialRegion}
+                  onMapReady={fitAll}
+                  onLayout={fitAll}
+                >
+                  {coords.map((c, idx) => {
+                    const activity = activities.find(a => {
+                      const coords = extractCoords(a.place);
+                      return coords && coords.lat === c.lat && coords.lng === c.lng;
+                    });
+                    return (
+                      <Marker
+                        key={`${c.lat}-${c.lng}-${idx}`}
+                        coordinate={{ latitude: c.lat, longitude: c.lng }}
+                        title={activity?.title ?? activity?.place?.location?.titulo ?? `Lugar ${idx + 1}`}
+                        description={activity?.dateStr || ''}
+                      />
+                    );
+                  })}
+                </MapView>
+              </View>
+            );
+          }
+          return null;
+        })()}
 
         <Text style={styles.sectionTitle}>{t('tripDetails.itinerary')}</Text>
 

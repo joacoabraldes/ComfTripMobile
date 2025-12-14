@@ -82,10 +82,58 @@ export default function AddTrip() {
 
   const bookedDates = getBookedDates();
 
+  // Get the maximum available end date when a start date is selected
+  const getMaxAvailableEndDate = useCallback((start: Date): Date | null => {
+    if (existingTrips.length === 0) return null;
+    
+    // Find the earliest trip that starts after the selected start date
+    let earliestNextTripStart: Date | null = null;
+    
+    existingTrips.forEach((trip) => {
+      if (trip.start_date) {
+        const tripStart = new Date(trip.start_date);
+        tripStart.setHours(0, 0, 0, 0);
+        
+        if (tripStart > start) {
+          if (!earliestNextTripStart || tripStart < earliestNextTripStart) {
+            earliestNextTripStart = tripStart;
+          }
+        }
+      }
+    });
+    
+    // If there's a next trip, return the day before it
+    if (earliestNextTripStart) {
+      const maxEnd = new Date(earliestNextTripStart);
+      maxEnd.setDate(maxEnd.getDate() - 1);
+      return maxEnd;
+    }
+    
+    return null;
+  }, [existingTrips]);
+
   const isDateBooked = (day: number) => {
     const currentDate = new Date(currentYear, currentMonth, day);
     const isoDate = currentDate.toISOString().split('T')[0];
     return bookedDates.has(isoDate);
+  };
+
+  // Check if a date is disabled due to startDate selection
+  const isDateDisabledByStartDate = (day: number): boolean => {
+    if (!startDate || endDate) return false;
+    
+    const currentDate = new Date(currentYear, currentMonth, day);
+    currentDate.setHours(0, 0, 0, 0);
+    
+    // If the date is before startDate, it's not disabled by this logic
+    if (currentDate < startDate) return false;
+    
+    const maxEndDate = getMaxAvailableEndDate(startDate);
+    if (maxEndDate && currentDate > maxEndDate) {
+      return true;
+    }
+    
+    return false;
   };
 
   const { days, firstDayOfMonth } = generateCalendarDays();
@@ -208,6 +256,87 @@ export default function AddTrip() {
 
   const formatISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
+  // Format location name to show only city/province and country
+  const formatLocationName = (item: any): string => {
+    const addr = item.address || {};
+    const parts: string[] = [];
+    
+    // Priority: city > town > village > municipality
+    const city = addr.city || addr.town || addr.village || addr.municipality;
+    // Province/state
+    const province = addr.state || addr.region || addr.province;
+    // Country
+    const country = addr.country;
+    
+    // Add city if available
+    if (city) {
+      parts.push(city);
+    }
+    
+    // Add province if available and different from city
+    if (province && province !== city) {
+      parts.push(province);
+    }
+    
+    // Add country if available
+    if (country) {
+      parts.push(country);
+    }
+    
+    // If we have at least country, return formatted string
+    if (parts.length > 0) {
+      return parts.join(', ');
+    }
+    
+    // Fallback: use display_name but try to extract city and country
+    const displayParts = item.display_name?.split(',') || [];
+    if (displayParts.length >= 2) {
+      // Take first part (usually city) and last part (usually country)
+      return `${displayParts[0].trim()}, ${displayParts[displayParts.length - 1].trim()}`;
+    }
+    
+    return item.display_name || '';
+  };
+
+  // Filter suggestions to prioritize cities, provinces, and countries
+  const filterSuggestions = (suggestions: any[]): any[] => {
+    // Prioritize by type: city, town, village, municipality, state, country
+    const priorityTypes = ['city', 'town', 'village', 'municipality', 'administrative', 'state', 'country'];
+    
+    return suggestions
+      .filter(item => {
+        const type = item.type || item.class || '';
+        const addr = item.address || {};
+        
+        // Include if it's a city, town, village, municipality, state, or country
+        if (priorityTypes.some(pt => type.toLowerCase().includes(pt))) {
+          return true;
+        }
+        
+        // Include if it has city, town, village, or country in address
+        if (addr.city || addr.town || addr.village || addr.country) {
+          return true;
+        }
+        
+        return false;
+      })
+      .sort((a, b) => {
+        const typeA = (a.type || a.class || '').toLowerCase();
+        const typeB = (b.type || b.class || '').toLowerCase();
+        
+        const priorityA = priorityTypes.findIndex(pt => typeA.includes(pt));
+        const priorityB = priorityTypes.findIndex(pt => typeB.includes(pt));
+        
+        if (priorityA !== -1 && priorityB !== -1) {
+          return priorityA - priorityB;
+        }
+        if (priorityA !== -1) return -1;
+        if (priorityB !== -1) return 1;
+        return 0;
+      })
+      .slice(0, 5); // Limit to 5 results
+  };
+
   // ==== Nominatim: funciones ====
   const fetchSuggestions = useCallback(async (text: string) => {
     if (!text || text.length < 3) {
@@ -218,7 +347,7 @@ export default function AddTrip() {
     setLoadingSuggestions(true);
     try {
       const url =
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&accept-language=es`;
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10&accept-language=es`;
       const res = await fetch(url, {
         headers: {
           'Referer': 'ConfTrip://', 
@@ -226,7 +355,8 @@ export default function AddTrip() {
       });
       if (!res.ok) throw new Error(t('addTrip.searchError'));
       const data = await res.json();
-      setSuggestions(Array.isArray(data) ? data : []);
+      const filtered = filterSuggestions(Array.isArray(data) ? data : []);
+      setSuggestions(filtered);
       setOpenSuggestions(true);
     } catch (e) {
       console.warn('Nominatim error', e);
@@ -279,15 +409,16 @@ export default function AddTrip() {
   }, []);
 
   const handleSelectSuggestion = (item: any) => {
-    setDestination(item.display_name);
-    setQuery(item.display_name);
+    const formattedName = formatLocationName(item);
+    setDestination(formattedName);
+    setQuery(formattedName);
     setSuggestions([]);
     setOpenSuggestions(false);
-    setSelectedLocation({ lat: item.lat, lon: item.lon, display_name: item.display_name, address: item.address });
+    setSelectedLocation({ lat: item.lat, lon: item.lon, display_name: formattedName, address: item.address });
     
     if (item.address) {
       setCountry(item.address.country || null);
-      const inferredCity = item.address.city || item.address.town || item.address.village || item.address.county || item.address.state || null;
+      const inferredCity = item.address.city || item.address.town || item.address.village || item.address.municipality || null;
       setCity(inferredCity);
     }
   };
@@ -397,7 +528,7 @@ export default function AddTrip() {
                 style={styles.item}
                 onPress={() => handleSelectSuggestion(item)}
               >
-                <Text>{item.display_name}</Text>
+                <Text>{formatLocationName(item)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -464,6 +595,8 @@ export default function AddTrip() {
           {days.map((day) => {
             const past = isPastDate(day.date);
             const booked = isDateBooked(day.date);
+            const disabledByStartDate = isDateDisabledByStartDate(day.date);
+            const isDisabled = past || booked || disabledByStartDate;
 
             return (
                 <TouchableOpacity
@@ -472,8 +605,9 @@ export default function AddTrip() {
                       styles.day,
                       isDateInRange(day.date) && styles.selectedDay,
                       booked && styles.bookedDay,
+                      disabledByStartDate && styles.disabledDay,
                     ]}
-                    disabled={past || booked}
+                    disabled={isDisabled}
                     onPress={() => handleDateSelect(day.date)}
                 >
                   <Text
@@ -481,6 +615,7 @@ export default function AddTrip() {
                         styles.dayText,
                         past && styles.pastDayText,
                         booked && styles.bookedDayText,
+                        disabledByStartDate && styles.disabledDayText,
                         isDateInRange(day.date) && styles.selectedDayText
                       ]}
                   >
@@ -649,6 +784,13 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
   },
   bookedDayText: {
     color: AppColors.textSecondary,
+  },
+  disabledDay: {
+    backgroundColor: AppColors.backgroundTertiary,
+    opacity: 0.4,
+  },
+  disabledDayText: {
+    color: AppColors.textDisabled,
   },
   dateRange: {
     textAlign: 'center',

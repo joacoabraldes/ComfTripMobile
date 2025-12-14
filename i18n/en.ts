@@ -82,6 +82,7 @@ const en = {
     flightDisassociated: 'Flight removed',
     disassociateFlightError: 'Error removing flight',
     refreshError: 'Error refreshing flight',
+    map: 'Map of the trip',
   },
 
   // Trip Summary
