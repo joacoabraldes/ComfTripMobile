@@ -1,13 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   TextInput,
-  Alert,
   ActivityIndicator,
-  Platform,
   ScrollView,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -210,7 +208,6 @@ export default function AddActivity() {
           setCurrentMonth(start.getMonth());
         }
       } catch (err: any) {
-        console.error('Error loading trip:', err);
         setError(err?.message || t('addActivity.loading'));
       } finally {
         if (mounted) setLoading(false);
@@ -269,7 +266,6 @@ export default function AddActivity() {
       await apiPost(`/trips/${tripId}/places`, payload);
       router.back();
     } catch (err: any) {
-      console.error('Add place error:', err);
       setError(err?.message || t('addActivity.addPlaceError'));
     } finally {
       setAdding(false);

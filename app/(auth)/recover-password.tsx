@@ -121,7 +121,6 @@ export default function RecoverPasswordScreen() {
         setTimeout(() => codeRef.current?.focus(), 100);
       }
     } catch (err: any) {
-      console.error('Send code error', err);
       const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.recoverPassword.requestFailed');
       showError(msg);
     } finally {
@@ -175,7 +174,6 @@ export default function RecoverPasswordScreen() {
         }, 2000);
       }
     } catch (err: any) {
-      console.error('Reset password error', err);
       const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.recoverPassword.resetFailed');
       showError(msg);
     } finally {

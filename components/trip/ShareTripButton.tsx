@@ -51,7 +51,6 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
       const friendsArr = Array.isArray(data) ? data : (data?.rows || []);
       setFriends(friendsArr);
     } catch (err: any) {
-      console.error('Error loading friends:', err);
       showError(t('share.errorLoadingFriends'));
       setFriends([]);
     } finally {
@@ -83,7 +82,6 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
       showSuccess(t('share.success', { friendName }));
       handleCloseModal();
     } catch (err: any) {
-      console.error('Error sharing trip:', err);
       const message = err?.message || t('share.error');
       showError(message);
     } finally {
@@ -115,7 +113,6 @@ export default function ShareTripButton({ tripId, tripDestination, showButton = 
         successCount++;
       } catch (err) {
         failCount++;
-        console.error(`Error sharing with friend ${friend.id}:`, err);
       }
     }
 

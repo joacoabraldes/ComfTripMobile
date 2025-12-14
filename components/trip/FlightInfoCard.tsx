@@ -98,7 +98,6 @@ export default function FlightInfoCard({
     try {
       await onRefresh();
     } catch (err) {
-      console.error('Error refreshing flight:', err);
       showError(t('tripDetails.refreshError'));
     } finally {
       setRefreshing(false);
@@ -120,7 +119,6 @@ export default function FlightInfoCard({
       setShowDeleteDialog(false);
       if (onRefresh) await onRefresh();
     } catch (err: any) {
-      console.error('Error removing flight:', err);
       showError(err?.message || t('tripDetails.disassociateFlightError'));
       setShowDeleteDialog(false);
     } finally {

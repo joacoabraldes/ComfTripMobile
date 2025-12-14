@@ -174,7 +174,6 @@ export default function FlightSearchCard({
 
         setOriginCityOptions(cities.slice(0, 20));
       } catch (err) {
-        console.error('Error fetching cities:', err);
         setOriginCityOptions([]);
       }
     }, 300);
@@ -192,7 +191,6 @@ export default function FlightSearchCard({
       const options = await flightsApi.getAirportOptionsForSelect('', 50, countryCode || undefined, originCity || undefined);
       setOriginAirportOptions(options);
     } catch (err) {
-      console.error('Error fetching origin airports:', err);
       setOriginAirportOptions([]);
     } finally {
       setOriginAirportLoading(false);
@@ -216,7 +214,6 @@ export default function FlightSearchCard({
       const options = await flightsApi.getAirportOptionsForSelect('', 50, undefined, cityName);
       setDestinationAirportOptions(options);
     } catch (err) {
-      console.error('Error fetching destination airports:', err);
       setDestinationAirportOptions([]);
     } finally {
       setDestinationAirportLoading(false);
@@ -271,15 +268,8 @@ export default function FlightSearchCard({
 
         setFlightOffers(flights);
       } catch (err: any) {
-        // Handle rate limiting gracefully
-        if (err?.isRateLimit || err?.status === 429) {
-          // Don't show error alert for rate limiting - just show empty results
-          // The user can still manually enter flight information
-          console.warn('AeroDataBox rate limit exceeded, showing empty results');
-        } else {
-          // Only log as error if it's not a rate limit issue
-          console.error('Error fetching flights:', err);
-        }
+        // Handle rate limiting gracefully - just show empty results
+        // The user can still manually enter flight information
         setFlightOffers([]);
       } finally {
         setOffersLoading(false);
@@ -349,7 +339,6 @@ export default function FlightSearchCard({
 
   const handleSaveFlight = useCallback(async () => {
     if (!selectedFlight || !tripId) {
-      console.warn('handleSaveFlight: missing selectedFlight or tripId', { selectedFlight, tripId });
       return;
     }
     
@@ -358,13 +347,10 @@ export default function FlightSearchCard({
       const datePart = startDate ? startDate.toISOString().split('T')[0] : '';
       const flightCode = selectedFlight.meta?.flightCode || selectedFlight.id;
       if (!flightCode) {
-        console.error('handleSaveFlight: no flightCode found', selectedFlight);
         throw new Error('Código de vuelo no encontrado');
       }
       const cleanFlightCode = String(flightCode).replace(/\s+/g, '').toUpperCase();
       const canonicalFlightId = datePart ? `${cleanFlightCode}|${datePart}` : cleanFlightCode;
-
-      console.log('handleSaveFlight: saving flight', { canonicalFlightId, tripId, hasOnSave: !!onSave });
 
       if (onSave) {
         await onSave(canonicalFlightId);
@@ -414,7 +400,6 @@ export default function FlightSearchCard({
       showSuccess(t('addTrip.flightSaved'));
       onFlightSelected?.(selectedFlight);
     } catch (err: any) {
-      console.error('Error saving flight:', err);
       showError(err?.message || t('addTrip.saveError'));
       throw err; // Re-throw so parent can handle it
     }

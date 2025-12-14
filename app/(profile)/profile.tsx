@@ -109,8 +109,6 @@ export default function ProfileScreen() {
     try {
       const token = await getTokenWithRetries(6, 250);
       if (!token) {
-        console.warn("No token found after retries — redirecting to login");
-        // small delay to allow screen transition to finish cleanly
         router.replace("/login");
         return;
       }
@@ -123,11 +121,9 @@ export default function ProfileScreen() {
         if (userId) {
           const r2 = await apiGet(`/users/${userId}`);
           resp = r2?.data ?? r2;
-        } else {
-          console.warn("No userId in token; can't fetch profile");
         }
       } catch (err2) {
-        console.warn("Fetching by id failed:", err2);
+        // Fetching by id failed - will use fallback
       }
 
       // Normalize shape { user, interests } or direct user object
@@ -156,7 +152,6 @@ export default function ProfileScreen() {
           });
       }
     } catch (err) {
-      console.warn("Profile load error:", err);
       if (mounted)
         setProfile({
           name: "Nombre de usuario",
@@ -223,7 +218,7 @@ export default function ProfileScreen() {
         // ignore
       }
     } catch (e) {
-      console.warn("Logout storage cleanup failed", e);
+      // Logout storage cleanup failed - non-critical
     } finally {
       router.replace("/login");
     }

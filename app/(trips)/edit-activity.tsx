@@ -234,7 +234,6 @@ export default function EditActivity() {
           }
         }
       } catch (err: any) {
-        console.error('Error loading trip:', err);
         setError(err?.message || t('editActivity.loadTripError'));
       } finally {
         if (mounted) setLoading(false);
@@ -308,7 +307,6 @@ export default function EditActivity() {
 
       router.back();
     } catch (err: any) {
-      console.error('Error updating place:', err);
       setError(err?.message || t('editActivity.saveError'));
     } finally {
       setSaving(false);
@@ -327,7 +325,6 @@ export default function EditActivity() {
       setShowDeleteDialog(false);
       router.back();
     } catch (err: any) {
-      console.error('Error deleting place:', err);
       showError(err?.message || t('editActivity.deleteError'));
       setShowDeleteDialog(false);
     } finally {

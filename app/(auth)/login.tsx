@@ -87,13 +87,10 @@ export default function LoginScreen() {
 
       if (token) {
         await tokenStorage.setToken(token);
-      } else {
-        console.warn('No token found in login response, storing full response for debugging', data);
       }
 
       router.replace('/home');
     } catch (err: any) {
-      console.error('Login error', err);
       const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.login.loginFailed');
       showError(msg);
     } finally {

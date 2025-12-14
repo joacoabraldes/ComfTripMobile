@@ -57,9 +57,7 @@ export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }
       }
     } catch (err: any) {
       // Review doesn't exist yet, that's okay
-      if (err?.status !== 404) {
-        console.error('Error loading review:', err);
-      }
+      // Error loading review - non-critical if 404
     } finally {
       setLoading(false);
     }
@@ -110,7 +108,6 @@ export default function ReviewForm({ tripId, existingReview, onSaved, onCancel }
       showSuccess(reviewExists ? t('review.updateSuccess') : t('review.saveSuccess'));
       onSaved?.();
     } catch (err: any) {
-      console.error('Error saving review:', err);
       const message = err?.message || t('review.saveError');
       showError(message);
     } finally {

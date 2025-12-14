@@ -96,7 +96,6 @@ export default function CommunityScreen() {
       setIncoming(incomingArr || []);
       setOutgoing(cleanedOutgoing || []);
     } catch (err: any) {
-      console.error('Error cargando comunidad:', err);
       const msg = (err && err.message) ? err.message : t('communityExtra.failedToLoad');
       showError(msg);
       setFriends([]);
@@ -130,7 +129,6 @@ export default function CommunityScreen() {
       setEmailOrId('');
       await loadAll();
     } catch (err: any) {
-      console.error('Error enviando solicitud:', err);
       const msg = (err && err.message) ? err.message : t('communityExtra.failedToSend');
       showError(msg);
     } finally {
@@ -143,7 +141,6 @@ export default function CommunityScreen() {
       await apiPost(`/friends/${reqId}/accept`);
       await loadAll();
     } catch (err) {
-      console.error('Error aceptando:', err);
       showError(t('communityExtra.failedToAccept'));
     }
   }
@@ -153,7 +150,6 @@ export default function CommunityScreen() {
       await apiPost(`/friends/${reqId}/reject`);
       await loadAll();
     } catch (err) {
-      console.error('Error rechazando:', err);
       showError(t('communityExtra.failedToReject'));
     }
   }
@@ -172,7 +168,6 @@ export default function CommunityScreen() {
       setShowDeleteDialog(false);
       setFriendToDelete(null);
     } catch (err) {
-      console.error('Error eliminando amigo:', err);
       showError(t('communityExtra.failedToRemove'));
       setShowDeleteDialog(false);
       setFriendToDelete(null);
@@ -239,7 +234,6 @@ export default function CommunityScreen() {
       }
       setAvailableTrips(ownedTrips);
     } catch (err) {
-      console.error('Error fetching trips for sharing:', err);
       showError(t('communityExtra.failedToLoadTrips'));
       setAvailableTrips([]);
     }
@@ -280,7 +274,6 @@ export default function CommunityScreen() {
         });
         successes.push(tripId);
       } catch (err: any) {
-        console.error(`Share failed for trip ${tripId}:`, err);
         const message = (err && err.message) ? err.message : (err && err.data && err.data.message) ? err.data.message : 'Error';
         failures.push({ tripId, message });
       }
