@@ -321,7 +321,7 @@ const en = {
   // Add Trip
   addTrip: {
     selectDestination: 'Select where you are traveling to',
-    searchPlaceholder: 'Search area, street or city',
+    searchPlaceholder: 'Search area or city',
     viewMap: 'View on map',
     closeMap: 'Close map',
     selectDates: 'Select the dates you will be there',

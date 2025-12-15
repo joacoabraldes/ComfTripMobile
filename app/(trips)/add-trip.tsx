@@ -105,7 +105,6 @@ export default function AddTrip() {
     // If there's a next trip, return the day before it
     if (earliestNextTripStart) {
       const maxEnd = new Date(earliestNextTripStart);
-      maxEnd.setDate(maxEnd.getDate() - 1);
       return maxEnd;
     }
     
