@@ -298,31 +298,75 @@ export default function AddTrip() {
   };
 
   // Filter suggestions to prioritize cities, provinces, and countries
-  const filterSuggestions = (suggestions: any[]): any[] => {
+  // Also validates that results match the search query
+  const filterSuggestions = (suggestions: any[], searchText: string): any[] => {
+    if (!searchText || searchText.length < 3) return [];
+    
+    const searchLower = searchText.toLowerCase().trim();
+    const searchWords = searchLower.split(/\s+/).filter(w => w.length > 1); // Ignore single character words
+    
     // Prioritize by type: city, town, village, municipality, state, country
     const priorityTypes = ['city', 'town', 'village', 'municipality', 'administrative', 'state', 'country'];
     
     return suggestions
       .filter(item => {
-        const type = item.type || item.class || '';
+        const type = (item.type || item.class || '').toLowerCase();
         const addr = item.address || {};
         
-        // Include if it's a city, town, village, municipality, state, or country
-        if (priorityTypes.some(pt => type.toLowerCase().includes(pt))) {
-          return true;
+        // Must be a city, town, village, municipality, state, or country
+        const isRelevantType = priorityTypes.some(pt => type.includes(pt));
+        if (!isRelevantType) return false;
+        
+        // Get relevant names
+        const city = addr.city || addr.town || addr.village || addr.municipality;
+        const state = addr.state || addr.region || addr.province;
+        const country = addr.country;
+        
+        // For cities/towns/villages, must have a city name
+        if (type.includes('city') || type.includes('town') || type.includes('village') || type.includes('municipality')) {
+          if (!city) return false;
         }
         
-        // Include if it has city, town, village, or country in address
-        if (addr.city || addr.town || addr.village || addr.country) {
-          return true;
+        // For states, must have state name
+        if (type.includes('administrative') || type.includes('state')) {
+          if (!state) return false;
         }
         
-        return false;
+        // For countries, must have country name
+        if (type.includes('country')) {
+          if (!country) return false;
+        }
+        
+        return true;
       })
       .sort((a, b) => {
         const typeA = (a.type || a.class || '').toLowerCase();
         const typeB = (b.type || b.class || '').toLowerCase();
         
+        // Prioritize exact matches in city/state/country name
+        const addrA = a.address || {};
+        const addrB = b.address || {};
+        const nameA = (addrA.city || addrA.town || addrA.village || addrA.state || addrA.country || '').toLowerCase();
+        const nameB = (addrB.city || addrB.town || addrB.village || addrB.state || addrB.country || '').toLowerCase();
+        
+        const exactMatchA = nameA === searchLower;
+        const exactMatchB = nameB === searchLower;
+        if (exactMatchA && !exactMatchB) return -1;
+        if (!exactMatchA && exactMatchB) return 1;
+        
+        // Check if name starts with search
+        const startsWithA = nameA.startsWith(searchLower);
+        const startsWithB = nameB.startsWith(searchLower);
+        if (startsWithA && !startsWithB) return -1;
+        if (!startsWithA && startsWithB) return 1;
+        
+        // Check if name contains search
+        const containsA = nameA.includes(searchLower);
+        const containsB = nameB.includes(searchLower);
+        if (containsA && !containsB) return -1;
+        if (!containsA && containsB) return 1;
+        
+        // Then prioritize by type
         const priorityA = priorityTypes.findIndex(pt => typeA.includes(pt));
         const priorityB = priorityTypes.findIndex(pt => typeB.includes(pt));
         
@@ -338,27 +382,48 @@ export default function AddTrip() {
 
   // ==== Nominatim: funciones ====
   const fetchSuggestions = useCallback(async (text: string) => {
-    if (!text || text.length < 3) {
+    const searchText = text.trim();
+    
+    // Require at least 3 characters to search
+    if (!searchText || searchText.length < 3) {
       setSuggestions([]);
       setOpenSuggestions(false);
+      setLoadingSuggestions(false);
       return;
     }
+    
     setLoadingSuggestions(true);
     try {
+      // Request more results to have better options after filtering
+      // Remove featuretype restriction to get more results, we'll filter client-side
       const url =
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=10&accept-language=es`;
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchText)}&format=json&addressdetails=1&limit=10&accept-language=es&dedupe=1`;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
+      
       const res = await fetch(url, {
         headers: {
-          'Referer': 'ConfTrip://', 
+          'Referer': 'ConfTrip://',
+          'User-Agent': 'ComfTripMobile/1.0',
         },
+        signal: controller.signal,
       });
+      
+      clearTimeout(timeoutId);
+      
       if (!res.ok) throw new Error(t('addTrip.searchError'));
       const data = await res.json();
-      const filtered = filterSuggestions(Array.isArray(data) ? data : []);
+      
+      // Filter results (less strict now)
+      const filtered = filterSuggestions(Array.isArray(data) ? data : [], searchText);
       setSuggestions(filtered);
-      setOpenSuggestions(true);
-    } catch (e) {
-      console.warn('Nominatim error', e);
+      setOpenSuggestions(filtered.length > 0);
+    } catch (e: any) {
+      // Ignore abort errors (timeout)
+      if (e.name !== 'AbortError') {
+        console.warn('Nominatim error', e);
+      }
       setSuggestions([]);
       setOpenSuggestions(false);
     } finally {
@@ -366,17 +431,34 @@ export default function AddTrip() {
     }
   }, []);
 
-  // Debounce: 400ms
+  // Debounce: 500ms to balance responsiveness and API calls
   const onChangeQuery = (text: string) => {
     setQuery(text);
     setSelectedLocation(null);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    if (!text || text.length < 3) {
+    
+    // Clear any pending search
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    
+    // Clear suggestions immediately if text is too short
+    const trimmedText = text.trim();
+    if (!trimmedText || trimmedText.length < 3) {
       setSuggestions([]);
       setOpenSuggestions(false);
+      setLoadingSuggestions(false);
       return;
     }
-    debounceRef.current = setTimeout(() => fetchSuggestions(text), 400);
+    
+    // Only search after user stops typing for 500ms
+    // This balances responsiveness with reducing API calls
+    debounceRef.current = setTimeout(() => {
+      if (trimmedText.length >= 3) {
+        fetchSuggestions(trimmedText);
+      }
+      debounceRef.current = null;
+    }, 500);
   };
 
   useEffect(() => {
