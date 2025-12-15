@@ -338,7 +338,7 @@ export default function TripDetails() {
       setShowDeleteDialog(false);
       router.back();
     } catch (e: any) {
-      const msg = e?.message || t('tripDetails.deleteError');
+      const msg = t('tripDetails.deleteError');
       showError(msg);
       setShowDeleteDialog(false);
     } finally {

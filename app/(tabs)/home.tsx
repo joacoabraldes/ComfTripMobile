@@ -2,11 +2,13 @@ import FloatingActionButton from '@/components/buttons/FloatingActionButton';
 import LogoSvg from '@/components/icons/LogoSvg';
 import PrimaryLayout from '@/components/layouts/PrimaryLayout';
 import TripCard from '@/components/trip/TripCard';
+import LocationDetailModal from '@/components/modals/LocationDetailModal';
 import { AdditionalColors, ShadowColors, StateColors } from '@/constants/Colors';
 import { useCommonStyles } from "@/constants/Styles";
 import { apiGet } from '@/helpers/api';
 import { formatDateOrEmpty, formatTimeOrEmpty } from '@/helpers/dateUtils';
 import { extractCoords } from '@/helpers/locationUtils';
+import { safeParseImages } from '@/helpers/imageUtils';
 import { getResponsiveValues, responsiveSize } from '@/helpers/responsive';
 import { getTripFirstPlaceImage } from '@/helpers/tripUtils';
 import { useAppColors } from '@/hooks/useAppColors';
@@ -14,7 +16,7 @@ import { useTranslation } from '@/i18n';
 import { Trip } from '@/types';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -46,6 +48,52 @@ type Place = {
     longitud?: number | string;
   };
 };
+
+type Location = {
+  id: number;
+  titulo?: string;
+  title?: string;
+  descripcion?: string;
+  description?: string;
+  imagenes?: any;
+  images?: any;
+  fk_interest?: string | number;
+  interest?: string | number;
+  relevancia?: number;
+  latitude?: number | string;
+  longitude?: number | string;
+  city?: string;
+  country?: string;
+};
+
+type Experience = {
+  id: number;
+  title: string;
+  description: string;
+  category: string | number | null;
+  image: string | null;
+  raw: Location;
+};
+
+/** Choose a small/thumbnail URL when possible */
+const pickBestImage = (imgs: string[] = []): string | null => {
+  if (!Array.isArray(imgs) || imgs.length === 0) return null;
+  const urls = imgs.filter(Boolean).map((u) => String(u));
+  // prefer Wikimedia /thumb/
+  const thumb = urls.find((u) => u.includes('/thumb/'));
+  if (thumb) return thumb;
+  // prefer things like /330px-
+  const smallPx = urls.find((u) => /\/\d+px-/.test(u));
+  if (smallPx) return smallPx;
+  // many apis: [full, thumb]
+  if (urls[1]) return urls[1];
+  return urls[0] || null;
+};
+
+function sortByRelevanceDesc(arr?: Location[]) {
+  if (!Array.isArray(arr)) return [];
+  return [...arr].sort((a, b) => (Number(b.relevancia ?? 0) - Number(a.relevancia ?? 0)));
+}
 
 function isUpcoming(start?: string, end?: string) {
   if (!start || !end) return -1;
@@ -128,6 +176,14 @@ export default function HomeScreen() {
   const [upcomingPlaces, setUpcomingPlaces] = useState<Place[]>([]);
   const [loadingUpcomingPlaces, setLoadingUpcomingPlaces] = useState<boolean>(false);
   const upcomingMapRef = useRef<MapView | null>(null);
+
+  // Popular locations (when no trips)
+  const [popularLocations, setPopularLocations] = useState<Location[]>([]);
+  const [loadingPopularLocations, setLoadingPopularLocations] = useState<boolean>(false);
+  
+  // Modal for location details
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedExperience, setSelectedExperience] = useState<Experience | null>(null);
 
   // Load trips function (reusable for refresh)
   const loadTrips = useCallback(async () => {
@@ -268,6 +324,66 @@ export default function HomeScreen() {
     })();
     return () => { mounted = false; };
   }, [upcomingTrip, ongoingTrip]);
+
+  // Load popular locations when no trips
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      // Only load if no ongoing or upcoming trip
+      if (ongoingTrip || upcomingTrip) {
+        setPopularLocations([]);
+        setLoadingPopularLocations(false);
+        return;
+      }
+      
+      setLoadingPopularLocations(true);
+      try {
+        const res = await apiGet('/locations?limit=8');
+        const data = res?.data ?? res;
+        const locations: Location[] = Array.isArray(data) ? data : [];
+        const sorted = sortByRelevanceDesc(locations);
+        
+        if (mounted) {
+          setPopularLocations(sorted);
+          setLoadingPopularLocations(false);
+        }
+      } catch (err) {
+        console.error('Error loading popular locations:', err);
+        if (mounted) {
+          setPopularLocations([]);
+          setLoadingPopularLocations(false);
+        }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [ongoingTrip, upcomingTrip]);
+
+  // Map locations to experiences
+  const mapToExperiences = useCallback((locs: Location[]): Experience[] => {
+    if (!Array.isArray(locs)) return [];
+    return locs.map((loc) => {
+      const imgs = safeParseImages(loc.imagenes ?? loc.images);
+      const thumb = pickBestImage(imgs);
+      const rawTitle = (loc.title ?? loc.titulo) || t('home.placeNumber', { number: loc.id });
+      const rawDesc = (loc.descripcion ?? loc.description ?? '') as string;
+      const truncated = rawDesc && rawDesc.length > 150 ? rawDesc.slice(0, 150) + '…' : rawDesc;
+      return {
+        id: loc.id as number,
+        title: rawTitle,
+        description: truncated,
+        category: loc.fk_interest ?? loc.interest ?? null,
+        image: thumb,
+        raw: loc,
+      };
+    });
+  }, [t]);
+
+  const popularExperiences = useMemo(() => mapToExperiences(popularLocations), [popularLocations, mapToExperiences]);
+
+  const handleExperienceClick = (experience: Experience) => {
+    setSelectedExperience(experience);
+    setShowDetailModal(true);
+  };
 
   // Render helpers
   const renderUpcomingCard = (trip: Trip) => {
@@ -556,19 +672,24 @@ export default function HomeScreen() {
               {
                 paddingHorizontal: horizontalPadding,
                 paddingBottom: contentPaddingBottom,
-                minHeight: availableContentHeight + 40,
+                minHeight: showHeaderSection ? availableContentHeight + 40 : undefined,
               },
             ]}
           >
-            <View style={[styles.centeredContent, { height: availableContentHeight }]}>
-              {showHeaderSection && (
+            {showHeaderSection ? (
+              <View style={[styles.centeredContent, { height: availableContentHeight }]}>
                 <View style={{ width: '100%', marginBottom: 6 }}>
                   {ongoingTrip ? renderOngoingSummary(ongoingTrip) : (upcomingTrip ? renderUpcomingCard(upcomingTrip) : null)}
                 </View>
-              )}
-
-              {!showHeaderSection && (
-                <>
+              </View>
+            ) : loadingPopularLocations ? (
+              <View style={[styles.loadingContainer, { minHeight: availableContentHeight }]}>
+                <ActivityIndicator size="large" color={AppColors.primary} />
+                <Text style={CommonStyles.loadingText}>{t('common.loading')}</Text>
+              </View>
+            ) : popularExperiences.length > 0 ? (
+              <>
+                <View style={styles.noTripsHeader}>
                   <LogoSvg width={150} height={150} />
                   <View style={styles.copyWrapper}>
                     <Text
@@ -584,9 +705,64 @@ export default function HomeScreen() {
                       {t('home.planNextTrip')}
                     </Text>
                   </View>
-                </>
-              )}
-            </View>
+                </View>
+                <View style={styles.popularSection}>
+                  <Text style={styles.popularSectionTitle}>{t('home.recommendedPlaces')}</Text>
+                  <View style={styles.popularList}>
+                    {popularExperiences.map((exp) => (
+                      <TouchableOpacity
+                        key={exp.id}
+                        style={styles.popularCard}
+                        onPress={() => handleExperienceClick(exp)}
+                        activeOpacity={0.85}
+                      >
+                        <View style={styles.popularCardImageContainer}>
+                          {exp.image ? (
+                            <Image
+                              source={{ uri: exp.image }}
+                              style={styles.popularCardImage}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <View style={styles.popularCardNoImage}>
+                              <Text style={styles.popularCardNoImageText}>{t('explore.noImage')}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <View style={styles.popularCardContent}>
+                          <Text style={styles.popularCardTitle} numberOfLines={2}>
+                            {exp.title}
+                          </Text>
+                          {exp.description ? (
+                            <Text style={styles.popularCardDescription} numberOfLines={2}>
+                              {exp.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={[styles.centeredContent, { height: availableContentHeight }]}>
+                <LogoSvg width={150} height={150} />
+                <View style={styles.copyWrapper}>
+                  <Text
+                    style={[
+                      styles.copyText,
+                      {
+                        fontSize: copyFontSize,
+                        lineHeight: Math.round(copyFontSize * 1.15),
+                      },
+                    ]}
+                  >
+                    {t('home.noActiveTrips')}{"\n"}
+                    {t('home.planNextTrip')}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
         </View>
       </ScrollView>
@@ -596,6 +772,13 @@ export default function HomeScreen() {
         accessibilityLabel={t('home.newTrip')}
         bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
         right={20}
+      />
+
+      {/* Location detail modal */}
+      <LocationDetailModal
+        visible={showDetailModal}
+        experience={selectedExperience}
+        onClose={() => setShowDetailModal(false)}
       />
     </PrimaryLayout>
   );
@@ -761,5 +944,84 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     fontSize: 12,
     color: AdditionalColors.lightGray,
     lineHeight: 16,
+  },
+
+  // Popular locations styles
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  noTripsHeader: {
+    width: '100%',
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  popularSection: {
+    width: '100%',
+    paddingTop: 20,
+    paddingBottom: 20,
+  },
+  popularSectionTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: AppColors.text,
+    marginBottom: 16,
+  },
+  popularList: {
+    width: '100%',
+    gap: 12,
+    marginBottom: 20,
+  },
+  popularCard: {
+    width: '100%',
+    backgroundColor: AppColors.backgroundCard,
+    borderRadius: 12,
+    overflow: 'hidden',
+    shadowColor: ShadowColors.black,
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    flexDirection: 'row',
+  },
+  popularCardImageContainer: {
+    width: 120,
+    height: 120,
+    backgroundColor: AppColors.borderLight,
+  },
+  popularCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  popularCardNoImage: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: AppColors.borderLight,
+  },
+  popularCardNoImageText: {
+    fontSize: 12,
+    color: AppColors.textTertiary,
+    textAlign: 'center',
+  },
+  popularCardContent: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
+  },
+  popularCardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: AppColors.text,
+    marginBottom: 6,
+  },
+  popularCardDescription: {
+    fontSize: 13,
+    color: AppColors.textSecondary,
+    lineHeight: 18,
   },
 });
