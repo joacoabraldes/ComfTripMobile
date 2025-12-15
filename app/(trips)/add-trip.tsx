@@ -1,12 +1,12 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, FlatList, ActivityIndicator, Platform, ScrollView } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import MapView, { Marker } from 'react-native-maps';
 import SecondaryLayout from '@/components/layouts/SecondaryLayout';
-import { useTranslation } from '@/i18n';
-import { useAppColors } from '@/hooks/useAppColors';
 import FlightSearchCard from '@/components/trip/FlightSearchCard';
 import { useSnackbar } from '@/contexts/SnackbarContext';
+import { useAppColors } from '@/hooks/useAppColors';
+import { useTranslation } from '@/i18n';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 interface CalendarDay {
   date: number;
   selected: boolean;
@@ -22,14 +22,56 @@ export default function AddTrip() {
   const [country, setCountry] = useState<string | null>(null);
   const [city, setCity] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
-  // búsqueda con Nominatim
-  const [query, setQuery] = useState(params.destination || "");
-  const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
-  const [openSuggestions, setOpenSuggestions] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{lat:string, lon:string, display_name:string, address?:any} | null>(null);
-  const debounceRef = useRef<any>(null);
+  // Opciones de ciudades predefinidas (igual que AddTrip.js)
+  const cityOptions = [
+    {
+      value: "barcelona_spain",
+      label: "Barcelona, España",
+      city: "Barcelona",
+      country: "Spain",
+      countryCode: "ES",
+      lat: "41.3851",
+      lon: "2.1734",
+    },
+    {
+      value: "buenosaires_argentina",
+      label: "Buenos Aires, Argentina",
+      city: "Buenos Aires",
+      country: "Argentina",
+      countryCode: "AR",
+      lat: "-34.6037",
+      lon: "-58.3816",
+    },
+    {
+      value: "rome_italy",
+      label: "Roma, Italia",
+      city: "Rome",
+      country: "Italy",
+      countryCode: "IT",
+      lat: "41.9028",
+      lon: "12.4964",
+    },
+    {
+      value: "berlin_germany",
+      label: "Berlín, Alemania",
+      city: "Berlin",
+      country: "Germany",
+      countryCode: "DE",
+      lat: "52.5200",
+      lon: "13.4050",
+    },
+    {
+      value: "paris_france",
+      label: "París, Francia",
+      city: "Paris",
+      country: "France",
+      countryCode: "FR",
+      lat: "48.8566",
+      lon: "2.3522",
+    },
+  ];
 
   const today = new Date();
   const [startDate, setStartDate] = useState<Date | null>(null);
@@ -255,218 +297,6 @@ export default function AddTrip() {
 
   const formatISODate = (d: Date) => d.toISOString().slice(0, 10); // YYYY-MM-DD
 
-  // Format location name to show only city/province and country
-  const formatLocationName = (item: any): string => {
-    const addr = item.address || {};
-    const parts: string[] = [];
-    
-    // Priority: city > town > village > municipality
-    const city = addr.city || addr.town || addr.village || addr.municipality;
-    // Province/state
-    const province = addr.state || addr.region || addr.province;
-    // Country
-    const country = addr.country;
-    
-    // Add city if available
-    if (city) {
-      parts.push(city);
-    }
-    
-    // Add province if available and different from city
-    if (province && province !== city) {
-      parts.push(province);
-    }
-    
-    // Add country if available
-    if (country) {
-      parts.push(country);
-    }
-    
-    // If we have at least country, return formatted string
-    if (parts.length > 0) {
-      return parts.join(', ');
-    }
-    
-    // Fallback: use display_name but try to extract city and country
-    const displayParts = item.display_name?.split(',') || [];
-    if (displayParts.length >= 2) {
-      // Take first part (usually city) and last part (usually country)
-      return `${displayParts[0].trim()}, ${displayParts[displayParts.length - 1].trim()}`;
-    }
-    
-    return item.display_name || '';
-  };
-
-  // Filter suggestions to prioritize cities, provinces, and countries
-  // Also validates that results match the search query
-  const filterSuggestions = (suggestions: any[], searchText: string): any[] => {
-    if (!searchText || searchText.length < 3) return [];
-    
-    const searchLower = searchText.toLowerCase().trim();
-    const searchWords = searchLower.split(/\s+/).filter(w => w.length > 1); // Ignore single character words
-    
-    // Prioritize by type: city, town, village, municipality, state, country
-    const priorityTypes = ['city', 'town', 'village', 'municipality', 'administrative', 'state', 'country'];
-    
-    return suggestions
-      .filter(item => {
-        const type = (item.type || item.class || '').toLowerCase();
-        const addr = item.address || {};
-        
-        // Must be a city, town, village, municipality, state, or country
-        const isRelevantType = priorityTypes.some(pt => type.includes(pt));
-        if (!isRelevantType) return false;
-        
-        // Get relevant names
-        const city = addr.city || addr.town || addr.village || addr.municipality;
-        const state = addr.state || addr.region || addr.province;
-        const country = addr.country;
-        
-        // For cities/towns/villages, must have a city name
-        if (type.includes('city') || type.includes('town') || type.includes('village') || type.includes('municipality')) {
-          if (!city) return false;
-        }
-        
-        // For states, must have state name
-        if (type.includes('administrative') || type.includes('state')) {
-          if (!state) return false;
-        }
-        
-        // For countries, must have country name
-        if (type.includes('country')) {
-          if (!country) return false;
-        }
-        
-        return true;
-      })
-      .sort((a, b) => {
-        const typeA = (a.type || a.class || '').toLowerCase();
-        const typeB = (b.type || b.class || '').toLowerCase();
-        
-        // Prioritize exact matches in city/state/country name
-        const addrA = a.address || {};
-        const addrB = b.address || {};
-        const nameA = (addrA.city || addrA.town || addrA.village || addrA.state || addrA.country || '').toLowerCase();
-        const nameB = (addrB.city || addrB.town || addrB.village || addrB.state || addrB.country || '').toLowerCase();
-        
-        const exactMatchA = nameA === searchLower;
-        const exactMatchB = nameB === searchLower;
-        if (exactMatchA && !exactMatchB) return -1;
-        if (!exactMatchA && exactMatchB) return 1;
-        
-        // Check if name starts with search
-        const startsWithA = nameA.startsWith(searchLower);
-        const startsWithB = nameB.startsWith(searchLower);
-        if (startsWithA && !startsWithB) return -1;
-        if (!startsWithA && startsWithB) return 1;
-        
-        // Check if name contains search
-        const containsA = nameA.includes(searchLower);
-        const containsB = nameB.includes(searchLower);
-        if (containsA && !containsB) return -1;
-        if (!containsA && containsB) return 1;
-        
-        // Then prioritize by type
-        const priorityA = priorityTypes.findIndex(pt => typeA.includes(pt));
-        const priorityB = priorityTypes.findIndex(pt => typeB.includes(pt));
-        
-        if (priorityA !== -1 && priorityB !== -1) {
-          return priorityA - priorityB;
-        }
-        if (priorityA !== -1) return -1;
-        if (priorityB !== -1) return 1;
-        return 0;
-      })
-      .slice(0, 5); // Limit to 5 results
-  };
-
-  // ==== Nominatim: funciones ====
-  const fetchSuggestions = useCallback(async (text: string) => {
-    const searchText = text.trim();
-    
-    // Require at least 3 characters to search
-    if (!searchText || searchText.length < 3) {
-      setSuggestions([]);
-      setOpenSuggestions(false);
-      setLoadingSuggestions(false);
-      return;
-    }
-    
-    setLoadingSuggestions(true);
-    try {
-      // Request more results to have better options after filtering
-      // Remove featuretype restriction to get more results, we'll filter client-side
-      const url =
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchText)}&format=json&addressdetails=1&limit=10&accept-language=es&dedupe=1`;
-      
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
-      
-      const res = await fetch(url, {
-        headers: {
-          'Referer': 'ConfTrip://',
-          'User-Agent': 'ComfTripMobile/1.0',
-        },
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!res.ok) throw new Error(t('addTrip.searchError'));
-      const data = await res.json();
-      
-      // Filter results (less strict now)
-      const filtered = filterSuggestions(Array.isArray(data) ? data : [], searchText);
-      setSuggestions(filtered);
-      setOpenSuggestions(filtered.length > 0);
-    } catch (e: any) {
-      // Ignore abort errors (timeout)
-      if (e.name !== 'AbortError') {
-        console.warn('Nominatim error', e);
-      }
-      setSuggestions([]);
-      setOpenSuggestions(false);
-    } finally {
-      setLoadingSuggestions(false);
-    }
-  }, []);
-
-  // Debounce: 500ms to balance responsiveness and API calls
-  const onChangeQuery = (text: string) => {
-    setQuery(text);
-    setSelectedLocation(null);
-    
-    // Clear any pending search
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    
-    // Clear suggestions immediately if text is too short
-    const trimmedText = text.trim();
-    if (!trimmedText || trimmedText.length < 3) {
-      setSuggestions([]);
-      setOpenSuggestions(false);
-      setLoadingSuggestions(false);
-      return;
-    }
-    
-    // Only search after user stops typing for 500ms
-    // This balances responsiveness with reducing API calls
-    debounceRef.current = setTimeout(() => {
-      if (trimmedText.length >= 3) {
-        fetchSuggestions(trimmedText);
-      }
-      debounceRef.current = null;
-    }, 500);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
-
   // Load existing trips to check for booked dates
   useEffect(() => {
     let mounted = true;
@@ -489,23 +319,16 @@ export default function AddTrip() {
     };
   }, []);
 
-  const handleSelectSuggestion = (item: any) => {
-    const formattedName = formatLocationName(item);
-    setDestination(formattedName);
-    setQuery(formattedName);
-    setSuggestions([]);
-    setOpenSuggestions(false);
-    setSelectedLocation({ lat: item.lat, lon: item.lon, display_name: formattedName, address: item.address });
-    
-    if (item.address) {
-      setCountry(item.address.country || null);
-      const inferredCity = item.address.city || item.address.town || item.address.village || item.address.municipality || null;
-      setCity(inferredCity);
-    }
+  // Handle city selection from dropdown
+  const handleSelectCity = (option: typeof cityOptions[0]) => {
+    setDestination(option.label);
+    setCity(option.city);
+    setCountry(option.country);
+    setShowDropdown(false);
   };
 
   const openMap = () => {
-    if (!selectedLocation) {
+    if (!destination) {
       showError(t('addTrip.locationNotSelectedMessage'));
       return;
     }
@@ -534,9 +357,11 @@ export default function AddTrip() {
         notes: null,
       };
 
-      if (selectedLocation) {
-        payload.lat = selectedLocation.lat;
-        payload.lon = selectedLocation.lon;
+      // Get coordinates from the selected city option
+      const selectedOption = cityOptions.find(opt => opt.label === destination);
+      if (selectedOption) {
+        payload.lat = selectedOption.lat;
+        payload.lon = selectedOption.lon;
       }
 
       // Include selected flight if available
@@ -588,58 +413,72 @@ export default function AddTrip() {
     <SecondaryLayout title={t('addTrip.selectDestination')}>
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
 
-      {/* BARRA DE BÚSQUEDA (Nominatim) */}
-      <View style={[styles.destinationInput, { marginBottom: openSuggestions ? 0 : 20 }]}>
-        <TextInput
-          style={[{ flex:1, borderWidth:0, outline:"none", color: destination ? AppColors.text : AppColors.textMuted}]}
-          placeholder={t('addTrip.searchPlaceholder')}
-          value={query}
-          onChangeText={onChangeQuery}
-          onFocus={() => { if (suggestions.length > 0) setOpenSuggestions(true); }}
-        />
-        {loadingSuggestions ? <ActivityIndicator /> : null}
+      {/* DROPDOWN DE CIUDADES PREDEFINIDAS */}
+      <View style={styles.dropdownContainer}>
+        <TouchableOpacity 
+          style={styles.destinationInput}
+          onPress={() => setShowDropdown(!showDropdown)}
+        >
+          <Text style={[
+            styles.destinationText,
+            !destination && styles.placeholderText
+          ]}>
+            {destination || t('addTrip.searchPlaceholder')}
+          </Text>
+          <Text style={styles.dropdownArrow}>{showDropdown ? '▲' : '▼'}</Text>
+        </TouchableOpacity>
+
+        {showDropdown && (
+          <View style={styles.dropdown}>
+            <ScrollView nestedScrollEnabled={true}>
+              {cityOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.item,
+                    destination === option.label && styles.itemSelected
+                  ]}
+                  onPress={() => handleSelectCity(option)}
+                >
+                  <Text style={[
+                    styles.itemText,
+                    destination === option.label && styles.itemSelectedText
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
-      {openSuggestions && suggestions.length > 0 && (
-        <View style={styles.dropdown}>
-          <ScrollView nestedScrollEnabled keyboardShouldPersistTaps="handled">
-            {suggestions.map((item) => (
-              <TouchableOpacity
-                key={item.place_id?.toString() || item.osm_id?.toString() || item.lat + item.lon}
-                style={styles.item}
-                onPress={() => handleSelectSuggestion(item)}
-              >
-                <Text>{formatLocationName(item)}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {!showMap && selectedLocation && (
+      {!showMap && destination && (
         <TouchableOpacity style={styles.mapButton} onPress={openMap}>
           <Text style={styles.mapButtonText}>{t('addTrip.viewMap')}</Text>
         </TouchableOpacity>
       )}
 
-      {showMap && selectedLocation && (
+      {showMap && destination && (
         <View style={styles.mapContainer}>
           <MapView
             style={styles.map}
             initialRegion={{
-              latitude: parseFloat(selectedLocation.lat),
-              longitude: parseFloat(selectedLocation.lon),
+              latitude: parseFloat(cityOptions.find(opt => opt.label === destination)?.lat || '0'),
+              longitude: parseFloat(cityOptions.find(opt => opt.label === destination)?.lon || '0'),
               latitudeDelta: 0.05,
               longitudeDelta: 0.05,
             }}
           >
-            <Marker
-              coordinate={{
-                latitude: parseFloat(selectedLocation.lat),
-                longitude: parseFloat(selectedLocation.lon),
-              }}
-              title={selectedLocation.display_name}
-            />
+            {destination && cityOptions.find(opt => opt.label === destination) && (
+              <Marker
+                coordinate={{
+                  latitude: parseFloat(cityOptions.find(opt => opt.label === destination)?.lat || '0'),
+                  longitude: parseFloat(cityOptions.find(opt => opt.label === destination)?.lon || '0'),
+                }}
+                title={destination}
+              />
+            )}
           </MapView>
           <TouchableOpacity style={styles.closeMapBtn} onPress={() => setShowMap(false)}>
             <Text style={styles.closeMapBtnText}>{t('addTrip.closeMap')}</Text>
@@ -792,10 +631,23 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     padding: 15,
     borderRadius: 25,
     backgroundColor: AppColors.backgroundTertiary,
+    marginBottom: 20,
   },
   destinationText: {
     fontSize: 16,
     color: AppColors.text,
+    flex: 1,
+  },
+  placeholderText: {
+    color: AppColors.textMuted,
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: AppColors.textSecondary,
+    marginLeft: 10,
+  },
+  dropdownContainer: {
+    zIndex: 1000,
   },
   closeIcon: {
     fontSize: 24,
@@ -890,18 +742,40 @@ const getStyles = (AppColors: ReturnType<typeof useAppColors>) => StyleSheet.cre
     fontSize: 16,
   },
 
-  dropdown: { left: 0, right: 0,
+  dropdown: { 
+    left: 0, 
+    right: 0,
     backgroundColor: AppColors.backgroundPrimary,
     borderWidth: 1,
     borderColor: AppColors.borderLight,
     borderRadius: 10,
     marginTop: 4,
     marginBottom: 20,
-    maxHeight: 200,
-    zIndex: 1000,
-    elevation: 10 },
+    maxHeight: 250,
+    zIndex: 1001,
+    elevation: 10,
+  },
 
-  item: { flexDirection: "row", alignItems: "center", padding: 10, backgroundColor: AppColors.backgroundPrimary },
-  itemHover: { backgroundColor: AppColors.backgroundHover },
-  itemSelected: { backgroundColor: AppColors.backgroundHover },
+  item: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    padding: 12, 
+    backgroundColor: AppColors.backgroundPrimary,
+    borderBottomWidth: 1,
+    borderBottomColor: AppColors.borderLight,
+  },
+  itemText: {
+    fontSize: 15,
+    color: AppColors.text,
+  },
+  itemHover: { 
+    backgroundColor: AppColors.backgroundTertiary,
+  },
+  itemSelected: { 
+    backgroundColor: AppColors.primaryLight,
+  },
+  itemSelectedText: {
+    color: AppColors.primary,
+    fontWeight: '600',
+  },
 });
