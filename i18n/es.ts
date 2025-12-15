@@ -449,6 +449,7 @@ const es = {
     planNextTrip: '¡Planea tu siguiente viaje!',
     newTrip: 'Nuevo Viaje',
     placeNumber: 'Lugar #{number}',
+    recommendedPlaces: 'Lugares Recomendados',
   },
 
   // Explore
