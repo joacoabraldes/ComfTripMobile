@@ -26,7 +26,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Place = {
@@ -63,6 +63,20 @@ function toDateSafe(date?: string, time?: string) {
   const iso = time ? `${baseDate}T${time}:00` : `${baseDate}T00:00:00`;
   const d = new Date(iso);
   return isNaN(d.getTime()) ? null : d;
+}
+
+// Devuelve la fecha local en formato YYYY-MM-DD
+function localDateISO(d: Date = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isSameDateString(dateStr?: string, refDate: Date = new Date()) {
+  if (!dateStr) return false;
+  const baseDate = (typeof dateStr === 'string' && dateStr.includes('T')) ? dateStr.split('T')[0] : dateStr;
+  return baseDate === localDateISO(refDate);
 }
 
 export default function HomeScreen() {
@@ -124,7 +138,7 @@ export default function HomeScreen() {
   const [currentActivity, setCurrentActivity] = useState<Place | null>(null);
   const [nextActivity, setNextActivity] = useState<Place | null>(null);
   
-  // Upcoming trip places (for map display)
+  // Upcoming trip places (for map display when no ongoing trip)
   const [upcomingPlaces, setUpcomingPlaces] = useState<Place[]>([]);
   const [loadingUpcomingPlaces, setLoadingUpcomingPlaces] = useState<boolean>(false);
   const upcomingMapRef = useRef<MapView | null>(null);
@@ -187,6 +201,7 @@ export default function HomeScreen() {
       if (!ongoingTrip) {
         setCurrentActivity(null);
         setNextActivity(null);
+        setOngoingPlaces([]);
         return;
       }
       try {
@@ -222,6 +237,7 @@ export default function HomeScreen() {
         if (mounted) {
           setCurrentActivity(current);
           setNextActivity(next);
+          // Store original places but keep them unsorted for possible future uses
           setOngoingPlaces(places);
         }
       } catch {
@@ -446,15 +462,22 @@ export default function HomeScreen() {
           </View>
         )}
 
-        {/* --- Mapa con todas las ubicaciones del itinerario --- */}
+        {/* --- Mapa con las ubicaciones del día actual conectadas --- */}
         {(() => {
-          const coords = (ongoingPlaces ?? [])
+          // Ordenamos las actividades por fecha + hora y filtramos solo las del día actual
+          const sortedTodayPlaces = (ongoingPlaces ?? []).slice().sort((a, b) => {
+            const aStart = toDateSafe(a.date, a.start_hour)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            const bStart = toDateSafe(b.date, b.start_hour)?.getTime() ?? Number.MAX_SAFE_INTEGER;
+            return aStart - bStart;
+          }).filter(p => isSameDateString(p.date));
+
+          const coords = sortedTodayPlaces
             .map(extractCoords)
             .filter((c): c is {lat:number; lng:number} => !!c);
 
           if (!coords.length) return null;
 
-          // Región inicial fallback (centra en el primer punto)
+          // Región inicial basada en el primer punto del día
           const first = coords[0];
           const initialRegion = {
             latitude: first.lat,
@@ -463,7 +486,7 @@ export default function HomeScreen() {
             longitudeDelta: 0.06,
           };
 
-          // Para ajustar cámara a todos los pines luego del layout
+          // Ajustar cámara a los puntos del día
           const fitAll = () => {
             if (!mapRef.current || coords.length < 2) return;
             mapRef.current.fitToCoordinates(
@@ -485,14 +508,15 @@ export default function HomeScreen() {
                 onMapReady={fitAll}
                 onLayout={fitAll}
               >
+                {/* Marcadores solo del día actual */}
                 {coords.map((c, idx) => (
                   <Marker
                     key={`${c.lat}-${c.lng}-${idx}`}
                     coordinate={{ latitude: c.lat, longitude: c.lng }}
-                    title={ongoingPlaces[idx]?.location?.titulo ?? t('home.placeNumber', { number: idx + 1 })}
+                    title={sortedTodayPlaces[idx]?.location?.titulo ?? t('home.placeNumber', { number: idx + 1 })}
                     description={
                       (() => {
-                        const p = ongoingPlaces[idx];
+                        const p = sortedTodayPlaces[idx];
                         const hour =
                           (p?.start_hour ? ` ${formatTimeOrEmpty(p.start_hour)}` : '') +
                           (p?.end_hour ? ` - ${formatTimeOrEmpty(p.end_hour)}` : '');
@@ -502,6 +526,17 @@ export default function HomeScreen() {
                     }
                   />
                 ))}
+
+                {/* Línea que conecta en orden las actividades del día */}
+                {coords.length > 1 && (
+                  <Polyline
+                    coordinates={coords.map(c => ({ latitude: c.lat, longitude: c.lng }))}
+                    strokeWidth={4}
+                    strokeColor={AppColors.primary}
+                    lineCap="round"
+                    lineJoin="round"
+                  />
+                )}
               </MapView>
             </View>
           );
