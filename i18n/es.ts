@@ -83,6 +83,11 @@ const es = {
     disassociateFlightError: 'Error al eliminar el vuelo',
     refreshError: 'Error al actualizar el vuelo',
     map: 'Mapa del viaje',
+      titleAccess: 'Cancelar Acceso',
+      confirmAccess:'¿Estas seguro que queres cancelasr el acceso al viaje?',
+      confirmAccessButton: 'Aceptar',
+      errorAccess:'No se pudo eliminar el acceso al viaje',
+      successAccess: 'Acceso al viaje cancelado correctamente.'
   },
 
   // Trip Summary
@@ -172,6 +177,18 @@ const es = {
     shareSelected: 'Compartir ({count})',
     shareSuccess: 'Compartido correctamente {count} viaje(s).\n',
     shareErrors: 'Errores en {count} viaje(s):\n',
+      availableFriends: "Amigos disponibles",
+      alreadyShared: "Ya compartido con",
+      remove: "Dejar de compartir",
+      removeTitle: "Dejar de compartir viaje",
+      removeConfirm: "¿Seguro que querés dejar de compartir este viaje con esta persona?",
+      removeError: "No se pudo dejar de compartir el viaje",
+      notSharedTrips: "Viajes disponibles para compartir",
+      alreadySharedTrips: "Viajes ya compartidos",
+      noTripsToShareAvailable: "No hay viajes disponibles para compartir",
+      trip:'Viaje',
+      errorTrip:"Error al cargar los vajes ya compartidos",
+      errorFriends: 'Error cangando amigos'
   },
 
   // Profile

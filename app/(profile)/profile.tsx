@@ -1,7 +1,7 @@
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import { Ionicons } from "@expo/vector-icons";
 import SecondaryLayout from "@/components/layouts/SecondaryLayout";
-import { apiGet, tokenStorage } from "@/helpers/api";
+import { apiGet, authStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import {
@@ -90,7 +90,7 @@ export default function ProfileScreen() {
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
     for (let i = 0; i < attempts; i++) {
       try {
-        const t = await tokenStorage.getToken();
+        const t = await authStorage.getToken();
         if (t) return t;
       } catch (e) {
         // ignore
@@ -191,13 +191,13 @@ export default function ProfileScreen() {
         if (typeof tokenStorage.removeToken === "function") {
           // @ts-ignore
           await tokenStorage.removeToken();
-        } else if (typeof tokenStorage.setToken === "function") {
-          await tokenStorage.setToken("");
+        } else if (typeof authStorage.setToken === "function") {
+          await authStorage.setToken("");
         }
       } catch (e) {
         // ignore inner
         try {
-          await tokenStorage.setToken("");
+          await authStorage.setToken("");
         } catch {}
       }
       // also try to remove AsyncStorage key directly (best-effort)

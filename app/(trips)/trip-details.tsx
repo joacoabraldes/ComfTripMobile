@@ -8,7 +8,7 @@ import ContextMenu from '@/components/ui/ContextMenu';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { StateColors } from '@/constants/Colors';
 import { mapPlacesToActivities } from '@/helpers/activityUtils';
-import { apiDelete, apiGet, apiPost, apiPut } from '@/helpers/api';
+import {apiDelete, apiGet, apiPost, apiPut, authStorage} from '@/helpers/api';
 import { formatDateRange } from '@/helpers/dateUtils';
 import { normalizeTripData } from '@/helpers/tripUtils';
 import { useAppColors } from '@/hooks/useAppColors';
@@ -21,7 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState, useRef } from 'react';
+import React, {useCallback, useEffect, useState, useRef, useMemo} from 'react';
 import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -43,6 +43,8 @@ export default function TripDetails() {
   const styles = getStyles(AppColors);
   const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useSnackbar();
+    const [userId, setUserId] = useState<number | null>(null);
+
 
   // Header uses params (as in trips.tsx navigation)
   const destination = params.destination ?? t('tripSummary.destination');
@@ -65,6 +67,11 @@ export default function TripDetails() {
     destinationAirport: any | null;
   } | null>(null);
 
+    const isOwner = useMemo(() => {
+        if (!trip || !userId) return false;
+        return Number(trip.user_id) === Number(userId);
+    }, [trip, userId]);
+
   const { flightInfo, loading: flightLoading, refreshFlight } = useFlightInfo(tripId);
 
   // Memoize the callback to avoid recreating it on every render
@@ -72,7 +79,29 @@ export default function TripDetails() {
     saveFlightFnRef.current = fn;
   }, []);
 
-  // Memoize the onSave callback to handle flight saving
+    useEffect(() => {
+        let mounted = true;
+
+        const loadUserId = async () => {
+            try {
+                const id = await authStorage.getUserId(); // ⚠️ async
+                if (mounted && id) {
+                    setUserId(Number(id));
+                }
+            } catch (e) {
+                console.warn('Failed to load userId', e);
+            }
+        };
+
+        loadUserId();
+
+        return () => {
+            mounted = false;
+        };
+    }, []);
+
+
+    // Memoize the onSave callback to handle flight saving
   const handleFlightSave = useCallback(async (flightId: string) => {
     console.log('handleFlightSave: called with', { flightId, tripId });
     // Save or update the flight
@@ -145,19 +174,19 @@ export default function TripDetails() {
           const fromIata = flightInfo.fromIata;
           const toIata = flightInfo.toIata;
           if (!fromIata || !toIata) return;
-          
+
           const originAirportRow = await flightsApi.getAirportRowByIata(fromIata);
           const originCountry = originAirportRow?.iso_country || null;
           const originCity = originAirportRow?.municipality || originAirportRow?.city || null;
-          
+
           // Get airport options for select
           const originAirportOptions = originAirportRow && originCountry ? await flightsApi.getAirportOptionsForSelect('', 1, originCountry, originCity || undefined) : [];
           const originAirport = originAirportOptions.find(opt => opt.value === fromIata) || null;
-          
+
           // Get destination airport info
           const destAirportOptions = await flightsApi.getAirportOptionsForSelect('', 1);
           const destinationAirport = destAirportOptions.find(opt => opt.value === toIata) || null;
-          
+
           setInitialFlightData({
             originCountry: originCountry ? originCountry.toLowerCase() : null,
             originCity,
@@ -333,12 +362,26 @@ export default function TripDetails() {
     if (deleting) return;
     setDeleting(true);
     try {
+        if(isOwner){
       await apiDelete(`/trips/${tripId}`);
       showSuccess(t('tripDetails.deleteSuccess'));
+        } else{
+            const uuid = trip?.share?.share_uuid;
+
+            if (!uuid) {
+                showError(t('tripDetails.errorAccess'));
+                setShowDeleteDialog(false);
+                return;
+            }
+
+            await apiDelete(`/share/trip/${encodeURIComponent(uuid)}/leave`);
+            showSuccess(t('tripDetails.successAccess'));
+
+        }
       setShowDeleteDialog(false);
       router.back();
     } catch (e: any) {
-      const msg = t('tripDetails.deleteError');
+      const msg = isOwner ? t('tripDetails.deleteError') : t('tripDetails.errorAccess') ;
       showError(msg);
       setShowDeleteDialog(false);
     } finally {
@@ -367,9 +410,17 @@ export default function TripDetails() {
       destructive: true,
     },
   ];
+    const menuOptionsFriend = [
+        {
+            label: t('common.delete'),
+            icon: 'trash-outline' as const,
+            onPress: confirmAndDelete,
+            destructive: true,
+        },
+    ];
 
   return (
-    <SecondaryLayout title={destination} rightActions={<ContextMenu options={menuOptions} />}>
+    <SecondaryLayout title={destination} rightActions={<ContextMenu options={isOwner ? menuOptions : menuOptionsFriend} />}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>{destination}</Text>
@@ -377,7 +428,7 @@ export default function TripDetails() {
         </View>
 
         {/* Flight Info Card */}
-        {!showFlightSearch && flightInfo && (
+        {!showFlightSearch && flightInfo && isOwner && (
           <FlightInfoCard
             tripId={tripId}
             flightInfo={flightInfo}
@@ -388,7 +439,7 @@ export default function TripDetails() {
         )}
 
         {/* Flight Search Card (when editing) */}
-        {showFlightSearch && (
+        {showFlightSearch && isOwner && (
           <>
             <FlightSearchCard
               tripId={tripId}
@@ -447,7 +498,7 @@ export default function TripDetails() {
           </>
         )}
 
-        {!showFlightSearch && !flightInfo && !flightLoading && (
+        {!showFlightSearch && !flightInfo && !flightLoading && isOwner && (
           <TouchableOpacity
             style={styles.addFlightButton}
             onPress={() => setShowFlightSearch(true)}
@@ -555,16 +606,16 @@ export default function TripDetails() {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <FloatingActionButton
+        {isOwner && <FloatingActionButton
         onPress={() => router.push(`/(trips)/add-activity?tripId=${tripId}`)}
         accessibilityLabel={t('tripDetails.addActivity')}
         bottom={(Platform.OS === 'android' ? 100 : 125) + insets.bottom}
         right={20}
-      />
+      />}
 
       {showShareModal && (
-        <ShareTripButton 
-          tripId={tripId} 
+        <ShareTripButton
+          tripId={tripId}
           tripDestination={destination}
           showButton={false}
           initialVisible={true}
@@ -574,9 +625,9 @@ export default function TripDetails() {
 
       <ConfirmDialog
         visible={showDeleteDialog}
-        title={t('tripDetails.deleteTitle')}
-        message={t('tripDetails.deleteMessage')}
-        confirmText={t('common.delete')}
+        title={isOwner ? t('tripDetails.deleteTitle') : t('tripDetails.titleAccess')}
+        message={isOwner ? t('tripDetails.deleteMessage') : t('tripDetails.confirmAccess')}
+        confirmText={isOwner ? t('common.delete'): t('tripDetails.confirmAccessButton')}
         cancelText={t('common.cancel')}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}

@@ -83,6 +83,11 @@ const en = {
     disassociateFlightError: 'Error removing flight',
     refreshError: 'Error refreshing flight',
     map: 'Map of the trip',
+      titleAccess: 'Cancel Access',
+      confirmAccess: 'Are you sure you want to cancel access to the trip?',
+      confirmAccessButton: 'Accept',
+      errorAccess: 'Could not remove access to the trip',
+      successAccess: 'Trip access cancelled successfully.'
   },
 
   // Trip Summary
@@ -172,6 +177,18 @@ const en = {
     shareSelected: 'Share ({count})',
     shareSuccess: 'Successfully shared {count} trip(s).\n',
     shareErrors: 'Errors in {count} trip(s):\n',
+      availableFriends: "Available friends",
+      alreadyShared: "Already shared with",
+      remove: "Stop sharing",
+      removeTitle: "Stop sharing trip",
+      removeConfirm: "Are you sure you want to stop sharing this trip with this person?",
+      removeError: "Could not stop sharing the trip",
+      notSharedTrips: "Trips available to share",
+      alreadySharedTrips: "Already shared trips",
+      noTripsToShareAvailable: "No trips available to share",
+      trip: 'Trip',
+      errorTrip:'Error loading shared trips',
+      errorFriends:'"Error loading friends"'
   },
 
   // Profile

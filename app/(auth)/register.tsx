@@ -1,5 +1,5 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
-import { apiPost, tokenStorage } from '@/helpers/api';
+import { apiPost, authStorage } from '@/helpers/api';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useRef, useState, useMemo } from 'react';
@@ -147,7 +147,7 @@ export default function RegisterScreen() {
             setErrorEmail(null)
         }
 
-      if (!name || !email || !phoneNumber || !birthdate || !password || !confirmPassword) {
+      if (!name || !email || !password || !confirmPassword) {
         showError(t('auth.register.completeFields'));
         return;
       }
@@ -187,9 +187,13 @@ export default function RegisterScreen() {
       const registerRes = await apiPost('/auth/register', registerPayload);
       const registerData = registerRes.data ?? registerRes;
       const token = registerData?.token || registerData?.accessToken || registerData?.jwt || registerData?.data?.token || null;
-
-      if (token) {
-        await tokenStorage.setToken(token);
+        const userId =
+            registerData?.user?.id ||
+            registerData?.data?.user?.id ||
+            null;
+      if (token && userId) {
+        await authStorage.setToken(token);
+        await authStorage.setUserId(userId)
         // Navegar a interests después de registro exitoso
         router.push('/interests');
       } else {

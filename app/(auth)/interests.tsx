@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CommonStyles } from '@/constants/Styles';
-import { apiGet, apiPost, tokenStorage } from "@/helpers/api";
+import { apiGet, apiPost, authStorage } from "@/helpers/api";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Asset } from "expo-asset"; // <-- expo-asset for preloading
 import { useTranslation } from '@/i18n';
@@ -284,7 +284,7 @@ export default function InterestsScreen() {
   const getTokenWithRetries = useCallback(async (attempts = 6, delayMs = 250) => {
     for (let i = 0; i < attempts; i++) {
       try {
-        const t = await tokenStorage.getToken();
+        const t = await authStorage.getToken();
         if (t) return t;
       } catch (e) {
         // ignore

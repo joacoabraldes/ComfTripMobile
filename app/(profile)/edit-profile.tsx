@@ -2,7 +2,7 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import SecondaryLayout from "@/components/layouts/SecondaryLayout";
-import { apiGet, apiPut, tokenStorage } from "@/helpers/api";
+import { apiGet, apiPut, authStorage } from "@/helpers/api";
 import { useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
@@ -95,7 +95,7 @@ export default function EditProfileScreen() {
     (async () => {
       setInitialLoading(true);
       try {
-        const token = await tokenStorage.getToken();
+        const token = await authStorage.getToken();
         if (!token) throw new Error("No token");
         const payload = parseJwt(token);
         const id = payload?.id ?? payload?.userId ?? payload?.sub ?? null;
@@ -249,7 +249,7 @@ export default function EditProfileScreen() {
   async function handleSave() {
     setLoading(true);
     try {
-      const token = await tokenStorage.getToken();
+      const token = await authStorage.getToken();
       if (!token) throw new Error("No token");
       if (!userId) throw new Error("No userId");
       const res = await apiPut(`/users/${userId}`, {

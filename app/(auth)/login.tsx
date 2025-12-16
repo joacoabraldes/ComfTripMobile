@@ -1,6 +1,6 @@
 import PrimaryButton from '@/components/buttons/PrimaryButton';
 import { MapSvg } from '@/components/icons/MapSvg';
-import { apiPost, tokenStorage } from '@/helpers/api';
+import {apiPost, authStorage} from '@/helpers/api';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -59,46 +59,70 @@ export default function LoginScreen() {
     // Validate form
   const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
 
-  const handleNext = async () => {
+    const handleNext = async () => {
+        setIdentifierError(null);
+        setPasswordError(null);
 
-      setIdentifierError(null);
-      setPasswordError(null);
+        if (!identifier.trim()) {
+            setIdentifierError('auth.errors.identifierRequired');
+        }
 
-      if (!identifier.trim()) {
-          setIdentifierError('auth.errors.identifierRequired');
-      }
+        if (!password.trim()) {
+            setPasswordError('auth.errors.passwordRequired');
+        }
 
-      if (!password.trim()) {
-          setPasswordError('auth.errors.passwordRequired');
-      }
+        if (!isFormValid) {
+            showError(t('auth.login.completeFields'));
+            return;
+        }
 
-      if (!isFormValid) {
-          showError(t('auth.login.completeFields'));
-          return;
-      }
-    setLoading(true);
-    try {
-      // send identifier (can be username or email) per backend change
-      const res = await apiPost('/auth/login', { identifier, password });
-      const data = res.data ?? res;
+        setLoading(true);
 
-      const token =
-        data?.token || data?.accessToken || data?.jwt || data?.data?.token || null;
+        try {
+            // Login
+            const res = await apiPost('/auth/login', { identifier, password });
+            const data = res?.data ?? res;
 
-      if (token) {
-        await tokenStorage.setToken(token);
-      }
+            // Token (soporta varios formatos)
+            const token =
+                data?.token ||
+                data?.accessToken ||
+                data?.jwt ||
+                data?.data?.token ||
+                null;
 
-      router.replace('/home');
-    } catch (err: any) {
-      const msg = (err && err.message) || (err && err.error) || JSON.stringify(err) || t('auth.login.loginFailed');
-      showError(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
+            // User ID (según tu backend actual)
+            const userId =
+                data?.user?.id ||
+                data?.data?.user?.id ||
+                null;
 
-  return (
+            if (!token || !userId) {
+                throw { message: t('auth.login.loginFailed') };
+            }
+
+            // Persistimos auth
+            await authStorage.setToken(token);
+            await authStorage.setUserId(userId);
+
+            // Navegamos
+            router.replace('/home');
+
+        } catch (err: any) {
+            const msg =
+                err?.message ||
+                err?.error ||
+                err?.msg ||
+                t('auth.login.loginFailed');
+
+            showError(msg);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+
+    return (
     <SafeAreaView style={[CommonStyles.safeArea, { backgroundColor: AppColors.background }]}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}

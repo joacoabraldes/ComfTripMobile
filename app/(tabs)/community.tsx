@@ -205,8 +205,8 @@ export default function CommunityScreen() {
 
     // Fallback: try to decode JWT
     try {
-      const { tokenStorage } = await import('@/helpers/api');
-      const token = await tokenStorage.getToken();
+      const { authStorage } = await import('@/helpers/api');
+      const token = await authStorage.getToken();
       if (token) {
         const parts = token.split('.');
         if (parts.length >= 2) {

@@ -1,7 +1,7 @@
 // ChangePasswordScreen.tsx
 import PrimaryButton from "@/components/buttons/PrimaryButton";
 import SecondaryLayout from "@/components/layouts/SecondaryLayout";
-import { apiPut, tokenStorage } from "@/helpers/api";
+import { apiPut, authStorage } from "@/helpers/api";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, View, ScrollView, useWindowDimensions } from "react-native";
@@ -72,7 +72,7 @@ export default function ChangePasswordScreen() {
           if (mounted) setUserId(paramId);
           return;
         }
-        const token = await tokenStorage.getToken();
+        const token = await authStorage.getToken();
         if (!token) {
           // no token -> redirect to login
           showError(t('changePassword.mustLogin'));
@@ -113,7 +113,7 @@ export default function ChangePasswordScreen() {
     }
     setLoading(true);
     try {
-      const token = await tokenStorage.getToken();
+      const token = await authStorage.getToken();
       if (!token) throw new Error("No token");
       const res = await apiPut(`/users/${userId}/password`, {
         oldPassword,
